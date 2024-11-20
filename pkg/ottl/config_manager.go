@@ -120,12 +120,10 @@ func (c *ConfigManagerImpl) Stop() {
 
 func (c *ConfigManagerImpl) register(req registerRequest) {
 	c.callbackCounter++
-	c.logger.Info("registering callback", zap.Int("id", c.callbackCounter), zap.String("name", req.name))
 	c.callbacks[c.callbackCounter] = req.callback
 	c.callbackNames[c.callbackCounter] = req.name
 	req.ret <- c.callbackCounter
 	if c.lastconf != nil {
-		c.logger.Info("Calling callback (register)", zap.Int("id", c.callbackCounter), zap.String("name", c.callbackNames[c.callbackCounter]))
 		req.callback(*c.lastconf)
 	}
 }
@@ -160,8 +158,7 @@ func (c *ConfigManagerImpl) checkUpdates() {
 	conf.hash = newhash
 	c.lastconf = &conf
 
-	for callbackId, callback := range c.callbacks {
-		c.logger.Info("Calling callback", zap.Int("id", callbackId), zap.String("name", c.callbackNames[callbackId]))
+	for _, callback := range c.callbacks {
 		callback(conf)
 	}
 }
