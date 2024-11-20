@@ -1,0 +1,54 @@
+header:
+  license:
+    spdx-id: Apache-2.0
+    copyright-owner: CardinalHQ, Inc
+
+  paths-ignore:
+    - 'bin'
+    - distribution
+    - receiver/chqdatadogreceiver
+    - '**/*.md'
+    - 'LICENSE'
+    - 'NOTICE'
+    - .gitignore
+    - .dockerignore
+    - .helmignore
+    - .github
+    - .licenserc.yaml
+    - '**/*.yaml'
+    - go.sum
+    - go.mod
+    - sample-config.yaml
+    - '**/testdata/**'
+    - .idea
+    - docs/flow/flow.svg
+    - internal/ddpb/metrics.pb.go
+    - internal/ddpb/metrics.proto
+    - exporter/chqs3exporter/s3_marshaler.go
+    - exporter/chqs3exporter/config.go
+    - exporter/chqs3exporter/exporter_test.go
+    - exporter/chqs3exporter/factory.go
+    - exporter/chqs3exporter/data_writer.go
+    - exporter/chqs3exporter/s3_writer.go
+    - exporter/chqs3exporter/doc.go
+    - exporter/chqs3exporter/s3_writer_test.go
+    - exporter/chqs3exporter/config_test.go
+    - exporter/chqs3exporter/factory_test.go
+    - exporter/chqs3exporter/internal/metadata/generated_status.go
+
+  comment: on-failure
+
+  language:
+    rl:
+      extensions:
+        - '.rl'
+      comment_style_id: DoubleSlash
+    dot:
+      extensions:
+        - '.dot'
+      comment_style_id: Hashtag
+
+# If you don't want to check dependencies' license compatibility, remove the following part
+dependency:
+  files:
+    - go.mod
