@@ -17,12 +17,12 @@ package telemetry
 import "go.opentelemetry.io/otel/metric"
 
 type DeferrableHistogram interface {
-	Record(delta int64, options ...metric.RecordOption)
+	record(delta int64, options ...metric.RecordOption)
 }
 
-func HistogramAdd(histogram DeferrableHistogram, delta int64, options ...metric.RecordOption) {
+func HistogramRecord(histogram DeferrableHistogram, delta int64, options ...metric.RecordOption) {
 	if histogram == nil {
 		return
 	}
-	histogram.Record(delta, options...)
+	histogram.record(delta, options...)
 }

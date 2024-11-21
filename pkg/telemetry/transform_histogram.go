@@ -25,7 +25,7 @@ type DeferrableInt64Histogram struct {
 	recordOptions []metric.RecordOption
 }
 
-func (d DeferrableInt64Histogram) Record(delta int64, options ...metric.RecordOption) {
+func (d DeferrableInt64Histogram) record(delta int64, options ...metric.RecordOption) {
 	d.histogram.Record(context.Background(), delta, append(d.recordOptions, options...)...)
 }
 

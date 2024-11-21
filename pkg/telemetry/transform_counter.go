@@ -27,7 +27,7 @@ type DeferrableInt64Counter struct {
 
 var _ DeferrableCounter = (*DeferrableInt64Counter)(nil)
 
-func (tc *DeferrableInt64Counter) Add(delta int64, options ...metric.AddOption) {
+func (tc *DeferrableInt64Counter) add(delta int64, options ...metric.AddOption) {
 	tc.counter.Add(context.Background(), delta, append(tc.addOptions, options...)...)
 }
 

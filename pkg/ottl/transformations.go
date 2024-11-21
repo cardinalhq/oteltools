@@ -422,7 +422,7 @@ func (t *transformations) ExecuteResourceTransforms(logger *zap.Logger, counter 
 			conditionMet, _ := condition.Eval(context.Background(), transformCtx)
 			allConditionsTrue = allConditionsTrue && conditionMet
 		}
-		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
+		telemetry.HistogramRecord(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.String(translate.Stage, "conditionEval"),
 				attribute.Int(translate.Version, version)))
@@ -457,7 +457,7 @@ func (t *transformations) ExecuteResourceTransforms(logger *zap.Logger, counter 
 				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, true)))
 
-		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
+		telemetry.HistogramRecord(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.String(translate.Stage, "statementEval"),
 				attribute.Int(translate.Version, version)))
@@ -473,7 +473,7 @@ func (t *transformations) ExecuteScopeTransforms(logger *zap.Logger, counter tel
 			conditionMet, _ := condition.Eval(context.Background(), transformCtx)
 			allConditionsTrue = allConditionsTrue && conditionMet
 		}
-		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
+		telemetry.HistogramRecord(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.String(translate.Stage, "conditionEval"),
 				attribute.Int(translate.Version, version)))
@@ -509,7 +509,7 @@ func (t *transformations) ExecuteScopeTransforms(logger *zap.Logger, counter tel
 				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, true)))
 
-		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
+		telemetry.HistogramRecord(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.String(translate.Stage, "statementEval"),
 				attribute.Int(translate.Version, version)))
@@ -536,7 +536,7 @@ func (t *transformations) ExecuteLogTransforms(logger *zap.Logger, counter telem
 			allConditionsTrue = allConditionsTrue && conditionMet
 		}
 
-		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
+		telemetry.HistogramRecord(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.String(translate.Stage, "conditionEval"),
 				attribute.Int(translate.Version, version)))
@@ -593,7 +593,7 @@ func (t *transformations) ExecuteLogTransforms(logger *zap.Logger, counter telem
 				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, true)))
 
-		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
+		telemetry.HistogramRecord(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.String(translate.Stage, "statementEval"),
 				attribute.Int(translate.Version, version)))
@@ -631,7 +631,7 @@ func (t *transformations) ExecuteSpanTransforms(logger *zap.Logger, counter tele
 			}
 			allConditionsTrue = allConditionsTrue && conditionMet
 		}
-		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
+		telemetry.HistogramRecord(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.String(translate.Stage, "conditionEval"),
 				attribute.Int(translate.Version, version)))
@@ -690,7 +690,7 @@ func (t *transformations) ExecuteSpanTransforms(logger *zap.Logger, counter tele
 				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, true)))
 
-		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
+		telemetry.HistogramRecord(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.String(translate.Stage, "statementEval"),
 				attribute.Int(translate.Version, version)))
@@ -716,7 +716,7 @@ func (t *transformations) ExecuteMetricTransforms(logger *zap.Logger, counter te
 			}
 			allConditionsTrue = allConditionsTrue && conditionMet
 		}
-		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
+		telemetry.HistogramRecord(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.String(translate.Stage, "conditionEval"),
 				attribute.Int(translate.Version, version)))
@@ -743,7 +743,7 @@ func (t *transformations) ExecuteMetricTransforms(logger *zap.Logger, counter te
 				logger.Error("Error executing metric transformation", zap.Error(err))
 			}
 		}
-		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
+		telemetry.HistogramRecord(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.String(translate.Stage, "statementEval"),
 				attribute.Int(translate.Version, version)))
@@ -769,7 +769,7 @@ func (t *transformations) ExecuteDatapointTransforms(logger *zap.Logger, counter
 			}
 			allConditionsTrue = allConditionsTrue && conditionMet
 		}
-		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
+		telemetry.HistogramRecord(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.String(translate.Stage, "conditionEval"),
 				attribute.Int(translate.Version, version)))
@@ -802,7 +802,7 @@ func (t *transformations) ExecuteDatapointTransforms(logger *zap.Logger, counter
 				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, true)))
 
-		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
+		telemetry.HistogramRecord(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.String(translate.Stage, "statementEval"),
 				attribute.Int(translate.Version, version)))
