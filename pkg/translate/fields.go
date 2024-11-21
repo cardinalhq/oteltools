@@ -76,6 +76,7 @@ const (
 	RuleId                         = "rule_id"
 	Stage                          = "stage"
 	ErrorMsg                       = "errorMsg"
+	Version                        = "version"
 
 	CardinalMetricTypeCount                = "count"
 	CardinalMetricTypeExponentialHistogram = "exponential_histogram"

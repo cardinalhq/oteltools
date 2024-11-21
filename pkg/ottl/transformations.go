@@ -41,44 +41,78 @@ import (
 	"github.com/cardinalhq/oteltools/pkg/translate"
 )
 
+type Versioned interface {
+	GetVersion() int
+}
+
 type resourceTransform struct {
 	context    ContextID
+	version    int
 	conditions []*ottl.Condition[ottlresource.TransformContext]
 	statements []*ottl.Statement[ottlresource.TransformContext]
 }
 
+func (r *resourceTransform) GetVersion() int {
+	return r.version
+}
+
 type scopeTransform struct {
 	context    ContextID
+	version    int
 	conditions []*ottl.Condition[ottlscope.TransformContext]
 	statements []*ottl.Statement[ottlscope.TransformContext]
 }
 
+func (s *scopeTransform) GetVersion() int {
+	return s.version
+}
+
 type logTransform struct {
 	context    ContextID
+	version    int
 	conditions []*ottl.Condition[ottllog.TransformContext]
 	statements []*ottl.Statement[ottllog.TransformContext]
 	//samplerConfig SamplingConfig
 	sampler Sampler
 }
 
+func (s *logTransform) GetVersion() int {
+	return s.version
+}
+
 type spanTransform struct {
 	context    ContextID
+	version    int
 	conditions []*ottl.Condition[ottlspan.TransformContext]
 	statements []*ottl.Statement[ottlspan.TransformContext]
 	//samplerConfig SamplingConfig
 	sampler Sampler
 }
 
+func (s *spanTransform) GetVersion() int {
+	return s.version
+}
+
 type metricTransform struct {
 	context    ContextID
+	version    int
 	conditions []*ottl.Condition[ottlmetric.TransformContext]
 	statements []*ottl.Statement[ottlmetric.TransformContext]
 }
 
+func (s *metricTransform) GetVersion() int {
+	return s.version
+}
+
 type dataPointTransform struct {
 	context    ContextID
+	version    int
 	conditions []*ottl.Condition[ottldatapoint.TransformContext]
 	statements []*ottl.Statement[ottldatapoint.TransformContext]
+}
+
+func (s *dataPointTransform) GetVersion() int {
+	return s.version
 }
 
 type RuleID string
@@ -86,22 +120,22 @@ type RuleID string
 type Transformations = transformations
 
 type transformations struct {
-	resourceTransforms  map[RuleID]resourceTransform
-	scopeTransforms     map[RuleID]scopeTransform
-	logTransforms       map[RuleID]logTransform
-	spanTransforms      map[RuleID]spanTransform
-	metricTransforms    map[RuleID]metricTransform
-	dataPointTransforms map[RuleID]dataPointTransform
+	resourceTransforms  map[RuleID]*resourceTransform
+	scopeTransforms     map[RuleID]*scopeTransform
+	logTransforms       map[RuleID]*logTransform
+	spanTransforms      map[RuleID]*spanTransform
+	metricTransforms    map[RuleID]*metricTransform
+	dataPointTransforms map[RuleID]*dataPointTransform
 }
 
 func NewTransformations() *transformations {
 	return &transformations{
-		resourceTransforms:  make(map[RuleID]resourceTransform),
-		scopeTransforms:     make(map[RuleID]scopeTransform),
-		logTransforms:       make(map[RuleID]logTransform),
-		spanTransforms:      make(map[RuleID]spanTransform),
-		metricTransforms:    make(map[RuleID]metricTransform),
-		dataPointTransforms: make(map[RuleID]dataPointTransform),
+		resourceTransforms:  make(map[RuleID]*resourceTransform),
+		scopeTransforms:     make(map[RuleID]*scopeTransform),
+		logTransforms:       make(map[RuleID]*logTransform),
+		spanTransforms:      make(map[RuleID]*spanTransform),
+		metricTransforms:    make(map[RuleID]*metricTransform),
+		dataPointTransforms: make(map[RuleID]*dataPointTransform),
 	}
 }
 
@@ -230,7 +264,7 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 				continue
 			}
 
-			transformations.resourceTransforms[cs.RuleId] = resourceTransform{
+			transformations.resourceTransforms[cs.RuleId] = &resourceTransform{
 				context:    cs.Context,
 				conditions: conditions,
 				statements: statements,
@@ -250,7 +284,7 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 				continue
 			}
 
-			transformations.scopeTransforms[cs.RuleId] = scopeTransform{
+			transformations.scopeTransforms[cs.RuleId] = &scopeTransform{
 				context:    cs.Context,
 				conditions: conditions,
 				statements: statements,
@@ -280,7 +314,7 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 				}
 			}
 
-			transformations.logTransforms[cs.RuleId] = logTransform{
+			transformations.logTransforms[cs.RuleId] = &logTransform{
 				context:    cs.Context,
 				conditions: conditions,
 				statements: statements,
@@ -311,7 +345,7 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 				}
 			}
 
-			transformations.spanTransforms[cs.RuleId] = spanTransform{
+			transformations.spanTransforms[cs.RuleId] = &spanTransform{
 				context:    cs.Context,
 				conditions: conditions,
 				statements: statements,
@@ -332,7 +366,7 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 				continue
 			}
 
-			transformations.metricTransforms[cs.RuleId] = metricTransform{
+			transformations.metricTransforms[cs.RuleId] = &metricTransform{
 				context:    cs.Context,
 				conditions: conditions,
 				statements: statements,
@@ -352,7 +386,7 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 				continue
 			}
 
-			transformations.dataPointTransforms[cs.RuleId] = dataPointTransform{
+			transformations.dataPointTransforms[cs.RuleId] = &dataPointTransform{
 				context:    cs.Context,
 				conditions: conditions,
 				statements: statements,
@@ -366,9 +400,9 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 	return transformations, errors
 }
 
-func evaluateTransform[T any](counter telemetry.DeferrableCounter, rules map[RuleID]T, eval func(telemetry.DeferrableCounter, T, string)) {
+func evaluateTransform[V Versioned](counter telemetry.DeferrableCounter, rules map[RuleID]V, eval func(telemetry.DeferrableCounter, V, string, int)) {
 	for ruleID, transform := range rules {
-		eval(counter, transform, string(ruleID))
+		eval(counter, transform, string(ruleID), transform.GetVersion())
 	}
 }
 
@@ -376,20 +410,23 @@ func (t *transformations) ExecuteResourceTransforms(logger *zap.Logger, counter 
 	attrset := attribute.NewSet(attribute.String("context", "resource"))
 	startTime := time.Now()
 	telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(attribute.String("stage", "resource")))
-	evaluateTransform[resourceTransform](counter, t.resourceTransforms, func(counter telemetry.DeferrableCounter, resourceTransform resourceTransform, ruleID string) {
+	evaluateTransform[*resourceTransform](counter, t.resourceTransforms, func(counter telemetry.DeferrableCounter, resourceTransform *resourceTransform, ruleID string, version int) {
 		allConditionsTrue := true
 		for _, condition := range resourceTransform.conditions {
 			conditionMet, _ := condition.Eval(context.Background(), transformCtx)
 			allConditionsTrue = allConditionsTrue && conditionMet
 		}
 		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
-			metric.WithAttributes(attribute.String(translate.RuleId, ruleID), attribute.String(translate.Stage, "conditionEval")))
+			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
+				attribute.String(translate.Stage, "conditionEval"),
+				attribute.Int(translate.Version, version)))
 
 		if !allConditionsTrue {
 			telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 				attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.StatementsEvaluated, false),
 				attribute.Bool(translate.SamplerAllowed, false),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, false),
 			))
 			return
@@ -401,6 +438,7 @@ func (t *transformations) ExecuteResourceTransforms(logger *zap.Logger, counter 
 				telemetry.CounterAdd(errorCounter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 					attribute.String(translate.RuleId, ruleID),
 					attribute.String(translate.Stage, "statementEval"),
+					attribute.Int(translate.Version, version),
 					attribute.String(translate.ErrorMsg, err.Error()),
 				))
 				logger.Error("Error executing resource transformation", zap.Error(err))
@@ -410,31 +448,36 @@ func (t *transformations) ExecuteResourceTransforms(logger *zap.Logger, counter 
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.StatementsEvaluated, true),
 				attribute.Bool(translate.SamplerAllowed, true),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, true)))
 
 		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
-			metric.WithAttributes(attribute.String(translate.RuleId, ruleID), attribute.String(translate.Stage, "statementEval")))
+			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
+				attribute.String(translate.Stage, "statementEval"),
+				attribute.Int(translate.Version, version)))
 	})
 }
 
 func (t *transformations) ExecuteScopeTransforms(logger *zap.Logger, counter telemetry.DeferrableCounter, errorCounter telemetry.DeferrableCounter, histogram telemetry.DeferrableHistogram, transformCtx ottlscope.TransformContext) {
 	attrset := attribute.NewSet(attribute.String("context", "scope"))
 	startTime := time.Now()
-	telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(attribute.String("stage", "scope")))
-	evaluateTransform[scopeTransform](counter, t.scopeTransforms, func(counter telemetry.DeferrableCounter, scopeTransform scopeTransform, ruleID string) {
+	evaluateTransform[*scopeTransform](counter, t.scopeTransforms, func(counter telemetry.DeferrableCounter, scopeTransform *scopeTransform, ruleID string, version int) {
 		allConditionsTrue := true
 		for _, condition := range scopeTransform.conditions {
 			conditionMet, _ := condition.Eval(context.Background(), transformCtx)
 			allConditionsTrue = allConditionsTrue && conditionMet
 		}
 		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
-			metric.WithAttributes(attribute.String(translate.RuleId, ruleID), attribute.String(translate.Stage, "conditionEval")))
+			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
+				attribute.String(translate.Stage, "conditionEval"),
+				attribute.Int(translate.Version, version)))
 
 		if !allConditionsTrue {
 			telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 				attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.StatementsEvaluated, false),
 				attribute.Bool(translate.SamplerAllowed, false),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, false),
 			))
 			return
@@ -447,6 +490,7 @@ func (t *transformations) ExecuteScopeTransforms(logger *zap.Logger, counter tel
 				telemetry.CounterAdd(errorCounter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 					attribute.String(translate.RuleId, ruleID),
 					attribute.String(translate.Stage, "statementEval"),
+					attribute.Int(translate.Version, version),
 					attribute.String(translate.ErrorMsg, err.Error()),
 				))
 				logger.Error("Error executing scope transformation", zap.Error(err))
@@ -456,10 +500,13 @@ func (t *transformations) ExecuteScopeTransforms(logger *zap.Logger, counter tel
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.StatementsEvaluated, true),
 				attribute.Bool(translate.SamplerAllowed, true),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, true)))
 
 		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
-			metric.WithAttributes(attribute.String(translate.RuleId, ruleID), attribute.String(translate.Stage, "statementEval")))
+			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
+				attribute.String(translate.Stage, "statementEval"),
+				attribute.Int(translate.Version, version)))
 	})
 }
 
@@ -468,15 +515,15 @@ func (t *transformations) ExecuteLogTransforms(logger *zap.Logger, counter telem
 	startTime := time.Now()
 
 	telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(attribute.String("stage", "log")))
-	evaluateTransform[logTransform](counter, t.logTransforms, func(counter telemetry.DeferrableCounter, logTransform logTransform, ruleID string) {
+	evaluateTransform[*logTransform](counter, t.logTransforms, func(counter telemetry.DeferrableCounter, logTransform *logTransform, ruleID string, version int) {
 		allConditionsTrue := true
-		telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(attribute.String("stage", "pre-condition"), attribute.String("rule_id", ruleID)))
 		for _, condition := range logTransform.conditions {
 			conditionMet, err := condition.Eval(context.Background(), transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(errorCounter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 					attribute.String(translate.RuleId, ruleID),
 					attribute.String(translate.Stage, "conditionEval"),
+					attribute.Int(translate.Version, version),
 					attribute.String(translate.ErrorMsg, err.Error()),
 				))
 			}
@@ -484,13 +531,16 @@ func (t *transformations) ExecuteLogTransforms(logger *zap.Logger, counter telem
 		}
 
 		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
-			metric.WithAttributes(attribute.String(translate.RuleId, ruleID), attribute.String(translate.Stage, "conditionEval")))
+			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
+				attribute.String(translate.Stage, "conditionEval"),
+				attribute.Int(translate.Version, version)))
 
 		if !allConditionsTrue {
 			telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 				attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.StatementsEvaluated, false),
 				attribute.Bool(translate.SamplerAllowed, false),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, false),
 			))
 			return
@@ -511,6 +561,7 @@ func (t *transformations) ExecuteLogTransforms(logger *zap.Logger, counter telem
 				attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.SamplerAllowed, false),
 				attribute.Bool(translate.ConditionsMatched, true),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.StatementsEvaluated, false),
 			))
 			return
@@ -522,6 +573,7 @@ func (t *transformations) ExecuteLogTransforms(logger *zap.Logger, counter telem
 				telemetry.CounterAdd(errorCounter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 					attribute.String(translate.RuleId, ruleID),
 					attribute.String(translate.Stage, "statementEval"),
+					attribute.Int(translate.Version, version),
 					attribute.String(translate.ErrorMsg, err.Error()),
 				))
 				logger.Error("Error executing log transformation", zap.Error(err))
@@ -532,10 +584,13 @@ func (t *transformations) ExecuteLogTransforms(logger *zap.Logger, counter telem
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.StatementsEvaluated, true),
 				attribute.Bool(translate.SamplerAllowed, true),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, true)))
 
 		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
-			metric.WithAttributes(attribute.String(translate.RuleId, ruleID), attribute.String(translate.Stage, "statementEval")))
+			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
+				attribute.String(translate.Stage, "statementEval"),
+				attribute.Int(translate.Version, version)))
 	})
 }
 
@@ -553,7 +608,7 @@ func shouldFilter(rate int, randval float64) bool {
 func (t *transformations) ExecuteSpanTransforms(logger *zap.Logger, counter telemetry.DeferrableCounter, errorCounter telemetry.DeferrableCounter, histogram telemetry.DeferrableHistogram, transformCtx ottlspan.TransformContext) {
 	attrset := attribute.NewSet(attribute.String("context", "span"))
 
-	evaluateTransform[spanTransform](counter, t.spanTransforms, func(counter telemetry.DeferrableCounter, spanTransform spanTransform, ruleID string) {
+	evaluateTransform[*spanTransform](counter, t.spanTransforms, func(counter telemetry.DeferrableCounter, spanTransform *spanTransform, ruleID string, version int) {
 		startTime := time.Now()
 
 		allConditionsTrue := true
@@ -563,6 +618,7 @@ func (t *transformations) ExecuteSpanTransforms(logger *zap.Logger, counter tele
 				telemetry.CounterAdd(errorCounter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 					attribute.String(translate.RuleId, ruleID),
 					attribute.String(translate.Stage, "conditionEval"),
+					attribute.Int(translate.Version, version),
 					attribute.String(translate.ErrorMsg, err.Error()),
 				))
 				logger.Error("Error executing span conditions", zap.Error(err))
@@ -570,13 +626,16 @@ func (t *transformations) ExecuteSpanTransforms(logger *zap.Logger, counter tele
 			allConditionsTrue = allConditionsTrue && conditionMet
 		}
 		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
-			metric.WithAttributes(attribute.String(translate.RuleId, ruleID), attribute.String(translate.Stage, "conditionEval")))
+			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
+				attribute.String(translate.Stage, "conditionEval"),
+				attribute.Int(translate.Version, version)))
 
 		if !allConditionsTrue {
 			telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 				attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.StatementsEvaluated, false),
 				attribute.Bool(translate.SamplerAllowed, false),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, false),
 			))
 			return
@@ -600,6 +659,7 @@ func (t *transformations) ExecuteSpanTransforms(logger *zap.Logger, counter tele
 				attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.SamplerAllowed, false),
 				attribute.Bool(translate.ConditionsMatched, true),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.StatementsEvaluated, false),
 			))
 			return
@@ -611,6 +671,7 @@ func (t *transformations) ExecuteSpanTransforms(logger *zap.Logger, counter tele
 				telemetry.CounterAdd(errorCounter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 					attribute.String(translate.RuleId, ruleID),
 					attribute.String(translate.Stage, "statementEval"),
+					attribute.Int(translate.Version, version),
 					attribute.String(translate.ErrorMsg, err.Error()),
 				))
 				logger.Error("Error executing span transformation", zap.Error(err))
@@ -620,10 +681,13 @@ func (t *transformations) ExecuteSpanTransforms(logger *zap.Logger, counter tele
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.StatementsEvaluated, true),
 				attribute.Bool(translate.SamplerAllowed, true),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, true)))
 
 		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
-			metric.WithAttributes(attribute.String(translate.RuleId, ruleID), attribute.String(translate.Stage, "statementEval")))
+			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
+				attribute.String(translate.Stage, "statementEval"),
+				attribute.Int(translate.Version, version)))
 	})
 }
 
@@ -631,16 +695,15 @@ func (t *transformations) ExecuteMetricTransforms(logger *zap.Logger, counter te
 	attrset := attribute.NewSet(attribute.String("context", "metric"))
 	startTime := time.Now()
 
-	telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(attribute.String("stage", "metric")))
-	evaluateTransform[metricTransform](counter, t.metricTransforms, func(counter telemetry.DeferrableCounter, metricTransform metricTransform, ruleID string) {
+	evaluateTransform[*metricTransform](counter, t.metricTransforms, func(counter telemetry.DeferrableCounter, metricTransform *metricTransform, ruleID string, version int) {
 		allConditionsTrue := true
-		telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(attribute.String("stage", "pre-condition"), attribute.String("rule_id", ruleID)))
 		for _, condition := range metricTransform.conditions {
 			conditionMet, err := condition.Eval(context.Background(), transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(errorCounter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 					attribute.String(translate.RuleId, ruleID),
 					attribute.String(translate.Stage, "conditionEval"),
+					attribute.Int(translate.Version, version),
 					attribute.String(translate.ErrorMsg, err.Error()),
 				))
 				logger.Error("Error executing metric conditions", zap.Error(err))
@@ -648,12 +711,15 @@ func (t *transformations) ExecuteMetricTransforms(logger *zap.Logger, counter te
 			allConditionsTrue = allConditionsTrue && conditionMet
 		}
 		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
-			metric.WithAttributes(attribute.String(translate.RuleId, ruleID), attribute.String(translate.Stage, "conditionEval")))
+			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
+				attribute.String(translate.Stage, "conditionEval"),
+				attribute.Int(translate.Version, version)))
 
 		if !allConditionsTrue {
 			telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 				attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.StatementsEvaluated, false),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, false),
 			))
 			return
@@ -665,13 +731,16 @@ func (t *transformations) ExecuteMetricTransforms(logger *zap.Logger, counter te
 				telemetry.CounterAdd(errorCounter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 					attribute.String(translate.RuleId, ruleID),
 					attribute.String(translate.Stage, "statementEval"),
+					attribute.Int(translate.Version, version),
 					attribute.String(translate.ErrorMsg, err.Error()),
 				))
 				logger.Error("Error executing metric transformation", zap.Error(err))
 			}
 		}
 		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
-			metric.WithAttributes(attribute.String(translate.RuleId, ruleID), attribute.String(translate.Stage, "statementEval")))
+			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
+				attribute.String(translate.Stage, "statementEval"),
+				attribute.Int(translate.Version, version)))
 	})
 }
 
@@ -679,8 +748,7 @@ func (t *transformations) ExecuteDatapointTransforms(logger *zap.Logger, counter
 	attrset := attribute.NewSet(attribute.String("context", "datapoint"))
 	startTime := time.Now()
 
-	telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(attribute.String("stage", "datapoint")))
-	evaluateTransform[dataPointTransform](counter, t.dataPointTransforms, func(counter telemetry.DeferrableCounter, dataPointTransform dataPointTransform, ruleID string) {
+	evaluateTransform[*dataPointTransform](counter, t.dataPointTransforms, func(counter telemetry.DeferrableCounter, dataPointTransform *dataPointTransform, ruleID string, version int) {
 		allConditionsTrue := true
 		for _, condition := range dataPointTransform.conditions {
 			conditionMet, err := condition.Eval(context.Background(), transformCtx)
@@ -688,6 +756,7 @@ func (t *transformations) ExecuteDatapointTransforms(logger *zap.Logger, counter
 				telemetry.CounterAdd(errorCounter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 					attribute.String(translate.RuleId, ruleID),
 					attribute.String(translate.Stage, "conditionEval"),
+					attribute.Int(translate.Version, version),
 					attribute.String(translate.ErrorMsg, err.Error()),
 				))
 				logger.Error("Error executing span conditions", zap.Error(err))
@@ -695,12 +764,15 @@ func (t *transformations) ExecuteDatapointTransforms(logger *zap.Logger, counter
 			allConditionsTrue = allConditionsTrue && conditionMet
 		}
 		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
-			metric.WithAttributes(attribute.String(translate.RuleId, ruleID), attribute.String(translate.Stage, "conditionEval")))
+			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
+				attribute.String(translate.Stage, "conditionEval"),
+				attribute.Int(translate.Version, version)))
 
 		if !allConditionsTrue {
 			telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 				attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.StatementsEvaluated, false),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, false),
 			))
 			return
@@ -713,6 +785,7 @@ func (t *transformations) ExecuteDatapointTransforms(logger *zap.Logger, counter
 				telemetry.CounterAdd(errorCounter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(
 					attribute.String(translate.RuleId, ruleID),
 					attribute.String(translate.Stage, "statementEval"),
+					attribute.Int(translate.Version, version),
 					attribute.String(translate.ErrorMsg, err.Error()),
 				))
 			}
@@ -720,9 +793,12 @@ func (t *transformations) ExecuteDatapointTransforms(logger *zap.Logger, counter
 		telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset),
 			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
 				attribute.Bool(translate.StatementsEvaluated, true),
+				attribute.Int(translate.Version, version),
 				attribute.Bool(translate.ConditionsMatched, true)))
 
 		telemetry.HistogramAdd(histogram, time.Since(startTime).Nanoseconds(), metric.WithAttributeSet(attrset),
-			metric.WithAttributes(attribute.String(translate.RuleId, ruleID), attribute.String(translate.Stage, "statementEval")))
+			metric.WithAttributes(attribute.String(translate.RuleId, ruleID),
+				attribute.String(translate.Stage, "statementEval"),
+				attribute.Int(translate.Version, version)))
 	})
 }
