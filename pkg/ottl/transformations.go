@@ -415,7 +415,6 @@ func evaluateTransform[V Versioned](counter telemetry.DeferrableCounter, rules m
 func (t *transformations) ExecuteResourceTransforms(logger *zap.Logger, counter telemetry.DeferrableCounter, errorCounter telemetry.DeferrableCounter, histogram telemetry.DeferrableHistogram, transformCtx ottlresource.TransformContext) {
 	attrset := attribute.NewSet(attribute.String("context", "resource"))
 	startTime := time.Now()
-	telemetry.CounterAdd(counter, 1, metric.WithAttributeSet(attrset), metric.WithAttributes(attribute.String("stage", "resource")))
 	evaluateTransform[*resourceTransform](counter, t.resourceTransforms, func(counter telemetry.DeferrableCounter, resourceTransform *resourceTransform, ruleID string, version int) {
 		allConditionsTrue := true
 		for _, condition := range resourceTransform.conditions {
