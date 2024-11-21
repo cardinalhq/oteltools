@@ -22,9 +22,9 @@ package ottl
 
 type ControlPlaneConfig struct {
 	// Processor targets
-	Pitbulls       map[string]PitbullProcessorConfig        `json:"pitbulls,omitempty" yaml:"pitbulls,omitempty"`
-	Stats          map[string]StatsProcessorConfig          `json:"stats,omitempty" yaml:"stats,omitempty"`
-	ExtractMetrics map[string]ExtractMetricsProcessorConfig `json:"extract_metrics,omitempty" yaml:"extract_metrics,omitempty"`
+	Pitbulls       map[string]*PitbullProcessorConfig        `json:"pitbulls,omitempty" yaml:"pitbulls,omitempty"`
+	Stats          map[string]*StatsProcessorConfig          `json:"stats,omitempty" yaml:"stats,omitempty"`
+	ExtractMetrics map[string]*ExtractMetricsProcessorConfig `json:"extract_metrics,omitempty" yaml:"extract_metrics,omitempty"`
 
 	hash uint64
 }
