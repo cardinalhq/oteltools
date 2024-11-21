@@ -57,6 +57,7 @@ type MetricExtractorConfig struct {
 	MetricUnit  string            `json:"metric_unit,omitempty" yaml:"metric_unit,omitempty"`
 	MetricType  string            `json:"metric_type,omitempty" yaml:"metric_type,omitempty"`
 	MetricValue string            `json:"metric_value,omitempty" yaml:"metric_value,omitempty"`
+	Version     int               `json:"version,omitempty" yaml:"version,omitempty"`
 }
 
 type StatsEnrichment struct {
@@ -82,4 +83,5 @@ type ContextStatement struct {
 	Conditions     []string       `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 	Statements     []string       `json:"statements,omitempty" yaml:"statements,omitempty"`
 	SamplingConfig SamplingConfig `json:"sampling_config,omitempty" yaml:"sampling_config,omitempty"`
+	Version        int            `json:"version,omitempty" yaml:"version,omitempty"`
 }
