@@ -268,6 +268,7 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 				context:    cs.Context,
 				conditions: conditions,
 				statements: statements,
+				version:    cs.Version,
 			}
 
 		case "scope":
@@ -288,6 +289,7 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 				context:    cs.Context,
 				conditions: conditions,
 				statements: statements,
+				version:    cs.Version,
 			}
 
 		case "log":
@@ -319,6 +321,7 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 				conditions: conditions,
 				statements: statements,
 				sampler:    s,
+				version:    cs.Version,
 			}
 
 		case "span":
@@ -350,6 +353,7 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 				conditions: conditions,
 				statements: statements,
 				sampler:    s,
+				version:    cs.Version,
 			}
 
 		case "metric":
@@ -370,6 +374,7 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 				context:    cs.Context,
 				conditions: conditions,
 				statements: statements,
+				version:    cs.Version,
 			}
 
 		case "datapoint":
@@ -390,6 +395,7 @@ func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*t
 				context:    cs.Context,
 				conditions: conditions,
 				statements: statements,
+				version:    cs.Version,
 			}
 
 		default:
