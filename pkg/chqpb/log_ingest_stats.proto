@@ -1,0 +1,54 @@
+// Copyright 2024 CardinalHQ, Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package chqpb;
+
+import "attribute.proto";
+
+option go_package = ".;chqpb";
+
+message LogIngestStat {
+  message Key {
+    string service = 1;
+    int64 fingerprint = 2;
+    int64 tsHour = 3;
+    repeated Attribute attributes = 4;
+    string customerId = 5;
+    string phaseType = 6;
+    string processorId = 7;
+    string collectorId = 8;
+  }
+
+
+  bytes exemplar = 1;
+  int64 eventsCount = 2;
+  int64 sizeBytes = 3;
+  Key key = 4;
+}
+
+
+
+message LogIngestStatsList {
+  message Key {
+    string customerId = 1;
+    string phaseType = 2;
+    string processorId = 3;
+    string collectorId = 4;
+    int64 tsHour = 5;
+  }
+  repeated LogIngestStat stats = 1;
+  Key key = 2;
+}

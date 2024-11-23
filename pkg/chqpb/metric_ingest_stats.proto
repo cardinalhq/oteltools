@@ -1,0 +1,60 @@
+// Copyright 2024 CardinalHQ, Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+import "attribute.proto";
+
+package chqpb;
+
+option go_package = ".;chqpb";
+
+message MetricIngestStat {
+  message Key {
+    string service = 1;
+    string metricName = 2;
+    string tagName = 3;
+    int64 tsHour = 4;
+    string customerId = 5;
+    string phaseType = 6;
+    string processorId = 7;
+    string collectorId = 8;
+    repeated Attribute attributes = 9;
+    string tagScope = 10;
+    string metricType = 11;
+  }
+  bytes hllSketch = 1;
+  Key key = 2;
+}
+
+message MetricIngestStatsList {
+  message Key {
+    string customerId = 1;
+    string phaseType = 2;
+    int64 tsHour = 3;
+    string vendorId = 4;
+    string collectorId = 5;
+  }
+
+  message MetricExemplar {
+    string metricName = 1;
+    string serviceName = 2;
+    string metricType = 3;
+    bytes exemplar = 4;
+  }
+
+  repeated MetricIngestStat stats = 1;
+  Key key = 2;
+  repeated MetricExemplar exemplars = 3;
+
+}

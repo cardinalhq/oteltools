@@ -1,0 +1,48 @@
+// Copyright 2024 CardinalHQ, Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package chqpb;
+
+option go_package = ".;chqpb";
+
+message KafkaEnvelope {
+  string customerId = 1;
+  string key = 2;
+  int32 publishType = 3;
+  int64 ts = 4;
+  bytes payload = 5;
+  oneof partition {
+    int32 partitionValue = 6;
+  }
+}
+
+enum KafkaEnvelopePublishType {
+  PUBLISH_TYPE_SPAN_STATS = 0;
+  PUBLISH_TYPE_SKETCHES = 1;
+  PUBLISH_TYPE_METADATA = 2;
+  PUBLISH_TYPE_CHECK_RUN = 3;
+  PUBLISH_TYPE_INTAKE_DATADOG = 4;
+  PUBLISH_TYPE_INTAKE_CARDINAL = 5;
+  PUBLISH_TYPE_METRICS = 6;
+  PUBLISH_TYPE_LOGS = 7;
+  PUBLISH_TYPE_TRACES = 8;
+  PUBLISH_TYPE_METRICS_V2 = 9;
+  PUBLISH_TYPE_OTEL_LOGS = 10;
+  PUBLISH_TYPE_SPAN_METADATA_STATS = 11;
+  PUBLISH_TYPE_METRIC_METADATA_STATS = 12;
+  PUBLISH_TYPE_LOG_METADATA_STATS = 13;
+  PUBLISH_TYPE_METRICS_V2_JSON = 14;
+}
