@@ -26,12 +26,12 @@ func TestLogStats_Key(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		logStats *LogStats
+		logStats *EventStats
 		want     uint64
 	}{
 		{
 			name: "alice 1234",
-			logStats: &LogStats{
+			logStats: &EventStats{
 				ServiceName: "alice",
 				Fingerprint: 1234,
 				Phase:       1,
@@ -40,7 +40,7 @@ func TestLogStats_Key(t *testing.T) {
 		},
 		{
 			name: "bob 5678",
-			logStats: &LogStats{
+			logStats: &EventStats{
 				ServiceName: "bob",
 				Fingerprint: 5678,
 				Phase:       2,
@@ -49,7 +49,7 @@ func TestLogStats_Key(t *testing.T) {
 		},
 		{
 			name: "bob 567",
-			logStats: &LogStats{
+			logStats: &EventStats{
 				ServiceName: "bob",
 				Fingerprint: 567,
 				Phase:       3,
@@ -70,18 +70,18 @@ func TestLogStats_Matches(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		logStats   *LogStats
+		logStats   *EventStats
 		other      stats.StatsObject
 		wantResult bool
 	}{
 		{
 			name: "matching log stats",
-			logStats: &LogStats{
+			logStats: &EventStats{
 				ServiceName: "alice",
 				Fingerprint: 1234,
 				Phase:       Phase_PASSTHROUGH,
 			},
-			other: &LogStats{
+			other: &EventStats{
 				ServiceName: "alice",
 				Fingerprint: 1234,
 				Phase:       Phase_PASSTHROUGH,
@@ -90,12 +90,12 @@ func TestLogStats_Matches(t *testing.T) {
 		},
 		{
 			name: "non-matching log stats",
-			logStats: &LogStats{
+			logStats: &EventStats{
 				ServiceName: "alice",
 				Fingerprint: 1234,
 				Phase:       Phase_PASSTHROUGH,
 			},
-			other: &LogStats{
+			other: &EventStats{
 				ServiceName: "bob",
 				Fingerprint: 5678,
 				Phase:       Phase_FILTERED,
@@ -104,7 +104,7 @@ func TestLogStats_Matches(t *testing.T) {
 		},
 		{
 			name: "non-log stats object",
-			logStats: &LogStats{
+			logStats: &EventStats{
 				ServiceName: "alice",
 				Fingerprint: 1234,
 				Phase:       Phase_PASSTHROUGH,
@@ -127,12 +127,12 @@ func TestLogStats_Increment(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		logStats  *LogStats
+		logStats  *EventStats
 		wantCount int64
 	}{
 		{
 			name: "increment count",
-			logStats: &LogStats{
+			logStats: &EventStats{
 				ServiceName: "alice",
 				Fingerprint: 1234,
 				Phase:       Phase_PASSTHROUGH,
@@ -142,7 +142,7 @@ func TestLogStats_Increment(t *testing.T) {
 		},
 		{
 			name: "increment count multiple times",
-			logStats: &LogStats{
+			logStats: &EventStats{
 				ServiceName: "bob",
 				Fingerprint: 5678,
 				Phase:       Phase_FILTERED,
@@ -152,7 +152,7 @@ func TestLogStats_Increment(t *testing.T) {
 		},
 		{
 			name: "increment count again",
-			logStats: &LogStats{
+			logStats: &EventStats{
 				ServiceName: "bob",
 				Fingerprint: 5678,
 				Phase:       Phase_FILTERED,

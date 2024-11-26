@@ -20,38 +20,23 @@ package chqpb;
 
 option go_package = ".;chqpb";
 
-message LogStatsReport {
+message EventStatsReport {
 	int64 submittedAt = 1;
-	repeated LogStats stats = 2;
+	repeated EventStats stats = 2;
 }
 
-message LogStats {
+message EventStats {
 	string serviceName = 1;
 	int64 fingerprint = 2;
 	Phase phase = 3;
 	int64 count = 4;
-	int64 logSize = 5;
+	int64 size = 5;
 	bytes exemplar = 6;
 	string processorId = 7;
 	repeated Attribute attributes = 8;
 }
 
-message SpanStatsReport {
-	int64 submittedAt = 1;
-	repeated SpanStats stats = 2;
-}
 
-
-message SpanStats {
-	string serviceName = 1;
-	int64 fingerprint = 2;
-	Phase phase = 3;
-	int64 count = 4;
-	int64 spanSize = 5;
-	bytes exemplar = 6;
-	string processorId = 7;
-	repeated Attribute attributes = 8;
-}
 
 message MetricExemplar {
 	string metricName = 1;
