@@ -34,6 +34,9 @@ message EventStats {
 	bytes exemplar = 6;
 	string processorId = 7;
 	repeated Attribute attributes = 8;
+	string collectorId = 9;
+	string customerId = 10;
+	int64 tsHour = 11;
 }
 
 
