@@ -59,8 +59,8 @@ func AppendTagsToKey(tags []*Attribute, key string) string {
 }
 
 type MetricStatsWrapper struct {
-	stats *MetricStats
-	hll   hll.HllSketch
+	Stats *MetricStats
+	Hll   hll.HllSketch
 }
 
 func DeserializeEventStats(data []byte) (*EventStats, error) {
@@ -74,11 +74,11 @@ func SerializeEventStats(stats *EventStats) ([]byte, error) {
 }
 
 func SerializeMetricsStats(wrapper *MetricStatsWrapper) ([]byte, error) {
-	hllBytes, err := wrapper.hll.ToCompactSlice()
+	hllBytes, err := wrapper.Hll.ToCompactSlice()
 	if err != nil {
 		return nil, err
 	}
-	statsBytes, err := proto.Marshal(wrapper.stats)
+	statsBytes, err := proto.Marshal(wrapper.Stats)
 	if err != nil {
 		return nil, err
 	}
@@ -136,13 +136,13 @@ func DeserializeMetricsStats(data []byte) (*MetricStatsWrapper, error) {
 	}
 
 	return &MetricStatsWrapper{
-		hll:   hll,
-		stats: &stats,
+		Hll:   hll,
+		Stats: &stats,
 	}, nil
 }
 
 func (m *MetricStatsWrapper) Key() uint64 {
-	stats := m.stats
+	stats := m.Stats
 	key := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%s:%s", stats.MetricName,
 		stats.MetricType,
 		stats.TagScope,
@@ -157,10 +157,10 @@ func (m *MetricStatsWrapper) Key() uint64 {
 }
 
 func (m *MetricStatsWrapper) Increment(tag string, count int, _ int64) error {
-	if err := m.hll.UpdateString(tag); err != nil {
+	if err := m.Hll.UpdateString(tag); err != nil {
 		return err
 	}
-	m.stats.Count += int64(count)
+	m.Stats.Count += int64(count)
 	return nil
 }
 
@@ -169,7 +169,7 @@ func (m *MetricStatsWrapper) Initialize() error {
 	if err != nil {
 		return err
 	}
-	m.hll = hll
+	m.Hll = hll
 	return nil
 }
 
