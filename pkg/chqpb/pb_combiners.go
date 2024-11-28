@@ -22,7 +22,7 @@ import (
 )
 
 func (l *EventStats) Key() uint64 {
-	key := fmt.Sprintf("%s:%d:%d:%s", l.ServiceName, l.Fingerprint, int32(l.Phase), l.ProcessorId)
+	key := fmt.Sprintf("%s:%d:%d:%s:%s:%s", l.ServiceName, l.Fingerprint, int32(l.Phase), l.ProcessorId, l.CustomerId, l.CollectorId)
 	key = AppendTagsToKey(l.Attributes, key)
 	return xxhash.Sum64String(key)
 }

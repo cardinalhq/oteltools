@@ -39,18 +39,6 @@ message EventStats {
 	int64 tsHour = 11;
 }
 
-message EventStatKey {
-	string serviceName = 1;
-	int64 fingerprint = 2;
-	Phase phase = 3;
-	string processorId = 4;
-	string collectorId = 5;
-	string customerId = 6;
-	int64 tsHour = 7;
-	repeated Attribute attributes = 8;
-}
-
-
 
 message MetricExemplar {
 	string metricName = 1;
