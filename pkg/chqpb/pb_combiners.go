@@ -129,6 +129,11 @@ func DeserializeMetricsStats(data []byte) (*MetricStatsWrapper, error) {
 	if err := proto.Unmarshal(statsBytes, &stats); err != nil {
 		return nil, fmt.Errorf("failed to deserialize stats: %w", err)
 	}
+	stats.Hll = hllBytes
+	stats.CardinalityEstimate, err = hll.GetEstimate()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cardinality estimate: %w", err)
+	}
 
 	return &MetricStatsWrapper{
 		hll:   hll,
