@@ -65,6 +65,8 @@ message MetricStats {
 	repeated Attribute attributes = 9;
 	string tagScope = 10;
 	string metricType = 11;
+	string collectorId = 12;
+	string customerId = 13;
 }
 
 enum Phase {

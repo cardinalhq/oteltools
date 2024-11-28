@@ -109,7 +109,6 @@ func (sc *StatsCombiner[T]) Record(now time.Time, item T, incKey string, count i
 func (sc *StatsCombiner[T]) flush(now time.Time) (map[uint64][]T, error) {
 	flushedData := make(map[uint64][]T)
 	currentBucket := sc.getBucketName(sc.cutoff.Unix() - int64(sc.interval.Seconds()))
-	println("Flushing from bucket", currentBucket)
 
 	err := sc.db.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(currentBucket))
@@ -123,7 +122,6 @@ func (sc *StatsCombiner[T]) flush(now time.Time) (map[uint64][]T, error) {
 			if err != nil {
 				return fmt.Errorf("failed to deserialize object: %w", err)
 			}
-			fmt.Printf("Flushing item: %v\n", string(v))
 			flushedData[key] = append(flushedData[key], item)
 			return nil
 		})
