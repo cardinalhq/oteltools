@@ -45,6 +45,7 @@ message MetricExemplar {
 	string serviceName = 2;
 	string metricType = 3;
 	bytes exemplar = 4;
+	string processorId = 5;
 }
 
 message MetricStatsReport {
