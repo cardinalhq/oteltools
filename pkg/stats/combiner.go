@@ -15,8 +15,12 @@
 package stats
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 	"time"
+
+	"go.etcd.io/bbolt"
 )
 
 type StatsObject interface {
@@ -28,55 +32,155 @@ type StatsObject interface {
 
 type StatsCombiner[T StatsObject] struct {
 	sync.Mutex
-	interval time.Duration
-	cutoff   time.Time
-	bucket   *map[uint64][]T
+	interval     time.Duration
+	cutoff       time.Time
+	db           *bbolt.DB
+	bucketBase   string
+	serializer   func(T) ([]byte, error)
+	deserializer func([]byte) (T, error)
 }
 
-func (l *StatsCombiner[T]) Record(now time.Time, item T, incKey string, count int, logSize int64) (*map[uint64][]T, error) {
+func (sc *StatsCombiner[T]) Record(now time.Time, item T, incKey string, count int, logSize int64) (map[uint64][]T, error) {
+	sc.Lock()
+	defer sc.Unlock()
+
+	currentBucket := sc.currentBucketName(now)
+	fmt.Printf("Writing to bucket: %s\n", currentBucket)
+
+	err := sc.db.Update(func(tx *bbolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte(currentBucket))
+		return err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create bucket: %w", err)
+	}
+
 	key := item.Key()
-	l.Lock()
-	defer l.Unlock()
-	list, ok := (*l.bucket)[key]
-	if !ok {
-		if err := item.Initialize(); err != nil {
-			return nil, err
+	var flushedData map[uint64][]T
+
+	err = sc.db.Update(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket([]byte(currentBucket))
+		if bucket == nil {
+			return errors.New("bucket not found")
 		}
-		(*l.bucket)[key] = []T{item}
-		return l.flush(now), nil
-	}
-	for _, existing := range list {
-		if existing.Matches(item) {
-			if err := existing.Increment(incKey, count, logSize); err != nil {
-				return nil, err
+
+		keyBytes := uint64ToBytes(key)
+		data := bucket.Get(keyBytes)
+
+		var existing T
+		if data != nil {
+			var err error
+			existing, err = sc.deserializer(data)
+			if err != nil {
+				return fmt.Errorf("failed to deserialize existing object: %w", err)
 			}
-			return l.flush(now), nil
+			if err := existing.Increment(incKey, count, logSize); err != nil {
+				return fmt.Errorf("failed to increment object: %w", err)
+			}
+		} else {
+			if err := item.Initialize(); err != nil {
+				return fmt.Errorf("failed to initialize object: %w", err)
+			}
+			existing = item
+		}
+
+		serialized, err := sc.serializer(existing)
+		if err != nil {
+			return fmt.Errorf("failed to serialize object: %w", err)
+		}
+		return bucket.Put(keyBytes, serialized)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update record: %w", err)
+	}
+
+	// Flush if the time interval has passed
+	if now.After(sc.cutoff) {
+		flushedData, err = sc.flush(now)
+		if err != nil {
+			return nil, fmt.Errorf("failed to flush data: %w", err)
 		}
 	}
 
-	if err := item.Initialize(); err != nil {
-		return nil, err
-	}
-	(*l.bucket)[key] = append((*l.bucket)[key], item)
-	return l.flush(now), nil
+	return flushedData, nil
 }
 
-func (l *StatsCombiner[T]) flush(now time.Time) *map[uint64][]T {
-	if now.Before(l.cutoff) {
-		return nil
+func (sc *StatsCombiner[T]) flush(now time.Time) (map[uint64][]T, error) {
+	flushedData := make(map[uint64][]T)
+	currentBucket := sc.getBucketName(sc.cutoff.Unix() - int64(sc.interval.Seconds()))
+	println("Flushing from bucket", currentBucket)
+
+	err := sc.db.Update(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket([]byte(currentBucket))
+		if bucket == nil {
+			return nil
+		}
+
+		err := bucket.ForEach(func(k, v []byte) error {
+			key := bytesToUint64(k)
+			item, err := sc.deserializer(v)
+			if err != nil {
+				return fmt.Errorf("failed to deserialize object: %w", err)
+			}
+			fmt.Printf("Flushing item: %v\n", string(v))
+			flushedData[key] = append(flushedData[key], item)
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("failed to collect data: %w", err)
+		}
+
+		return tx.DeleteBucket([]byte(currentBucket))
+	})
+	if err != nil {
+		return nil, fmt.Errorf("flush failed: %w", err)
 	}
 
-	bucketpile := l.bucket
-	l.bucket = &map[uint64][]T{}
-	l.cutoff = now.Add(l.interval)
+	sc.cutoff = now.Truncate(sc.interval).Add(sc.interval)
 
-	return bucketpile
+	return flushedData, nil
 }
 
-func NewStatsCombiner[T StatsObject](now time.Time, interval time.Duration) *StatsCombiner[T] {
+func NewStatsCombiner[T StatsObject](
+	db *bbolt.DB,
+	bucketBase string,
+	now time.Time,
+	interval time.Duration,
+	serializer func(T) ([]byte, error),
+	deserializer func([]byte) (T, error),
+) *StatsCombiner[T] {
 	return &StatsCombiner[T]{
-		interval: interval,
-		cutoff:   now.Add(interval),
-		bucket:   &map[uint64][]T{},
+		interval:     interval,
+		cutoff:       now.Truncate(interval).Add(interval),
+		db:           db,
+		bucketBase:   bucketBase,
+		serializer:   serializer,
+		deserializer: deserializer,
 	}
+}
+
+func (sc *StatsCombiner[T]) currentBucketName(t time.Time) string {
+	return fmt.Sprintf("%s_%d", sc.bucketBase, t.Truncate(sc.interval).Unix())
+}
+
+func (sc *StatsCombiner[T]) getBucketName(t int64) string {
+	return fmt.Sprintf("%s_%d", sc.bucketBase, t)
+}
+
+func uint64ToBytes(v uint64) []byte {
+	b := make([]byte, 8)
+	b[0] = byte(v >> 56)
+	b[1] = byte(v >> 48)
+	b[2] = byte(v >> 40)
+	b[3] = byte(v >> 32)
+	b[4] = byte(v >> 24)
+	b[5] = byte(v >> 16)
+	b[6] = byte(v >> 8)
+	b[7] = byte(v)
+	return b
+}
+
+func bytesToUint64(b []byte) uint64 {
+	return uint64(b[0])<<56 | uint64(b[1])<<48 | uint64(b[2])<<40 | uint64(b[3])<<32 |
+		uint64(b[4])<<24 | uint64(b[5])<<16 | uint64(b[6])<<8 | uint64(b[7])
 }
