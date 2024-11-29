@@ -68,6 +68,7 @@ message MetricStats {
 	string metricType = 11;
 	string collectorId = 12;
 	string customerId = 13;
+	int64 tsHour = 14;
 }
 
 enum Phase {
