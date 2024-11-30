@@ -46,8 +46,6 @@ func (sc *StatsCombiner[T]) Record(now time.Time, item T, incKey string, count i
 	defer sc.Unlock()
 
 	currentBucket := sc.currentBucketName(now)
-	fmt.Printf("Writing to bucket: %s\n", currentBucket)
-
 	err := sc.db.Update(func(tx *bbolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte(currentBucket))
 		return err
