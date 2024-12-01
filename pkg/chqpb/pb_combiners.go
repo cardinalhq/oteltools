@@ -15,10 +15,7 @@
 package chqpb
 
 import (
-	"encoding/binary"
 	"fmt"
-	"google.golang.org/protobuf/proto"
-
 	"github.com/apache/datasketches-go/hll"
 	"github.com/cardinalhq/oteltools/pkg/stats"
 	"github.com/cespare/xxhash"
@@ -61,84 +58,6 @@ func AppendTagsToKey(tags []*Attribute, key string) string {
 type MetricStatsWrapper struct {
 	Stats *MetricStats
 	Hll   hll.HllSketch
-}
-
-func DeserializeEventStats(data []byte) (*EventStats, error) {
-	stats := &EventStats{}
-	err := proto.Unmarshal(data, stats)
-	return stats, err
-}
-
-func SerializeEventStats(stats *EventStats) ([]byte, error) {
-	return proto.Marshal(stats)
-}
-
-func SerializeMetricsStats(wrapper *MetricStatsWrapper) ([]byte, error) {
-	hllBytes, err := wrapper.Hll.ToCompactSlice()
-	if err != nil {
-		return nil, err
-	}
-	statsBytes, err := proto.Marshal(wrapper.Stats)
-	if err != nil {
-		return nil, err
-	}
-
-	hllBytesLen := len(hllBytes)
-	statsBytesLen := len(statsBytes)
-
-	b := make([]byte, 4+hllBytesLen+4+statsBytesLen)
-
-	binary.BigEndian.PutUint32(b[:4], uint32(hllBytesLen))
-	copy(b[4:4+hllBytesLen], hllBytes)
-
-	offset := 4 + hllBytesLen
-	binary.BigEndian.PutUint32(b[offset:offset+4], uint32(statsBytesLen))
-	copy(b[offset+4:], statsBytes)
-
-	return b, nil
-}
-
-func DeserializeMetricsStats(data []byte) (*MetricStatsWrapper, error) {
-	if len(data) < 8 {
-		return nil, fmt.Errorf("invalid data length")
-	}
-
-	hllBytesLen := binary.BigEndian.Uint32(data[:4])
-	if int(hllBytesLen)+4 > len(data) {
-		return nil, fmt.Errorf("invalid HLL bytes length")
-	}
-	hllBytes := data[4 : 4+hllBytesLen]
-
-	offset := 4 + int(hllBytesLen)
-	if offset+4 > len(data) {
-		return nil, fmt.Errorf("invalid stats length")
-	}
-
-	statsBytesLen := binary.BigEndian.Uint32(data[offset : offset+4])
-	if offset+4+int(statsBytesLen) > len(data) {
-		return nil, fmt.Errorf("invalid stats bytes length")
-	}
-	statsBytes := data[offset+4 : offset+4+int(statsBytesLen)]
-
-	hll, err := hll.NewHllSketchFromSlice(hllBytes, false)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create HLL: %w", err)
-	}
-
-	var stats MetricStats
-	if err := proto.Unmarshal(statsBytes, &stats); err != nil {
-		return nil, fmt.Errorf("failed to deserialize stats: %w", err)
-	}
-	stats.Hll = hllBytes
-	stats.CardinalityEstimate, err = hll.GetEstimate()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get cardinality estimate: %w", err)
-	}
-
-	return &MetricStatsWrapper{
-		Hll:   hll,
-		Stats: &stats,
-	}, nil
 }
 
 func (m *MetricStatsWrapper) Key() uint64 {

@@ -15,28 +15,25 @@
 package stats
 
 type MockStatsObject struct {
-	Id              uint64 `json:"key"`
-	Count           int    `json:"count"`
-	Size            int64  `json:"size"`
 	wasInitialized  bool
 	incrementCalled bool
+	count           int64
+	name            string
+	key             uint64
 }
 
-func (m *MockStatsObject) Key() uint64 {
-	return m.Id
-}
+func (m *MockStatsObject) Key() uint64 { return m.key }
 
 func (m *MockStatsObject) Matches(other StatsObject) bool {
 	if o, ok := other.(*MockStatsObject); ok {
-		return o.Id == m.Id
+		return m.name == o.name
 	}
 	return false
 }
 
-func (m *MockStatsObject) Increment(key string, count int, size int64) error {
-	m.Count += count
-	m.Size += size
+func (m *MockStatsObject) Increment(_ string, count int, _ int64) error {
 	m.incrementCalled = true
+	m.count += int64(count)
 	return nil
 }
 
