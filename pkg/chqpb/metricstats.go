@@ -110,6 +110,7 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 				return nil, err
 			}
 			wrapper.Stats.Hll = bytes
+			wrapper.Stats.TsHour = truncatedHour.UnixMilli()
 			flushList = append(flushList, wrapper.Stats)
 		}
 		m.lastFlushed.Store(&now)
