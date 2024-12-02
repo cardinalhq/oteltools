@@ -76,13 +76,13 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 		}
 		m.hllCache.Set(id, wrapper, 70*time.Minute)
 	}
-	var shouldFlush bool = false
+	var shouldFlush = false
 
 	lastFlushed := m.lastFlushed.Load()
 	shouldFlush = time.Since(*lastFlushed) > 5*time.Minute
 
 	if shouldFlush {
-		flushList := []*MetricStats{}
+		var flushList []*MetricStats
 
 		for _, v := range m.hllCache.Items() {
 			wrapper := v.Object.(*MetricStatsWrapper)
