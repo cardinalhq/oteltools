@@ -58,10 +58,19 @@ func AppendTagsToKey(tags []*Attribute, key string) string {
 type MetricStatsWrapper struct {
 	Stats *MetricStats
 	Hll   hll.HllSketch
+	Dirty bool
+}
+
+func (m *MetricStatsWrapper) GetEstimate() (float64, error) {
+	newEstimate, err := m.Hll.GetEstimate()
+	if err != nil {
+		return 0, err
+	}
+	return newEstimate, nil
 }
 
 func (m *MetricStatsWrapper) Key() uint64 {
-	stats := m.Stats
+	var stats = m.Stats
 	key := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%s:%s", stats.MetricName,
 		stats.MetricType,
 		stats.TagScope,
@@ -84,7 +93,7 @@ func (m *MetricStatsWrapper) Increment(tag string, count int, _ int64) error {
 }
 
 func (m *MetricStatsWrapper) Initialize() error {
-	hll, err := hll.NewHllSketchWithDefault()
+	var hll, err = hll.NewHllSketchWithDefault()
 	if err != nil {
 		return err
 	}
