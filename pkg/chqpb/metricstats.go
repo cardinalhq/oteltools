@@ -40,7 +40,7 @@ func NewMetricStatsCache() *MetricStatsCache {
 
 func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.Time) ([]*MetricStats, error) {
 	truncatedHour := now.Truncate(time.Hour)
-	id := stat.Key(truncatedHour)
+	id := fmt.Sprintf("%d", stat.Key(truncatedHour))
 	if w, found := m.hllCache.Get(id); found {
 		wrapper := w.(*MetricStatsWrapper)
 		currentEstimate, err := wrapper.GetEstimate()
@@ -62,7 +62,7 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 		wrapper.Dirty = math.Round(newEstimate) != math.Round(currentEstimate)
 		m.hllCache.Set(id, wrapper, 70*time.Minute)
 	} else {
-		previousHourId := stat.Key(truncatedHour.Add(-1 * time.Hour))
+		previousHourId := fmt.Sprintf("%d", stat.Key(truncatedHour.Add(-1*time.Hour)))
 		m.hllCache.Delete(previousHourId)
 
 		sketch, err := hll.NewUnion(12)
@@ -118,7 +118,7 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 	return nil, nil
 }
 
-func (m *MetricStats) Key(tsHour time.Time) string {
+func (m *MetricStats) Key(tsHour time.Time) uint64 {
 	hash := xxhash.New()
 	hash.WriteString(tsHour.String())
 	hash.WriteString(m.MetricName)
@@ -130,5 +130,5 @@ func (m *MetricStats) Key(tsHour time.Time) string {
 	hash.WriteString(m.ProcessorId)
 	hash.WriteString(m.CollectorId)
 	hash.WriteString(m.CustomerId)
-	return fmt.Sprintf("%d", hash.Sum64())
+	return hash.Sum64()
 }
