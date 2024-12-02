@@ -57,7 +57,7 @@ func AppendTagsToKey(tags []*Attribute, key string) string {
 
 type MetricStatsWrapper struct {
 	Stats *MetricStats
-	Hll   hll.HllSketch
+	Hll   hll.Union
 	Dirty bool
 }
 
@@ -69,42 +69,15 @@ func (m *MetricStatsWrapper) GetEstimate() (float64, error) {
 	return newEstimate, nil
 }
 
-func (m *MetricStatsWrapper) Key() uint64 {
-	var stats = m.Stats
-	key := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%s:%s", stats.MetricName,
-		stats.MetricType,
-		stats.TagScope,
-		stats.TagName,
-		stats.ServiceName,
-		stats.Phase.String(),
-		stats.ProcessorId,
-		stats.CollectorId,
-		stats.CustomerId)
-	key = AppendTagsToKey(stats.Attributes, key)
-	return xxhash.Sum64String(key)
-}
-
-func (m *MetricStatsWrapper) Increment(tag string, count int, _ int64) error {
-	if err := m.Hll.UpdateString(tag); err != nil {
-		return err
-	}
-	m.Stats.Count += int64(count)
-	return nil
-}
-
-func (m *MetricStatsWrapper) Initialize() error {
-	var hll, err = hll.NewHllSketchWithDefault()
+func (m *MetricStatsWrapper) MergeWith(sketchBytes []byte) error {
+	u, err := hll.NewHllSketchFromSlice(sketchBytes, false)
 	if err != nil {
 		return err
 	}
-	m.Hll = hll
-	return nil
-}
 
-func (m *MetricStatsWrapper) Matches(other stats.StatsObject) bool {
-	_, ok := other.(*MetricStatsWrapper)
-	if !ok {
-		return false
+	err = m.Hll.UpdateSketch(u)
+	if err != nil {
+		return err
 	}
-	return m.Key() == other.Key()
+	return nil
 }

@@ -47,7 +47,11 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 		if err != nil {
 			return nil, err
 		}
-		err = wrapper.Hll.UpdateString(tagValue)
+		if tagValue == "" {
+			err = wrapper.MergeWith(stat.Hll)
+		} else {
+			err = wrapper.Hll.UpdateString(tagValue)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -61,7 +65,7 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 		previousHourId := m.computeId(stat, truncatedHour.Add(-1*time.Hour))
 		m.hllCache.Delete(previousHourId)
 
-		sketch, err := hll.NewHllSketchWithDefault()
+		sketch, err := hll.NewUnion(12)
 		if err != nil {
 			return nil, err
 		}
@@ -70,9 +74,16 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 			Hll:   sketch,
 			Dirty: true,
 		}
-		err = wrapper.Hll.UpdateString(tagValue)
-		if err != nil {
-			return nil, err
+		if tagValue == "" {
+			err = wrapper.MergeWith(stat.Hll)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			err = wrapper.Hll.UpdateString(tagValue)
+			if err != nil {
+				return nil, err
+			}
 		}
 		m.hllCache.Set(id, wrapper, 70*time.Minute)
 	}
@@ -94,6 +105,11 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 				return nil, err
 			}
 			wrapper.Stats.CardinalityEstimate = estimate
+			bytes, err := wrapper.Hll.ToCompactSlice()
+			if err != nil {
+				return nil, err
+			}
+			wrapper.Stats.Hll = bytes
 			flushList = append(flushList, wrapper.Stats)
 		}
 		m.lastFlushed.Store(&now)
