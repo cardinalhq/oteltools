@@ -47,7 +47,7 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 		if err != nil {
 			return nil, err
 		}
-		if tagValue == "" {
+		if tagValue == "" && len(stat.Hll) > 0 {
 			err = wrapper.MergeWith(stat.Hll)
 		} else {
 			err = wrapper.Hll.UpdateString(tagValue)
@@ -74,7 +74,7 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 			Hll:   sketch,
 			Dirty: true,
 		}
-		if tagValue == "" {
+		if tagValue == "" && len(stat.Hll) > 0 {
 			err = wrapper.MergeWith(stat.Hll)
 			if err != nil {
 				return nil, err
