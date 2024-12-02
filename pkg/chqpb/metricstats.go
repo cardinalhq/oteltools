@@ -70,7 +70,10 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 			Hll:   sketch,
 			Dirty: true,
 		}
-		wrapper.Hll.UpdateString(tagValue)
+		err = wrapper.Hll.UpdateString(tagValue)
+		if err != nil {
+			return nil, err
+		}
 		m.hllCache.Set(id, wrapper, 70*time.Minute)
 	}
 	var shouldFlush bool = false
@@ -86,6 +89,11 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 			if wrapper.Dirty {
 				wrapper.Dirty = false
 			}
+			estimate, err := wrapper.GetEstimate()
+			if err != nil {
+				return nil, err
+			}
+			wrapper.Stats.CardinalityEstimate = estimate
 			flushList = append(flushList, wrapper.Stats)
 		}
 		m.lastFlushed.Store(&now)
