@@ -131,5 +131,12 @@ func (m *MetricStats) Key(tsHour time.Time) uint64 {
 	hash.WriteString(m.ProcessorId)
 	hash.WriteString(m.CollectorId)
 	hash.WriteString(m.CustomerId)
+	for _, k := range m.Attributes {
+		context := k.ContextId
+		tagName := k.Key
+		tagValue := k.Value
+		fqn := fmt.Sprintf("%s.%s=%s", context, tagName, tagValue)
+		hash.WriteString(fqn)
+	}
 	return hash.Sum64()
 }
