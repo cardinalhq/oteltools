@@ -15,60 +15,94 @@
 package chqpb
 
 import (
-	"fmt"
 	"github.com/cespare/xxhash/v2"
-	"github.com/patrickmn/go-cache"
 	"strconv"
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
 type EventStatsCache struct {
-	cache         *cache.Cache
-	lastFlushed   atomic.Pointer[time.Time]
+	cache         map[uint64]*eventStatsWrapper
+	itemsByHour   map[time.Time]map[uint64]bool
+	lastFlushed   time.Time
 	flushInterval time.Duration
+	mu            sync.Mutex
+}
+
+type eventStatsWrapper struct {
+	stats   *EventStats
+	isDirty bool
 }
 
 func NewEventStatsCache(flushInterval time.Duration) *EventStatsCache {
 	c := &EventStatsCache{
-		cache:         cache.New(1*time.Hour, 10*time.Minute),
+		cache:         make(map[uint64]*eventStatsWrapper),
+		itemsByHour:   make(map[time.Time]map[uint64]bool),
 		flushInterval: flushInterval,
 	}
 	now := time.Now()
-	c.lastFlushed.Store(&now)
+	c.lastFlushed = now
 	return c
 }
 
 func (e *EventStatsCache) Record(stat *EventStats, now time.Time) ([]*EventStats, error) {
-	truncatedHour := now.Truncate(time.Hour)
-	id := fmt.Sprintf("%d", stat.EventStatsKey(truncatedHour))
-	if w, found := e.cache.Get(id); found {
-		existingStats := w.(*EventStats)
-		stat.Count += existingStats.Count
-		stat.Size += existingStats.Size
-	} else {
-		previousHourId := fmt.Sprintf("%d", stat.EventStatsKey(truncatedHour.Add(-1*time.Hour)))
-		e.cache.Delete(previousHourId)
-	}
-	e.cache.Set(id, stat, 70*time.Minute)
-	var shouldFlush = false
+	e.mu.Lock()
+	defer e.mu.Unlock()
 
-	lastFlushed := e.lastFlushed.Load()
-	shouldFlush = time.Since(*lastFlushed) > e.flushInterval
+	truncatedHour := now.Truncate(time.Hour)
+	previousHour := truncatedHour.Add(-1 * time.Hour)
+
+	esw := &eventStatsWrapper{
+		stats:   stat,
+		isDirty: false,
+	}
+	id := esw.key(truncatedHour)
+	if existingESW, found := e.cache[id]; found {
+		newCount := stat.Count + existingESW.stats.Count
+		newSize := stat.Size + existingESW.stats.Size
+		if newCount != existingESW.stats.Count || newSize != existingESW.stats.Size {
+			existingESW.stats.Size = newSize
+			existingESW.stats.Count = newCount
+			existingESW.isDirty = true
+		}
+	} else {
+		previousHourId := esw.key(previousHour)
+		if previousHourItems, ok := e.itemsByHour[previousHour]; ok {
+			if _, exists := previousHourItems[previousHourId]; exists {
+				delete(e.cache, previousHourId)
+			}
+		}
+		esw.isDirty = true
+		e.cache[id] = esw
+		if _, ok := e.itemsByHour[truncatedHour]; !ok {
+			e.itemsByHour[truncatedHour] = make(map[uint64]bool)
+		}
+		e.itemsByHour[truncatedHour][id] = true
+	}
+
+	shouldFlush := time.Since(e.lastFlushed) > e.flushInterval
 	if shouldFlush {
 		var flushList []*EventStats
-		for _, v := range e.cache.Items() {
-			eventStats := v.Object.(*EventStats)
-			flushList = append(flushList, eventStats)
+		for _, v := range e.cache {
+			if v.isDirty {
+				flushList = append(flushList, v.stats)
+				v.isDirty = false
+			}
 		}
-		now := time.Now()
-		e.lastFlushed.Store(&now)
+		if previousHourItems, ok := e.itemsByHour[previousHour]; ok {
+			for key := range previousHourItems {
+				delete(e.cache, key)
+			}
+			delete(e.itemsByHour, previousHour)
+		}
+		e.lastFlushed = time.Now()
 		return flushList, nil
 	}
 	return nil, nil
 }
 
-func (e *EventStats) EventStatsKey(tsHour time.Time) uint64 {
+func (esw *eventStatsWrapper) key(tsHour time.Time) uint64 {
+	e := esw.stats
 	hash := xxhash.New()
 	hash.WriteString(tsHour.String())
 	hash.WriteString(e.ServiceName)
@@ -81,8 +115,11 @@ func (e *EventStats) EventStatsKey(tsHour time.Time) uint64 {
 		context := k.ContextId
 		tagName := k.Key
 		tagValue := k.Value
-		fqn := fmt.Sprintf("%s.%s=%s", context, tagName, tagValue)
-		hash.WriteString(fqn)
+		hash.WriteString(context)
+		hash.WriteString(".")
+		hash.WriteString(tagName)
+		hash.WriteString("=")
+		hash.WriteString(tagValue)
 	}
 	return hash.Sum64()
 }

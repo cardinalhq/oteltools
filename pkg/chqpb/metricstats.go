@@ -62,7 +62,9 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 			return nil, err
 		}
 		wrapper.Dirty = math.Round(newEstimate) != math.Round(currentEstimate)
-		m.hllCache.Set(id, wrapper, 70*time.Minute)
+		if wrapper.Dirty {
+			m.hllCache.Set(id, wrapper, 70*time.Minute)
+		}
 	} else {
 		previousHourId := fmt.Sprintf("%d", stat.Key(truncatedHour.Add(-1*time.Hour)))
 		m.hllCache.Delete(previousHourId)
