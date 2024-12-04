@@ -70,6 +70,7 @@ func (e *EventStatsCache) Record(stat *EventStats, now time.Time) ([]*EventStats
 		if previousHourItems, ok := e.itemsByHour[previousHour]; ok {
 			if _, exists := previousHourItems[previousHourId]; exists {
 				delete(e.cache, previousHourId)
+				delete(previousHourItems, previousHourId)
 			}
 		}
 		esw.isDirty = true
