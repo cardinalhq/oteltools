@@ -25,13 +25,15 @@ import (
 )
 
 type MetricStatsCache struct {
-	hllCache    *cache.Cache
-	lastFlushed atomic.Pointer[time.Time]
+	hllCache      *cache.Cache
+	lastFlushed   atomic.Pointer[time.Time]
+	flushInterval time.Duration
 }
 
-func NewMetricStatsCache() *MetricStatsCache {
+func NewMetricStatsCache(flushInterval time.Duration) *MetricStatsCache {
 	c := &MetricStatsCache{
-		hllCache: cache.New(1*time.Hour, 10*time.Minute),
+		hllCache:      cache.New(1*time.Hour, 10*time.Minute),
+		flushInterval: flushInterval,
 	}
 	now := time.Now()
 	c.lastFlushed.Store(&now)
@@ -90,7 +92,7 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 	var shouldFlush = false
 
 	lastFlushed := m.lastFlushed.Load()
-	shouldFlush = time.Since(*lastFlushed) > 5*time.Minute
+	shouldFlush = time.Since(*lastFlushed) > m.flushInterval
 
 	if shouldFlush {
 		var flushList []*MetricStats
