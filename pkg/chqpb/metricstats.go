@@ -15,11 +15,12 @@
 package chqpb
 
 import (
-	"github.com/apache/datasketches-go/hll"
-	"github.com/cespare/xxhash/v2"
 	"math"
 	"sync"
 	"time"
+
+	"github.com/apache/datasketches-go/hll"
+	"github.com/cespare/xxhash/v2"
 )
 
 type MetricStatsCache struct {
@@ -100,8 +101,7 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 		}
 		m.hllCache[id] = wrapper
 	}
-	var shouldFlush = false
-	shouldFlush = time.Since(m.lastFlushed) > m.flushInterval
+	shouldFlush := time.Since(m.lastFlushed) > m.flushInterval
 
 	if shouldFlush {
 		var flushList []*MetricStats

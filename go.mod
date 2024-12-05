@@ -9,8 +9,8 @@ require (
 	github.com/elastic/go-grok v0.3.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.114.0
 	github.com/oschwald/geoip2-golang v1.11.0
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/stretchr/testify v1.9.0
+	go.opentelemetry.io/collector/client v1.20.0
 	go.opentelemetry.io/collector/component v0.114.0
 	go.opentelemetry.io/collector/pdata v1.20.0
 	go.opentelemetry.io/otel v1.32.0

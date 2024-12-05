@@ -72,8 +72,6 @@ github.com/oschwald/geoip2-golang v1.11.0 h1:hNENhCn1Uyzhf9PTmquXENiWS6AlxAEnBII
 github.com/oschwald/geoip2-golang v1.11.0/go.mod h1:P9zG+54KPEFOliZ29i7SeYZ/GM6tfEL+rgSn03hYuUo=
 github.com/oschwald/maxminddb-golang v1.13.1 h1:G3wwjdN9JmIK2o/ermkHM+98oX5fS+k5MbwsmL4MRQE=
 github.com/oschwald/maxminddb-golang v1.13.1/go.mod h1:K4pgV9N/GcK694KSTmVSDTODk4IsCNThNdTmnaBZ/F8=
-github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
-github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjRBZyWFQ=
@@ -91,12 +89,16 @@ github.com/ua-parser/uap-go v0.0.0-20241012191800-bbb40edc15aa/go.mod h1:BUbeWZi
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
+go.opentelemetry.io/collector/client v1.20.0 h1:o60wPcj5nLtaRenF+1E5p4QXFS3TDL6vHlw+GOon3rg=
+go.opentelemetry.io/collector/client v1.20.0/go.mod h1:6aqkszco9FaLWCxyJEVam6PP7cUa8mPRIXeS5eZGj0U=
 go.opentelemetry.io/collector/component v0.114.0 h1:SVGbm5LvHGSTEDv7p92oPuBgK5tuiWR82I9+LL4TtBE=
 go.opentelemetry.io/collector/component v0.114.0/go.mod h1:MLxtjZ6UVHjDxSdhGLuJfHBHvfl1iT/Y7IaQPD24Eww=
 go.opentelemetry.io/collector/component/componenttest v0.114.0 h1:GM4FTTlfeXoVm6sZYBHImwlRN8ayh2oAfUhvaFj7Zo8=
 go.opentelemetry.io/collector/component/componenttest v0.114.0/go.mod h1:ZZEJMtbJtoVC/3/9R1HzERq+cYQRxuMFQrPCpfZ4Xos=
 go.opentelemetry.io/collector/config/configtelemetry v0.114.0 h1:kjLeyrumge6wsX6ZIkicdNOlBXaEyW2PI2ZdVXz/rzY=
 go.opentelemetry.io/collector/config/configtelemetry v0.114.0/go.mod h1:R0MBUxjSMVMIhljuDHWIygzzJWQyZHXXWIgQNxcFwhc=
+go.opentelemetry.io/collector/consumer v0.114.0 h1:1zVaHvfIZowGwZRitRBRo3i+RP2StlU+GClYiofSw0Q=
+go.opentelemetry.io/collector/consumer v0.114.0/go.mod h1:d+Mrzt9hsH1ub3zmwSlnQVPLeTYir4Mgo7CrWfnncN4=
 go.opentelemetry.io/collector/pdata v1.20.0 h1:ePcwt4bdtISP0loHaE+C9xYoU2ZkIvWv89Fob16o9SM=
 go.opentelemetry.io/collector/pdata v1.20.0/go.mod h1:Ox1YVLe87cZDB/TL30i4SUz1cA5s6AM6SpFMfY61ICs=
 go.opentelemetry.io/collector/semconv v0.114.0 h1:/eKcCJwZepQUtEuFuxa0thx2XIOvhFpaf214ZG1a11k=
