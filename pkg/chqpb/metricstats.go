@@ -15,36 +15,40 @@
 package chqpb
 
 import (
-	"fmt"
 	"github.com/apache/datasketches-go/hll"
 	"github.com/cespare/xxhash/v2"
-	"github.com/patrickmn/go-cache"
 	"math"
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
 type MetricStatsCache struct {
-	hllCache      *cache.Cache
-	lastFlushed   atomic.Pointer[time.Time]
+	hllCache      map[uint64]*MetricStatsWrapper
+	itemsByHour   map[time.Time]map[uint64]bool
+	lastFlushed   time.Time
 	flushInterval time.Duration
+	mu            sync.Mutex
 }
 
 func NewMetricStatsCache(flushInterval time.Duration) *MetricStatsCache {
 	c := &MetricStatsCache{
-		hllCache:      cache.New(1*time.Hour, 10*time.Minute),
+		hllCache:      make(map[uint64]*MetricStatsWrapper),
+		itemsByHour:   make(map[time.Time]map[uint64]bool),
 		flushInterval: flushInterval,
 	}
-	now := time.Now()
-	c.lastFlushed.Store(&now)
+	c.lastFlushed = time.Now()
 	return c
 }
 
 func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.Time) ([]*MetricStats, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	truncatedHour := now.Truncate(time.Hour)
-	id := fmt.Sprintf("%d", stat.Key(truncatedHour))
-	if w, found := m.hllCache.Get(id); found {
-		wrapper := w.(*MetricStatsWrapper)
+	previousHour := truncatedHour.Add(-1 * time.Hour)
+
+	id := stat.Key(truncatedHour)
+	if wrapper, found := m.hllCache[id]; found {
 		currentEstimate, err := wrapper.GetEstimate()
 		if err != nil {
 			return nil, err
@@ -63,17 +67,22 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 		}
 		wrapper.Dirty = math.Round(newEstimate) != math.Round(currentEstimate)
 		if wrapper.Dirty {
-			m.hllCache.Set(id, wrapper, 70*time.Minute)
+			m.hllCache[id] = wrapper
 		}
 	} else {
-		previousHourId := fmt.Sprintf("%d", stat.Key(truncatedHour.Add(-1*time.Hour)))
-		m.hllCache.Delete(previousHourId)
+		previousHourId := stat.Key(previousHour)
+		if previousHourItems, ok := m.itemsByHour[previousHour]; ok {
+			if _, exists := previousHourItems[previousHourId]; exists {
+				delete(m.hllCache, previousHourId)
+				delete(previousHourItems, previousHourId)
+			}
+		}
 
 		sketch, err := hll.NewUnion(12)
 		if err != nil {
 			return nil, err
 		}
-		wrapper := &MetricStatsWrapper{
+		wrapper = &MetricStatsWrapper{
 			Stats: stat,
 			Hll:   sketch,
 			Dirty: true,
@@ -89,38 +98,45 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 				return nil, err
 			}
 		}
-		m.hllCache.Set(id, wrapper, 70*time.Minute)
+		m.hllCache[id] = wrapper
 	}
 	var shouldFlush = false
-
-	lastFlushed := m.lastFlushed.Load()
-	shouldFlush = time.Since(*lastFlushed) > m.flushInterval
+	shouldFlush = time.Since(m.lastFlushed) > m.flushInterval
 
 	if shouldFlush {
 		var flushList []*MetricStats
 
-		for _, v := range m.hllCache.Items() {
-			wrapper := v.Object.(*MetricStatsWrapper)
+		for _, wrapper := range m.hllCache {
 			if wrapper.Dirty {
+				estimate, err := wrapper.GetEstimate()
+				if err != nil {
+					return nil, err
+				}
+				wrapper.Stats.CardinalityEstimate = estimate
+				bytes, err := wrapper.Hll.ToCompactSlice()
+				if err != nil {
+					return nil, err
+				}
+				wrapper.Stats.Hll = bytes
+				wrapper.Stats.TsHour = truncatedHour.UnixMilli()
+				flushList = append(flushList, wrapper.Stats)
 				wrapper.Dirty = false
 			}
-			estimate, err := wrapper.GetEstimate()
-			if err != nil {
-				return nil, err
-			}
-			wrapper.Stats.CardinalityEstimate = estimate
-			bytes, err := wrapper.Hll.ToCompactSlice()
-			if err != nil {
-				return nil, err
-			}
-			wrapper.Stats.Hll = bytes
-			wrapper.Stats.TsHour = truncatedHour.UnixMilli()
-			flushList = append(flushList, wrapper.Stats)
 		}
-		m.lastFlushed.Store(&now)
+		m.cleanupPreviousHour(previousHour)
+		m.lastFlushed = now
 		return flushList, nil
 	}
 	return nil, nil
+}
+
+func (m *MetricStatsCache) cleanupPreviousHour(previousHour time.Time) {
+	if previousHourItems, ok := m.itemsByHour[previousHour]; ok {
+		for key := range previousHourItems {
+			delete(m.hllCache, key)
+		}
+		delete(m.itemsByHour, previousHour)
+	}
 }
 
 func (m *MetricStats) Key(tsHour time.Time) uint64 {
@@ -139,8 +155,11 @@ func (m *MetricStats) Key(tsHour time.Time) uint64 {
 		context := k.ContextId
 		tagName := k.Key
 		tagValue := k.Value
-		fqn := fmt.Sprintf("%s.%s=%s", context, tagName, tagValue)
-		hash.WriteString(fqn)
+		hash.WriteString(context)
+		hash.WriteString(".")
+		hash.WriteString(tagName)
+		hash.WriteString("=")
+		hash.WriteString(tagValue)
 	}
 	return hash.Sum64()
 }

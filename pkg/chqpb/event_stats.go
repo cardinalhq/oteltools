@@ -90,16 +90,20 @@ func (e *EventStatsCache) Record(stat *EventStats, now time.Time) ([]*EventStats
 				v.isDirty = false
 			}
 		}
-		if previousHourItems, ok := e.itemsByHour[previousHour]; ok {
-			for key := range previousHourItems {
-				delete(e.cache, key)
-			}
-			delete(e.itemsByHour, previousHour)
-		}
+		e.cleanupPreviousHour(previousHour)
 		e.lastFlushed = time.Now()
 		return flushList, nil
 	}
 	return nil, nil
+}
+
+func (m *EventStatsCache) cleanupPreviousHour(previousHour time.Time) {
+	if previousHourItems, ok := m.itemsByHour[previousHour]; ok {
+		for key := range previousHourItems {
+			delete(m.cache, key)
+		}
+		delete(m.itemsByHour, previousHour)
+	}
 }
 
 func (esw *eventStatsWrapper) key(tsHour time.Time) uint64 {
