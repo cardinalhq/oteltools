@@ -21,9 +21,10 @@ import (
 )
 
 type AuthEnv struct {
-	customerID  string
-	collectorID string
-	tags        map[string]string
+	customerID    string
+	collectorID   string
+	collectorName string
+	tags          map[string]string
 }
 
 var _ Environment = (*AuthEnv)(nil)
@@ -40,11 +41,16 @@ func (ae *AuthEnv) CollectorID() string {
 	return ae.collectorID
 }
 
+func (ae *AuthEnv) CollectorName() string {
+	return ae.collectorName
+}
+
 func EnvironmentFromAuth(ctx context.Context) Environment {
 	return &AuthEnv{
-		customerID:  getAuthString(ctx, "client_id"),
-		collectorID: getAuthString(ctx, "collector_id"),
-		tags:        getAuthEnv(ctx),
+		customerID:    getAuthString(ctx, "customer_id"),
+		collectorID:   getAuthString(ctx, "collector_id"),
+		collectorName: getAuthString(ctx, "collector_name"),
+		tags:          getAuthEnv(ctx),
 	}
 }
 

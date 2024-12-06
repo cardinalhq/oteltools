@@ -21,13 +21,15 @@ import (
 )
 
 const (
-	CardinalEnvCustomerID  = "CARDINALHQ_CUSTOMER_ID"
-	CardinalEnvCollectorID = "CARDINALHQ_COLLECTOR_ID"
+	CardinalEnvCustomerID    = "CARDINALHQ_CUSTOMER_ID"
+	CardinalEnvCollectorID   = "CARDINALHQ_COLLECTOR_ID"
+	CardinalEnvCollectorName = "CARDINALHQ_COLLECTOR_NAME"
 )
 
 type Environment interface {
 	CustomerID() string
 	CollectorID() string
+	CollectorName() string
 	Tags() map[string]string
 }
 
@@ -52,6 +54,7 @@ func EnvironmentFromEnv() *EnvironmentImpl {
 func environmentFromEnv() *EnvironmentImpl {
 	customerid := os.Getenv(CardinalEnvCustomerID)
 	collectorid := os.Getenv(CardinalEnvCollectorID)
+	collectorname := os.Getenv(CardinalEnvCollectorName)
 
 	tags := make(map[string]string)
 	for _, v := range os.Environ() {
@@ -67,6 +70,7 @@ func environmentFromEnv() *EnvironmentImpl {
 
 	tags["customer_id"] = customerid
 	tags["collector_id"] = collectorid
+	tags["collector_name"] = collectorname
 
 	return &EnvironmentImpl{
 		tags: tags,
@@ -79,6 +83,10 @@ func (e *EnvironmentImpl) CustomerID() string {
 
 func (e *EnvironmentImpl) CollectorID() string {
 	return e.tags["collector_id"]
+}
+
+func (e *EnvironmentImpl) CollectorName() string {
+	return e.tags["collector_name"]
 }
 
 func (e *EnvironmentImpl) Tags() map[string]string {

@@ -32,9 +32,11 @@ func (ta *testAuth) GetAttribute(key string) any {
 		return 123
 	case "bool":
 		return true
-	case "client_id":
+	case "customer_id":
 		return "client1"
 	case "collector_id":
+		return "collector1"
+	case "collector_name":
 		return "collector1"
 	case "environment":
 		return map[string]string{
@@ -48,7 +50,7 @@ func (ta *testAuth) GetAttribute(key string) any {
 }
 
 func (ta *testAuth) GetAttributeNames() []string {
-	return []string{"string", "int", "bool", "client_id", "collector_id", "environment"}
+	return []string{"string", "int", "bool", "customer_id", "collector_id", "collector_name", "environment"}
 }
 
 var _ client.AuthData = (*testAuth)(nil)
