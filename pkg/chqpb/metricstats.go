@@ -141,25 +141,25 @@ func (m *MetricStatsCache) cleanupPreviousHour(previousHour time.Time) {
 
 func (m *MetricStats) Key(tsHour time.Time) uint64 {
 	hash := xxhash.New()
-	hash.WriteString(tsHour.String())
-	hash.WriteString(m.MetricName)
-	hash.WriteString(m.MetricType)
-	hash.WriteString(m.TagScope)
-	hash.WriteString(m.TagName)
-	hash.WriteString(m.ServiceName)
-	hash.WriteString(m.Phase.String())
-	hash.WriteString(m.ProcessorId)
-	hash.WriteString(m.CollectorId)
-	hash.WriteString(m.CustomerId)
+	_, _ = hash.WriteString(tsHour.String())
+	_, _ = hash.WriteString(m.MetricName)
+	_, _ = hash.WriteString(m.MetricType)
+	_, _ = hash.WriteString(m.TagScope)
+	_, _ = hash.WriteString(m.TagName)
+	_, _ = hash.WriteString(m.ServiceName)
+	_, _ = hash.WriteString(m.Phase.String())
+	_, _ = hash.WriteString(m.ProcessorId)
+	_, _ = hash.WriteString(m.CollectorId)
+	_, _ = hash.WriteString(m.CustomerId)
 	for _, k := range m.Attributes {
 		context := k.ContextId
 		tagName := k.Key
 		tagValue := k.Value
-		hash.WriteString(context)
-		hash.WriteString(".")
-		hash.WriteString(tagName)
-		hash.WriteString("=")
-		hash.WriteString(tagValue)
+		_, _ = hash.WriteString(context)
+		_, _ = hash.WriteString(".")
+		_, _ = hash.WriteString(tagName)
+		_, _ = hash.WriteString("=")
+		_, _ = hash.WriteString(tagValue)
 	}
 	return hash.Sum64()
 }

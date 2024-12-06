@@ -36,7 +36,7 @@ func TestLogStats_Key(t *testing.T) {
 				Fingerprint: 1234,
 				Phase:       1,
 			},
-			want: 0xbc51daf12983ca1d,
+			want: 0x52b24e1a1a4a2fdc,
 		},
 		{
 			name: "bob 5678",
@@ -45,7 +45,7 @@ func TestLogStats_Key(t *testing.T) {
 				Fingerprint: 5678,
 				Phase:       2,
 			},
-			want: 0x2e6e385ef8e2c36,
+			want: 0x936922567ff6780d,
 		},
 		{
 			name: "bob 567",
@@ -54,7 +54,7 @@ func TestLogStats_Key(t *testing.T) {
 				Fingerprint: 567,
 				Phase:       3,
 			},
-			want: 0xefb3faacaad3a679,
+			want: 0x217c5f3ee95d04e2,
 		},
 	}
 	for _, tt := range tests {

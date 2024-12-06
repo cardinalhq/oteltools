@@ -109,22 +109,22 @@ func (m *EventStatsCache) cleanupPreviousHour(previousHour time.Time) {
 func (esw *eventStatsWrapper) key(tsHour time.Time) uint64 {
 	e := esw.stats
 	hash := xxhash.New()
-	hash.WriteString(tsHour.String())
-	hash.WriteString(e.ServiceName)
-	hash.WriteString(strconv.FormatInt(e.Fingerprint, 10))
-	hash.WriteString(e.Phase.String())
-	hash.WriteString(e.ProcessorId)
-	hash.WriteString(e.CollectorId)
-	hash.WriteString(e.CustomerId)
+	_, _ = hash.WriteString(tsHour.String())
+	_, _ = hash.WriteString(e.ServiceName)
+	_, _ = hash.WriteString(strconv.FormatInt(e.Fingerprint, 10))
+	_, _ = hash.WriteString(e.Phase.String())
+	_, _ = hash.WriteString(e.ProcessorId)
+	_, _ = hash.WriteString(e.CollectorId)
+	_, _ = hash.WriteString(e.CustomerId)
 	for _, k := range e.Attributes {
 		context := k.ContextId
 		tagName := k.Key
 		tagValue := k.Value
-		hash.WriteString(context)
-		hash.WriteString(".")
-		hash.WriteString(tagName)
-		hash.WriteString("=")
-		hash.WriteString(tagValue)
+		_, _ = hash.WriteString(context)
+		_, _ = hash.WriteString(".")
+		_, _ = hash.WriteString(tagName)
+		_, _ = hash.WriteString("=")
+		_, _ = hash.WriteString(tagValue)
 	}
 	return hash.Sum64()
 }
