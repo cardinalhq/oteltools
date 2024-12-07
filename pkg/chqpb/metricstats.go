@@ -66,10 +66,7 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 		if err != nil {
 			return nil, err
 		}
-		wrapper.Dirty = math.Round(newEstimate) != math.Round(currentEstimate)
-		if wrapper.Dirty {
-			m.hllCache[id] = wrapper
-		}
+		wrapper.Dirty = math.Abs(newEstimate-currentEstimate) > 0.1
 	} else {
 		previousHourId := stat.Key(previousHour)
 		if previousHourItems, ok := m.itemsByHour[previousHour]; ok {
@@ -100,12 +97,15 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 			}
 		}
 		m.hllCache[id] = wrapper
+		if _, ok := m.itemsByHour[truncatedHour]; !ok {
+			m.itemsByHour[truncatedHour] = make(map[uint64]bool)
+		}
+		m.itemsByHour[truncatedHour][id] = true
 	}
 	shouldFlush := time.Since(m.lastFlushed) > m.flushInterval
 
 	if shouldFlush {
 		var flushList []*MetricStats
-
 		for _, wrapper := range m.hllCache {
 			if wrapper.Dirty {
 				estimate, err := wrapper.GetEstimate()
@@ -123,19 +123,24 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 				wrapper.Dirty = false
 			}
 		}
-		m.cleanupPreviousHour(previousHour)
-		m.lastFlushed = now
-		return flushList, nil
+
+		if len(flushList) > 0 {
+			m.cleanupPreviousHour(previousHour)
+			m.lastFlushed = now
+			return flushList, nil
+		}
 	}
 	return nil, nil
 }
 
 func (m *MetricStatsCache) cleanupPreviousHour(previousHour time.Time) {
-	if previousHourItems, ok := m.itemsByHour[previousHour]; ok {
-		for key := range previousHourItems {
-			delete(m.hllCache, key)
+	for hour, items := range m.itemsByHour {
+		if hour.Before(previousHour) {
+			for key := range items {
+				delete(m.hllCache, key)
+			}
+			delete(m.itemsByHour, hour)
 		}
-		delete(m.itemsByHour, previousHour)
 	}
 }
 
