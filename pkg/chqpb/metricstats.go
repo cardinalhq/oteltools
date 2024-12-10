@@ -37,13 +37,15 @@ func NewMetricStatsCache(flushInterval time.Duration) *MetricStatsCache {
 		itemsByHour:   make(map[time.Time]map[uint64]bool),
 		flushInterval: flushInterval,
 	}
-	c.lastFlushed = time.Now()
+	c.lastFlushed = time.Now().UTC()
 	return c
 }
 
 func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.Time) ([]*MetricStats, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	now = now.UTC()
 
 	truncatedHour := now.Truncate(time.Hour)
 	previousHour := truncatedHour.Add(-1 * time.Hour)
