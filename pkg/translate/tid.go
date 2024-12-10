@@ -17,7 +17,6 @@ package translate
 import (
 	"maps"
 	"slices"
-	"strings"
 
 	"github.com/cespare/xxhash/v2"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -53,12 +52,19 @@ func calculateTID(tags map[string]string) int64 {
 	}
 	slices.Sort(keys)
 
-	items := []string{}
+	xx := xxhash.New()
+	first := true
 	for _, k := range keys {
 		v := tags[k]
 		if v != "" {
-			items = append(items, k, v)
+			if !first {
+				xx.Write([]byte(":"))
+			}
+			first = false
+			xx.WriteString(k)
+			xx.Write([]byte(":"))
+			xx.WriteString(v)
 		}
 	}
-	return int64(xxhash.Sum64String(strings.Join(items, ":")))
+	return int64(xx.Sum64())
 }
