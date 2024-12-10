@@ -106,31 +106,32 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 	}
 	shouldFlush := time.Since(m.lastFlushed) > m.flushInterval
 
-	if shouldFlush {
-		var flushList []*MetricStats
-		for _, wrapper := range m.hllCache {
-			if wrapper.Dirty {
-				estimate, err := wrapper.GetEstimate()
-				if err != nil {
-					return nil, err
-				}
-				wrapper.Stats.CardinalityEstimate = estimate
-				bytes, err := wrapper.Hll.ToCompactSlice()
-				if err != nil {
-					return nil, err
-				}
-				wrapper.Stats.Hll = bytes
-				wrapper.Stats.TsHour = truncatedHour.UnixMilli()
-				flushList = append(flushList, wrapper.Stats)
-				wrapper.Dirty = false
-			}
-		}
+	// if shouldFlush {
+	// 	var flushList []*MetricStats
+	// 	for _, wrapper := range m.hllCache {
+	// 		if wrapper.Dirty {
+	// 			estimate, err := wrapper.GetEstimate()
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
+	// 			wrapper.Stats.CardinalityEstimate = estimate
+	// 			bytes, err := wrapper.Hll.ToCompactSlice()
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
+	// 			wrapper.Stats.Hll = bytes
+	// 			wrapper.Stats.TsHour = truncatedHour.UnixMilli()
+	// 			flushList = append(flushList, wrapper.Stats)
+	// 			wrapper.Dirty = false
+	// 		}
+	// 	}
 
-		if len(flushList) > 0 {
-			m.cleanupPreviousHour(previousHour)
-			m.lastFlushed = now
-			return flushList, nil
-		}
+	//if len(flushList) > 0 {
+	if shouldFlush {
+		m.cleanupPreviousHour(previousHour)
+		m.lastFlushed = now
+		//		return flushList, nil
+		//	}
 	}
 	return nil, nil
 }

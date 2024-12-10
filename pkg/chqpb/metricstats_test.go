@@ -50,7 +50,6 @@ func testMakeUnion(t *testing.B) hll.Union {
 
 func BenchmarkGetEstimate(b *testing.B) {
 	u := testMakeUnion(b)
-
 	b.Run("GetEstimate", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_, err := u.GetEstimate()
@@ -68,6 +67,22 @@ func BenchmarkToCompactSlice(b *testing.B) {
 			_, err := u.ToCompactSlice()
 			if err != nil {
 				b.Fatalf("Failed to get compact slice: %v", err)
+			}
+		}
+	})
+}
+
+func BenchmarkUpdateString(b *testing.B) {
+	u, err := hll.NewUnion(12)
+	if err != nil {
+		b.Fatalf("Failed to create HLL union: %v", err)
+	}
+
+	b.Run("UpdateString", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			err := u.UpdateString("test")
+			if err != nil {
+				b.Fatalf("Failed to update HLL union: %v", err)
 			}
 		}
 	})
