@@ -15,136 +15,154 @@
 package chqpb
 
 import (
+	"container/list"
+	"github.com/apache/datasketches-go/hll"
+	"github.com/cespare/xxhash/v2"
 	"math"
 	"sync"
 	"time"
-
-	"github.com/apache/datasketches-go/hll"
-	"github.com/cespare/xxhash/v2"
 )
 
 type MetricStatsCache struct {
-	hllCache      map[uint64]*MetricStatsWrapper
-	itemsByHour   map[time.Time]map[uint64]bool
-	lastFlushed   time.Time
+	hllCache      map[uint64]*list.Element
+	cacheOrder    *list.List
+	cacheMutex    sync.RWMutex
+	stopChan      chan struct{}
+	cacheCapacity int
 	flushInterval time.Duration
-	mu            sync.Mutex
 }
 
-func NewMetricStatsCache(flushInterval time.Duration) *MetricStatsCache {
+type LRUEntry struct {
+	Key     uint64
+	Wrapper *MetricStatsWrapper
+}
+
+func NewMetricStatsCache(cacheCapacity int, flushInterval time.Duration) *MetricStatsCache {
 	c := &MetricStatsCache{
-		hllCache:      make(map[uint64]*MetricStatsWrapper),
-		itemsByHour:   make(map[time.Time]map[uint64]bool),
+		hllCache:      make(map[uint64]*list.Element),
+		cacheOrder:    list.New(),
+		stopChan:      make(chan struct{}),
+		cacheCapacity: cacheCapacity,
 		flushInterval: flushInterval,
 	}
-	c.lastFlushed = time.Now().UTC()
+	c.startCleanup()
 	return c
 }
 
-func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.Time) ([]*MetricStats, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (m *MetricStatsCache) startCleanup() {
+	go func() {
+		ticker := time.NewTicker(m.flushInterval)
+		defer ticker.Stop()
 
-	now = now.UTC()
-
-	truncatedHour := now.Truncate(time.Hour)
-	previousHour := truncatedHour.Add(-1 * time.Hour)
-
-	id := stat.Key(truncatedHour)
-	if wrapper, found := m.hllCache[id]; found {
-		currentEstimate, err := wrapper.GetEstimate()
-		if err != nil {
-			return nil, err
-		}
-		if tagValue == "" && len(stat.Hll) > 0 {
-			err = wrapper.MergeWith(stat.Hll)
-		} else {
-			err = wrapper.Hll.UpdateString(tagValue)
-		}
-		if err != nil {
-			return nil, err
-		}
-		newEstimate, err := wrapper.GetEstimate()
-		if err != nil {
-			return nil, err
-		}
-		wrapper.Dirty = math.Abs(newEstimate-currentEstimate) > 0.1
-	} else {
-		previousHourId := stat.Key(previousHour)
-		if previousHourItems, ok := m.itemsByHour[previousHour]; ok {
-			if _, exists := previousHourItems[previousHourId]; exists {
-				delete(m.hllCache, previousHourId)
-				delete(previousHourItems, previousHourId)
+		for {
+			select {
+			case <-ticker.C:
+				m.cleanupStaleEntries()
 			}
 		}
-
-		sketch, err := hll.NewUnion(12)
-		if err != nil {
-			return nil, err
-		}
-		wrapper = &MetricStatsWrapper{
-			Stats: stat,
-			Hll:   sketch,
-			Dirty: true,
-		}
-		if tagValue == "" && len(stat.Hll) > 0 {
-			err = wrapper.MergeWith(stat.Hll)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			err = wrapper.Hll.UpdateString(tagValue)
-			if err != nil {
-				return nil, err
-			}
-		}
-		m.hllCache[id] = wrapper
-		if _, ok := m.itemsByHour[truncatedHour]; !ok {
-			m.itemsByHour[truncatedHour] = make(map[uint64]bool)
-		}
-		m.itemsByHour[truncatedHour][id] = true
-	}
-	shouldFlush := time.Since(m.lastFlushed) > m.flushInterval
-
-	// if shouldFlush {
-	// 	var flushList []*MetricStats
-	// 	for _, wrapper := range m.hllCache {
-	// 		if wrapper.Dirty {
-	// 			estimate, err := wrapper.GetEstimate()
-	// 			if err != nil {
-	// 				return nil, err
-	// 			}
-	// 			wrapper.Stats.CardinalityEstimate = estimate
-	// 			bytes, err := wrapper.Hll.ToCompactSlice()
-	// 			if err != nil {
-	// 				return nil, err
-	// 			}
-	// 			wrapper.Stats.Hll = bytes
-	// 			wrapper.Stats.TsHour = truncatedHour.UnixMilli()
-	// 			flushList = append(flushList, wrapper.Stats)
-	// 			wrapper.Dirty = false
-	// 		}
-	// 	}
-
-	//if len(flushList) > 0 {
-	if shouldFlush {
-		m.cleanupPreviousHour(previousHour)
-		m.lastFlushed = now
-		//		return flushList, nil
-		//	}
-	}
-	return nil, nil
+	}()
 }
 
-func (m *MetricStatsCache) cleanupPreviousHour(previousHour time.Time) {
-	for hour, items := range m.itemsByHour {
-		if hour.Before(previousHour) {
-			for key := range items {
-				delete(m.hllCache, key)
-			}
-			delete(m.itemsByHour, hour)
+func (m *MetricStatsCache) cleanupStaleEntries() {
+	m.cacheMutex.Lock()
+	defer m.cacheMutex.Unlock()
+
+	now := time.Now()
+	for e := m.cacheOrder.Back(); e != nil; {
+		entry := e.Value.(*LRUEntry)
+		if now.Sub(entry.Wrapper.lastUpdated) > time.Hour {
+			delete(m.hllCache, entry.Key)
+			next := e.Prev()
+			m.cacheOrder.Remove(e)
+			e = next
+		} else {
+			e = e.Prev()
 		}
 	}
+}
+
+func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.Time) (*MetricStats, error) {
+	id := stat.Key(now.Truncate(time.Hour))
+
+	m.cacheMutex.RLock()
+	elem, found := m.hllCache[id]
+	m.cacheMutex.RUnlock()
+
+	if found {
+		entry := elem.Value.(*LRUEntry).Wrapper
+		entry.entryMutex.Lock()
+		defer entry.entryMutex.Unlock()
+
+		return nil, m.updateWrapper(entry, stat, tagValue, now)
+	}
+
+	m.cacheMutex.Lock()
+	defer m.cacheMutex.Unlock()
+
+	// Check again in case it was added during the upgrade to a write lock
+	if elem, found = m.hllCache[id]; found {
+		entry := elem.Value.(*LRUEntry).Wrapper
+		entry.entryMutex.Lock()
+		defer entry.entryMutex.Unlock()
+		return nil, m.updateWrapper(entry, stat, tagValue, now)
+	}
+
+	// If we are over capacity, then clean
+	if m.cacheOrder.Len() >= m.cacheCapacity {
+		oldest := m.cacheOrder.Back()
+		if oldest != nil {
+			entry := oldest.Value.(*LRUEntry)
+			delete(m.hllCache, entry.Key)
+			m.cacheOrder.Remove(oldest)
+		}
+	}
+
+	sketch, err := hll.NewUnion(12)
+	if err != nil {
+		return nil, err
+	}
+	wrapper := &MetricStatsWrapper{
+		Stats:       stat,
+		Hll:         sketch,
+		lastUpdated: now,
+	}
+	err = m.updateWrapper(wrapper, stat, tagValue, now)
+	if err != nil {
+		return nil, err
+	}
+
+	elem = m.cacheOrder.PushFront(&LRUEntry{Key: id, Wrapper: wrapper})
+	m.hllCache[id] = elem
+	return stat, nil
+}
+
+func (m *MetricStatsCache) updateWrapper(wrapper *MetricStatsWrapper, stat *MetricStats, tagValue string, now time.Time) error {
+	currentEstimate, err := wrapper.GetEstimate()
+	if err != nil {
+		return err
+	}
+
+	var mergeErr error
+	if tagValue == "" && len(stat.Hll) > 0 {
+		mergeErr = wrapper.MergeWith(stat.Hll)
+	} else {
+		mergeErr = wrapper.Hll.UpdateString(tagValue)
+	}
+	if mergeErr != nil {
+		return mergeErr
+	}
+
+	newEstimate, err := wrapper.GetEstimate()
+	if err != nil {
+		return err
+	}
+
+	if math.Abs(newEstimate-currentEstimate) > 0.1 {
+		wrapper.lastUpdated = now
+		wrapper.Stats.Hll, _ = wrapper.Hll.ToCompactSlice()
+		wrapper.Stats.CardinalityEstimate = newEstimate
+	}
+	return nil
 }
 
 func (m *MetricStats) Key(tsHour time.Time) uint64 {

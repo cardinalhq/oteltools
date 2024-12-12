@@ -1,32 +1,9 @@
 package chqpb
 
 import (
-	"testing"
-	"time"
-
 	"github.com/apache/datasketches-go/hll"
+	"testing"
 )
-
-func TestNewMetricStatsCache(t *testing.T) {
-	flushInterval := 10 * time.Minute
-	cache := NewMetricStatsCache(flushInterval)
-
-	if cache == nil {
-		t.Fatalf("Expected non-nil MetricStatsCache")
-	}
-
-	if cache.flushInterval != flushInterval {
-		t.Errorf("Expected flushInterval %v, got %v", flushInterval, cache.flushInterval)
-	}
-
-	if cache.hllCache == nil {
-		t.Errorf("Expected non-nil hllCache map")
-	}
-
-	if cache.itemsByHour == nil {
-		t.Errorf("Expected non-nil itemsByHour map")
-	}
-}
 
 func testMakeUnion(t *testing.B) hll.Union {
 	u, err := hll.NewUnion(12)

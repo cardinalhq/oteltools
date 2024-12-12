@@ -19,6 +19,8 @@ import (
 	"github.com/apache/datasketches-go/hll"
 	"github.com/cardinalhq/oteltools/pkg/stats"
 	"github.com/cespare/xxhash"
+	"sync"
+	"time"
 )
 
 func (l *EventStats) Key() uint64 {
@@ -56,9 +58,10 @@ func AppendTagsToKey(tags []*Attribute, key string) string {
 }
 
 type MetricStatsWrapper struct {
-	Stats *MetricStats
-	Hll   hll.Union
-	Dirty bool
+	Stats       *MetricStats
+	Hll         hll.Union
+	lastUpdated time.Time
+	entryMutex  sync.Mutex
 }
 
 func (m *MetricStatsWrapper) GetEstimate() (float64, error) {
