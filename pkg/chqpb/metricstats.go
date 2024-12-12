@@ -96,27 +96,6 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 		return nil, m.updateWrapper(entry, stat, tagValue, now)
 	}
 
-	m.cacheMutex.Lock()
-	defer m.cacheMutex.Unlock()
-
-	// Check again in case it was added during the upgrade to a write lock
-	if elem, found = m.hllCache[id]; found {
-		entry := elem.Value.(*LRUEntry).Wrapper
-		entry.entryMutex.Lock()
-		defer entry.entryMutex.Unlock()
-		return nil, m.updateWrapper(entry, stat, tagValue, now)
-	}
-
-	// If we are over capacity, then clean
-	if m.cacheOrder.Len() >= m.cacheCapacity {
-		oldest := m.cacheOrder.Back()
-		if oldest != nil {
-			entry := oldest.Value.(*LRUEntry)
-			delete(m.hllCache, entry.Key)
-			m.cacheOrder.Remove(oldest)
-		}
-	}
-
 	sketch, err := hll.NewUnion(12)
 	if err != nil {
 		return nil, err
@@ -126,13 +105,38 @@ func (m *MetricStatsCache) Record(stat *MetricStats, tagValue string, now time.T
 		Hll:         sketch,
 		lastUpdated: now,
 	}
+
 	err = m.updateWrapper(wrapper, stat, tagValue, now)
 	if err != nil {
 		return nil, err
 	}
 
+	m.cacheMutex.Lock()
+	defer m.cacheMutex.Unlock()
+
+	// Double-check if the entry was added by another goroutine, when the cache level lock was being taken
+	elem, found = m.hllCache[id]
+	if found {
+		entry := elem.Value.(*LRUEntry).Wrapper
+		entry.entryMutex.Lock()
+		defer entry.entryMutex.Unlock()
+		return nil, m.updateWrapper(entry, stat, tagValue, now)
+	}
+
+	// Evict the oldest entry if over capacity
+	if m.cacheOrder.Len() >= m.cacheCapacity {
+		oldest := m.cacheOrder.Back()
+		if oldest != nil {
+			entry := oldest.Value.(*LRUEntry)
+			delete(m.hllCache, entry.Key)
+			m.cacheOrder.Remove(oldest)
+		}
+	}
+
+	// Add the new entry to the cache
 	elem = m.cacheOrder.PushFront(&LRUEntry{Key: id, Wrapper: wrapper})
 	m.hllCache[id] = elem
+
 	return stat, nil
 }
 
