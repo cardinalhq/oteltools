@@ -35,19 +35,35 @@ type Fingerprinter interface {
 }
 
 type fingerprinterImpl struct {
-	wordlist map[string]struct{}
+	maxTokens int
+	wordlist  map[string]struct{}
 }
 
 var _ Fingerprinter = (*fingerprinterImpl)(nil)
 
-func NewFingerprinter() *fingerprinterImpl {
+// Use a pattern where options can be passed into the constructor as a series of functional options.
+
+func NewFingerprinter(opts ...Option) *fingerprinterImpl {
 	fp := fingerprinterImpl{
-		wordlist: make(map[string]struct{}),
+		maxTokens: 15,
+		wordlist:  make(map[string]struct{}),
 	}
 	for _, word := range englishWords {
 		fp.wordlist[word] = struct{}{}
 	}
+
+	for _, opt := range opts {
+		opt(&fp)
+	}
 	return &fp
+}
+
+type Option func(*fingerprinterImpl)
+
+func WithMaxTokens(maxlen int) Option {
+	return func(fp *fingerprinterImpl) {
+		fp.maxTokens = maxlen
+	}
 }
 
 func findJSONContent(input string) (string, string, string) {
@@ -142,6 +158,10 @@ func (fp *fingerprinterImpl) Tokenize(input string) (string, string, error) {
 	items := []string{}
 	level := ""
 	for {
+		// Check length prior to adding the next token since we use 'continue' liberally
+		if len(items) >= fp.maxTokens {
+			return strings.Join(items, " "), strings.ToLower(level), nil
+		}
 		_, tok, literal := s.Next()
 		switch tok {
 		case ragel.EOF:

@@ -265,6 +265,33 @@ func TestFingerprinter(t *testing.T) {
 	}
 }
 
+func TestFingerprinterWithLineLimit(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			"simple",
+			"hello world",
+			"hello world",
+		},
+		{
+			"long",
+			"hello 12345" + strings.Repeat(" foo bar", 10),
+			"hello <Number> foo bar foo",
+		},
+	}
+	for _, tt := range tests {
+		fp := NewFingerprinter(WithMaxTokens(5))
+		t.Run(tt.name, func(t *testing.T) {
+			tokens, _, err := fp.TokenizeInput(tt.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, tokens)
+		})
+	}
+}
+
 func BenchmarkFingerprinter1(b *testing.B) {
 	input := "[2024-04-06 21:23:32,742] INFO [GroupCoordinator 100]: Preparing to rebalance group metadata.ingest.stats.consumer in state PreparingRebalance with old generation 14 (__consumer_offsets-14) (reason: Adding new member metadata.ingest.stats.consumer-0-e78065b6-0f83-4397-92ae-965997f4b1a2 with group instance id Some(metadata.ingest.stats.consumer-0); client reason: not provided) (kafka.coordinator.group.GroupCoordinator)"
 	fp := NewFingerprinter()
