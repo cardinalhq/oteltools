@@ -328,11 +328,11 @@ func TestSplitWords(t *testing.T) {
 
 func TestIsWord(t *testing.T) {
 	fp := NewFingerprinter()
-	fp.wordlist = map[string]bool{
-		"hello": true,
-		"world": true,
-		"foo":   true,
-		"bar":   true,
+	fp.wordlist = map[string]struct{}{
+		"hello": {},
+		"world": {},
+		"foo":   {},
+		"bar":   {},
 	}
 
 	tests := []struct {
@@ -481,5 +481,20 @@ func TestGetStringKey(t *testing.T) {
 			actual := getStringKey(data, tt.keys...)
 			assert.Equal(t, tt.expected, actual)
 		})
+	}
+}
+
+func BenchmarkIsWord(b *testing.B) {
+	fp := NewFingerprinter()
+	fp.wordlist = map[string]struct{}{
+		"hello": {},
+		"world": {},
+		"foo":   {},
+		"bar":   {},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		fp.IsWord("heLLo")
 	}
 }

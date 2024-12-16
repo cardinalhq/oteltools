@@ -35,17 +35,17 @@ type Fingerprinter interface {
 }
 
 type fingerprinterImpl struct {
-	wordlist map[string]bool
+	wordlist map[string]struct{}
 }
 
 var _ Fingerprinter = (*fingerprinterImpl)(nil)
 
 func NewFingerprinter() *fingerprinterImpl {
 	fp := fingerprinterImpl{
-		wordlist: make(map[string]bool),
+		wordlist: make(map[string]struct{}),
 	}
 	for _, word := range englishWords {
-		fp.wordlist[word] = true
+		fp.wordlist[word] = struct{}{}
 	}
 	return &fp
 }
