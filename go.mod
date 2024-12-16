@@ -4,7 +4,6 @@ go 1.23
 
 require (
 	github.com/apache/datasketches-go v0.0.0-20240723070244-57d8af6c2e71
-	github.com/cardinalhq/cardinalhq-otel-collector/internal v0.0.0-20241216070102-ac459f684481
 	github.com/cespare/xxhash v1.1.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/db47h/ragel/v2 v2.2.4

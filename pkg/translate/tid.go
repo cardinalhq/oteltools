@@ -58,12 +58,12 @@ func calculateTID(tags map[string]string) int64 {
 		v := tags[k]
 		if v != "" {
 			if !first {
-				xx.Write([]byte(":"))
+				_, _ = xx.Write([]byte(":"))
 			}
 			first = false
-			xx.WriteString(k)
-			xx.Write([]byte(":"))
-			xx.WriteString(v)
+			_, _ = xx.WriteString(k)
+			_, _ = xx.Write([]byte(":"))
+			_, _ = xx.WriteString(v)
 		}
 	}
 	return int64(xx.Sum64())
