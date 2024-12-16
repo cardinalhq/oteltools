@@ -4,12 +4,14 @@ go 1.23
 
 require (
 	github.com/apache/datasketches-go v0.0.0-20240723070244-57d8af6c2e71
+	github.com/cardinalhq/cardinalhq-otel-collector/internal v0.0.0-20241216070102-ac459f684481
 	github.com/cespare/xxhash v1.1.0
 	github.com/cespare/xxhash/v2 v2.3.0
+	github.com/db47h/ragel/v2 v2.2.4
 	github.com/elastic/go-grok v0.3.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.114.0
 	github.com/oschwald/geoip2-golang v1.11.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/collector/client v1.20.0
 	go.opentelemetry.io/collector/component v0.114.0
 	go.opentelemetry.io/collector/pdata v1.20.0
