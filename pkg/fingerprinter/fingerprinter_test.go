@@ -206,6 +206,12 @@ func TestFingerprinter(t *testing.T) {
 			"",
 		},
 		{
+			"truncates at newline",
+			"2024-06-16T18:37:46.053Z	info	chqs3exporter@v0.31.0/exporter.go:142	Wrote buffer\n15 lines written to file foo.bar",
+			"<ISO8601> <Loglevel> <ModuleName> wrote buffer",
+			"info",
+		},
+		{
 			"mixed json go log",
 			`2024-06-16T18:37:46.053Z	info	chqs3exporter@v0.31.0/exporter.go:142	Wrote buffer	{"kind": "exporter", "data_type": "traces", "name": "chqs3/chqside", "telemetryType": "traces", "timebox": 1718562910000, "prefix": "traces_1718562910000", "rows": 398}`,
 			"<ISO8601> <Loglevel> <ModuleName> wrote buffer",

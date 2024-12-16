@@ -111,6 +111,10 @@ func (fp *fingerprinterImpl) TokenizeInput(input string) (string, string, error)
 		}
 	}
 
+	// Truncate the string to the first newline or CR character
+	if i := strings.IndexAny(message, "\n\r"); i != -1 {
+		message = message[:i]
+	}
 	return fp.Tokenize(message)
 }
 
