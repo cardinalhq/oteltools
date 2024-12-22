@@ -37,18 +37,19 @@ func initializeMetricStats() (*MetricStatsWrapper, error) {
 	return wrapper, nil
 }
 
-func NewMetricStatsCache(capacity int, flushInterval time.Duration, flushCallback FlushCallback[*MetricStatsWrapper]) *MetricStatsCache {
+func NewMetricStatsCache(capacity int, flushInterval time.Duration, flushCallback FlushCallback[*MetricStatsWrapper], clock Clock) *MetricStatsCache {
 	c := &MetricStatsCache{
-		statsCache: NewStatsCache[*MetricStatsWrapper](capacity, flushInterval, flushCallback, initializeMetricStats, RealClock{}),
+		statsCache: NewStatsCache[*MetricStatsWrapper](capacity, flushInterval, flushCallback, initializeMetricStats, clock),
 	}
 	return c
 }
 
-func updateMetricStats(existing *MetricStatsWrapper, metricName, metricType, tagScope, tagName, processorId, customerId, collectorId, tagValue string, attributes []*Attribute) error {
+func updateMetricStats(phase Phase, existing *MetricStatsWrapper, metricName, metricType, tagScope, tagName, processorId, customerId, collectorId, tagValue string, attributes []*Attribute) error {
 	existing.Stats.MetricName = metricName
 	existing.Stats.MetricType = metricType
 	existing.Stats.TagScope = tagScope
 	existing.Stats.TagName = tagName
+	existing.Stats.Phase = phase
 	existing.Stats.ProcessorId = processorId
 	existing.Stats.CustomerId = customerId
 	existing.Stats.CollectorId = collectorId
@@ -69,12 +70,12 @@ func updateMetricStats(existing *MetricStatsWrapper, metricName, metricType, tag
 	return nil
 }
 
-func (e *MetricStatsCache) Record(metricName, metricType, tagScope, tagName, serviceName, phaseName, processorId, collectorId, customerId, tagValue string, attributes []*Attribute) error {
+func (e *MetricStatsCache) Record(phase Phase, metricName, metricType, tagScope, tagName, serviceName, processorId, collectorId, customerId, tagValue string, attributes []*Attribute) error {
 	now := time.Now()
 	truncatedHour := now.Truncate(time.Hour).UnixMilli()
-	key := constructMetricStatsKey(truncatedHour, metricName, metricType, tagScope, tagName, serviceName, phaseName, processorId, collectorId, customerId, attributes)
+	key := constructMetricStatsKey(phase, truncatedHour, metricName, metricType, tagScope, tagName, serviceName, processorId, collectorId, customerId, attributes)
 	err := e.statsCache.Compute(key, func(existing *MetricStatsWrapper) error {
-		err := updateMetricStats(existing, metricName, metricType, tagScope, tagName, processorId, customerId, collectorId, tagValue, attributes)
+		err := updateMetricStats(phase, existing, metricName, metricType, tagScope, tagName, processorId, customerId, collectorId, tagValue, attributes)
 		if err != nil {
 			return err
 		}
@@ -89,13 +90,14 @@ func (e *MetricStatsCache) Record(metricName, metricType, tagScope, tagName, ser
 func (e *MetricStatsCache) RecordMetricStats(metricStats *MetricStats) error {
 	now := time.Now()
 	truncatedHour := now.Truncate(time.Hour).UnixMilli()
-	key := constructMetricStatsKey(truncatedHour,
+	key := constructMetricStatsKey(
+		metricStats.Phase,
+		truncatedHour,
 		metricStats.MetricName,
 		metricStats.MetricType,
 		metricStats.TagScope,
 		metricStats.TagName,
 		metricStats.ServiceName,
-		metricStats.Phase.String(),
 		metricStats.ProcessorId,
 		metricStats.CollectorId,
 		metricStats.CustomerId,
@@ -132,9 +134,9 @@ func (e *MetricStatsCache) RecordMetricStats(metricStats *MetricStats) error {
 	return nil
 }
 
-func constructMetricStatsKey(truncatedHour int64, metricName, metricType, tagScope, tagName, serviceName, phaseName, processorId, collectorId, customerId string, attributes []*Attribute) string {
+func constructMetricStatsKey(phase Phase, truncatedHour int64, metricName, metricType, tagScope, tagName, serviceName, processorId, collectorId, customerId string, attributes []*Attribute) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d:%s:%s:%s:%s:%s:%s:%s:%s:%s", truncatedHour, metricName, metricType, tagScope, tagName, serviceName, phaseName, processorId, collectorId, customerId))
+	sb.WriteString(fmt.Sprintf("%d:%s:%s:%s:%s:%s:%s:%s:%s:%s", truncatedHour, metricName, metricType, tagScope, tagName, serviceName, phase.String(), processorId, collectorId, customerId))
 	for _, k := range attributes {
 		sb.WriteString(fmt.Sprintf(":%s.%s=%s", k.ContextId, k.Key, k.Value))
 	}
