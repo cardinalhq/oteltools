@@ -78,7 +78,7 @@ func (b *StatsCache[T]) cleanupExpiredEntries() {
 	}
 
 	if len(expiredItems) > 0 && b.flushCallback != nil {
-		b.flushCallback(expiredItems)
+		go b.flushCallback(expiredItems)
 	}
 }
 
