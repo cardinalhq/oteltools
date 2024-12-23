@@ -17,7 +17,6 @@ package chqpb
 import (
 	"crypto/sha256"
 	"encoding/binary"
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -118,7 +117,6 @@ func (b *StatsCache[T]) cleanupExpiredEntries() {
 		binLock, binExists := expiredBinLocks[binIndex]
 		if binExists {
 			binLock.Lock()
-			fmt.Printf("cleanupExpiredEntries: expiredBucket:%d, numEntries:%d", expiredBucket, len(entryMap))
 			for _, entry := range entryMap {
 				expiredItems = append(expiredItems, entry.value)
 			}
