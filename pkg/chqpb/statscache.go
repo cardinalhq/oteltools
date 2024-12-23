@@ -68,11 +68,10 @@ func NewStatsCache[T any](capacity int,
 		stopCleanup:        make(chan struct{}),
 		randSource:         rand.New(rand.NewSource(clock.Now().UnixNano())),
 	}
-	statsCache.startCleanup()
 	return statsCache
 }
 
-func (b *StatsCache[T]) startCleanup() {
+func (b *StatsCache[T]) Start() {
 	ticker := time.NewTicker(b.expiry / 2)
 	defer ticker.Stop()
 
