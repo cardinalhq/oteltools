@@ -110,6 +110,7 @@ func (e *MetricStatsCache) RecordMetricStats(metricStats *MetricStats) error {
 		existing.Stats.CollectorId = metricStats.CollectorId
 		existing.Stats.Attributes = metricStats.Attributes
 		existing.Stats.TsHour = metricStats.TsHour
+		existing.Stats.Phase = metricStats.Phase
 		previousEstimate, err := existing.GetEstimate()
 		if err != nil {
 			return err
