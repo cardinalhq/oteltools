@@ -15,116 +15,115 @@
 package chqpb
 
 import (
-	"github.com/cespare/xxhash/v2"
-	"strconv"
-	"sync"
+	"fmt"
+	"strings"
 	"time"
 )
 
 type EventStatsCache struct {
-	cache         map[uint64]*eventStatsWrapper
-	itemsByHour   map[time.Time]map[uint64]bool
-	lastFlushed   time.Time
-	flushInterval time.Duration
-	mu            sync.Mutex
+	statsCache *StatsCache[*EventStats]
 }
 
-type eventStatsWrapper struct {
-	stats   *EventStats
-	isDirty bool
-}
-
-func NewEventStatsCache(flushInterval time.Duration) *EventStatsCache {
+func NewEventStatsCache(capacity int,
+	numBins uint16,
+	flushInterval time.Duration,
+	flushCallback FlushCallback[*EventStats],
+	initializeCallback InitializeCallback[*EventStats],
+	clock Clock) *EventStatsCache {
 	c := &EventStatsCache{
-		cache:         make(map[uint64]*eventStatsWrapper),
-		itemsByHour:   make(map[time.Time]map[uint64]bool),
-		flushInterval: flushInterval,
+		statsCache: NewStatsCache[*EventStats](capacity, numBins, flushInterval, flushCallback, initializeCallback, clock),
 	}
-	now := time.Now()
-	c.lastFlushed = now
 	return c
 }
 
-func (e *EventStatsCache) Record(stat *EventStats, now time.Time) ([]*EventStats, error) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	truncatedHour := now.Truncate(time.Hour)
-	previousHour := truncatedHour.Add(-1 * time.Hour)
-
-	esw := &eventStatsWrapper{
-		stats:   stat,
-		isDirty: false,
-	}
-	id := esw.key(truncatedHour)
-	if existingESW, found := e.cache[id]; found {
-		newCount := stat.Count + existingESW.stats.Count
-		newSize := stat.Size + existingESW.stats.Size
-		if newCount != existingESW.stats.Count || newSize != existingESW.stats.Size {
-			existingESW.stats.Size = newSize
-			existingESW.stats.Count = newCount
-			existingESW.isDirty = true
-		}
-	} else {
-		previousHourId := esw.key(previousHour)
-		if previousHourItems, ok := e.itemsByHour[previousHour]; ok {
-			if _, exists := previousHourItems[previousHourId]; exists {
-				delete(e.cache, previousHourId)
-				delete(previousHourItems, previousHourId)
-			}
-		}
-		esw.isDirty = true
-		e.cache[id] = esw
-		if _, ok := e.itemsByHour[truncatedHour]; !ok {
-			e.itemsByHour[truncatedHour] = make(map[uint64]bool)
-		}
-		e.itemsByHour[truncatedHour][id] = true
-	}
-
-	shouldFlush := time.Since(e.lastFlushed) > e.flushInterval
-	if shouldFlush {
-		var flushList []*EventStats
-		for _, v := range e.cache {
-			if v.isDirty {
-				flushList = append(flushList, v.stats)
-				v.isDirty = false
-			}
-		}
-		e.cleanupPreviousHour(previousHour)
-		e.lastFlushed = time.Now()
-		return flushList, nil
-	}
-	return nil, nil
+func (e *EventStatsCache) Start() {
+	e.statsCache.Start()
 }
 
-func (m *EventStatsCache) cleanupPreviousHour(previousHour time.Time) {
-	if previousHourItems, ok := m.itemsByHour[previousHour]; ok {
-		for key := range previousHourItems {
-			delete(m.cache, key)
-		}
-		delete(m.itemsByHour, previousHour)
-	}
+func InitializeEventStats(tsHour int64, key string) (*EventStats, error) {
+	return &EventStats{}, nil
 }
 
-func (esw *eventStatsWrapper) key(tsHour time.Time) uint64 {
-	e := esw.stats
-	hash := xxhash.New()
-	_, _ = hash.WriteString(tsHour.String())
-	_, _ = hash.WriteString(e.ServiceName)
-	_, _ = hash.WriteString(strconv.FormatInt(e.Fingerprint, 10))
-	_, _ = hash.WriteString(e.Phase.String())
-	_, _ = hash.WriteString(e.ProcessorId)
-	_, _ = hash.WriteString(e.CollectorId)
-	_, _ = hash.WriteString(e.CustomerId)
-	for _, k := range e.Attributes {
-		context := k.ContextId
-		tagName := k.Key
-		tagValue := k.Value
-		_, _ = hash.WriteString(context)
-		_, _ = hash.WriteString(".")
-		_, _ = hash.WriteString(tagName)
-		_, _ = hash.WriteString("=")
-		_, _ = hash.WriteString(tagValue)
+func updateEventStats(existing *EventStats,
+	fingerprint int64,
+	phase Phase,
+	tsHour int64,
+	serviceName,
+	processorId, customerId, collectorId string,
+	attributes []*Attribute,
+	count int64, size int64) error {
+	existing.Phase = phase
+	existing.ServiceName = serviceName
+	existing.Fingerprint = fingerprint
+	existing.ProcessorId = processorId
+	existing.CustomerId = customerId
+	existing.CollectorId = collectorId
+	existing.Attributes = attributes
+	existing.TsHour = tsHour
+	existing.Count += count
+	existing.Size += size
+	return nil
+}
+
+func (e *EventStatsCache) Record(serviceName string,
+	fingerprint int64,
+	phase Phase,
+	processorId string,
+	collectorId string,
+	customerId string,
+	attributes []*Attribute,
+	count int64,
+	size int64) error {
+	now := time.Now()
+	truncatedHour := now.Truncate(time.Hour).UnixMilli()
+	key := constructEventStatsKey(serviceName, fingerprint, phase, processorId, customerId, collectorId, truncatedHour, attributes)
+	err := e.statsCache.Compute(truncatedHour, key, func(existing *EventStats) error {
+		err := updateEventStats(existing, fingerprint, phase, truncatedHour, serviceName, processorId, customerId, collectorId, attributes, count, size)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-	return hash.Sum64()
+	return nil
+}
+
+func (e *EventStatsCache) RecordEventStats(eventStats *EventStats) error {
+	err := e.statsCache.Compute(eventStats.TsHour, eventStats.Key(), func(existing *EventStats) error {
+		updateStatsObject(existing, eventStats)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func updateStatsObject(existing *EventStats, eventStats *EventStats) {
+	existing.ProcessorId = eventStats.ProcessorId
+	existing.CustomerId = eventStats.CustomerId
+	existing.CollectorId = eventStats.CollectorId
+	existing.Attributes = eventStats.Attributes
+	existing.ServiceName = eventStats.ServiceName
+	existing.Fingerprint = eventStats.Fingerprint
+	existing.Phase = eventStats.Phase
+	existing.TsHour = eventStats.TsHour
+	existing.Count += eventStats.Count
+	existing.Size += eventStats.Size
+}
+
+func (e *EventStats) Key() string {
+	return constructEventStatsKey(e.ServiceName, e.Fingerprint, e.Phase, e.ProcessorId, e.CustomerId, e.CollectorId, e.TsHour, e.Attributes)
+}
+
+func constructEventStatsKey(serviceName string, fingerprint int64, phase Phase, processorId, customerId, collectorId string, truncatedHour int64, attributes []*Attribute) string {
+	var sb strings.Builder
+	sb.WriteString(serviceName)
+	sb.WriteString(fmt.Sprintf(":%d:%d:%s:%s:%s:%d", fingerprint, int32(phase), processorId, customerId, collectorId, truncatedHour))
+	for _, k := range attributes {
+		sb.WriteString(fmt.Sprintf(":%s.%s=%s", k.ContextId, k.Key, k.Value))
+	}
+	return sb.String()
 }
