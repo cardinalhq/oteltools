@@ -93,22 +93,7 @@ func (e *MetricStatsCache) Record(phase Phase, metricName, metricType, tagScope,
 }
 
 func (e *MetricStatsCache) RecordMetricStats(metricStats *MetricStats) error {
-	now := time.Now()
-	truncatedHour := now.Truncate(time.Hour).UnixMilli()
-	key := constructMetricStatsKey(
-		metricStats.Phase,
-		truncatedHour,
-		metricStats.MetricName,
-		metricStats.MetricType,
-		metricStats.TagScope,
-		metricStats.TagName,
-		metricStats.ServiceName,
-		metricStats.ProcessorId,
-		metricStats.CollectorId,
-		metricStats.CustomerId,
-		metricStats.Attributes)
-
-	err := e.statsCache.Compute(key, func(existing *MetricStatsWrapper) error {
+	err := e.statsCache.Compute(metricStats.Key(), func(existing *MetricStatsWrapper) error {
 		existing.Stats.MetricName = metricStats.MetricName
 		existing.Stats.MetricType = metricStats.MetricType
 		existing.Stats.TagScope = metricStats.TagScope
@@ -137,6 +122,21 @@ func (e *MetricStatsCache) RecordMetricStats(metricStats *MetricStats) error {
 		return err
 	}
 	return nil
+}
+
+func (m *MetricStats) Key() string {
+	return constructMetricStatsKey(
+		m.Phase,
+		m.TsHour,
+		m.MetricName,
+		m.MetricType,
+		m.TagScope,
+		m.TagName,
+		m.ServiceName,
+		m.ProcessorId,
+		m.CollectorId,
+		m.CustomerId,
+		m.Attributes)
 }
 
 func constructMetricStatsKey(phase Phase, truncatedHour int64, metricName, metricType, tagScope, tagName, serviceName, processorId, collectorId, customerId string, attributes []*Attribute) string {

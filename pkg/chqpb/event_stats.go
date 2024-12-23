@@ -87,8 +87,7 @@ func (e *EventStatsCache) Record(serviceName string,
 }
 
 func (e *EventStatsCache) RecordEventStats(eventStats *EventStats) error {
-	key := constructEventStatsKey(eventStats.ServiceName, eventStats.Fingerprint, eventStats.Phase, eventStats.ProcessorId, eventStats.CustomerId, eventStats.CollectorId, eventStats.TsHour, eventStats.Attributes)
-	err := e.statsCache.Compute(key, func(existing *EventStats) error {
+	err := e.statsCache.Compute(eventStats.Key(), func(existing *EventStats) error {
 		updateStatsObject(existing, eventStats)
 		return nil
 	})
@@ -109,6 +108,10 @@ func updateStatsObject(existing *EventStats, eventStats *EventStats) {
 	existing.TsHour = eventStats.TsHour
 	existing.Count += eventStats.Count
 	existing.Size += eventStats.Size
+}
+
+func (e *EventStats) Key() string {
+	return constructEventStatsKey(e.ServiceName, e.Fingerprint, e.Phase, e.ProcessorId, e.CustomerId, e.CollectorId, e.TsHour, e.Attributes)
 }
 
 func constructEventStatsKey(serviceName string, fingerprint int64, phase Phase, processorId, customerId, collectorId string, truncatedHour int64, attributes []*Attribute) string {
