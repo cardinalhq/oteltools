@@ -224,10 +224,10 @@ func (b *StatsCache[T]) evictRandom(entryMap map[string]*Entry[T]) {
 		keys = append(keys, key)
 	}
 	randomKey := keys[b.randSource.Intn(len(keys))]
-	if b.flushCallback != nil {
-		entry := entryMap[randomKey]
-		b.flushCallback([]T{entry.value})
-	}
+	//if b.flushCallback != nil {
+	//	entry := entryMap[randomKey]
+	//	b.flushCallback([]T{entry.value})
+	//}
 
 	delete(entryMap, randomKey)
 }
