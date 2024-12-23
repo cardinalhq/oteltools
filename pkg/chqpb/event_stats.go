@@ -24,9 +24,9 @@ type EventStatsCache struct {
 	statsCache *StatsCache[*EventStats]
 }
 
-func NewEventStatsCache(capacity int, flushInterval time.Duration, flushCallback FlushCallback[*EventStats], clock Clock) *EventStatsCache {
+func NewEventStatsCache(capacity int, numBins uint16, flushInterval time.Duration, flushCallback FlushCallback[*EventStats], clock Clock) *EventStatsCache {
 	c := &EventStatsCache{
-		statsCache: NewStatsCache[*EventStats](capacity, flushInterval, flushCallback, initializeEventStats, clock),
+		statsCache: NewStatsCache[*EventStats](capacity, numBins, flushInterval, flushCallback, initializeEventStats, clock),
 	}
 	return c
 }

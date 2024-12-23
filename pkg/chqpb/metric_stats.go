@@ -37,9 +37,9 @@ func initializeMetricStats() (*MetricStatsWrapper, error) {
 	return wrapper, nil
 }
 
-func NewMetricStatsCache(capacity int, flushInterval time.Duration, flushCallback FlushCallback[*MetricStatsWrapper], clock Clock) *MetricStatsCache {
+func NewMetricStatsCache(capacity int, numBins uint16, flushInterval time.Duration, flushCallback FlushCallback[*MetricStatsWrapper], clock Clock) *MetricStatsCache {
 	c := &MetricStatsCache{
-		statsCache: NewStatsCache[*MetricStatsWrapper](capacity, flushInterval, flushCallback, initializeMetricStats, clock),
+		statsCache: NewStatsCache[*MetricStatsWrapper](capacity, numBins, flushInterval, flushCallback, initializeMetricStats, clock),
 	}
 	return c
 }

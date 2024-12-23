@@ -35,8 +35,8 @@ func TestMetricStatsCacheAggregation(t *testing.T) {
 	}
 
 	capacity := 3
-	expiry := 2 * time.Second
-	cache := NewMetricStatsCache(capacity, expiry, flushCallback, mockClock)
+	expiry := 5 * time.Minute
+	cache := NewMetricStatsCache(capacity, 1, expiry, flushCallback, mockClock)
 
 	metricName := "metricA"
 	metricType := "counter"
@@ -61,14 +61,14 @@ func TestMetricStatsCacheAggregation(t *testing.T) {
 	assert.NoError(t, err)
 
 	wg.Add(1)
-	mockClock.Advance(3 * time.Second)
+	mockClock.Advance(expiry + 1*time.Second) // Advance the clock to trigger the expiration of the previous bucket
 
 	// Trigger cleanup manually
 	cache.statsCache.cleanupExpiredEntries()
 	wg.Wait()
 
 	// Verify the flushed items
-	assert.Equal(t, 1, len(flushedItems), "Only one item should be flushed")
+	assert.Equal(t, 1, len(flushedItems), "Only one bucket should be flushed")
 	flushed := flushedItems[0]
 
 	assert.Equal(t, metricName, flushed.Stats.MetricName, "Metric name should match")

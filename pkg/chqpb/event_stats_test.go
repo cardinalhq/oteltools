@@ -15,6 +15,7 @@
 package chqpb
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -33,8 +34,8 @@ func TestAggregationAndFlush(t *testing.T) {
 	}
 
 	capacity := 3
-	expiry := 2 * time.Second
-	cache := NewEventStatsCache(capacity, expiry, flushCallback, mockClock)
+	expiry := 5 * time.Minute
+	cache := NewEventStatsCache(capacity, 1, expiry, flushCallback, mockClock)
 
 	serviceName := "serviceA"
 	fingerprint := int64(123)
@@ -56,13 +57,13 @@ func TestAggregationAndFlush(t *testing.T) {
 	assert.NoError(t, err)
 
 	wg.Add(1)
-	mockClock.Advance(3 * time.Second)
+	mockClock.Advance(expiry + 1*time.Second)
 
 	cache.statsCache.cleanupExpiredEntries()
 
 	wg.Wait()
 
-	assert.Equal(t, 1, len(flushedItems), "Only one item should be flushed")
+	assert.Equal(t, 1, len(flushedItems), "Only one bucket should be flushed")
 	flushed := flushedItems[0]
 	assert.Equal(t, serviceName, flushed.ServiceName, "Service name should match")
 	assert.Equal(t, fingerprint, flushed.Fingerprint, "Fingerprint should match")
@@ -82,10 +83,12 @@ func TestCapacityConstraints(t *testing.T) {
 	var flushedItems []*EventStats
 	flushCallback := func(expiredItems []*EventStats) {
 		flushedItems = append(flushedItems, expiredItems...)
+		fmt.Printf("Flush callback invoked: %v items flushed\n", len(expiredItems))
 		wg.Done()
 	}
 
-	cache := NewEventStatsCache(3, 2*time.Second, flushCallback, &RealClock{})
+	mockClock := NewMockClock(time.Now().Truncate(time.Hour))
+	cache := NewEventStatsCache(3, 1, 5*time.Minute, flushCallback, mockClock)
 
 	err := cache.Record("serviceA", 123, Phase_PRE, "proc1", "coll1", "cust1", nil, 5, 100)
 	assert.NoError(t, err)
@@ -104,7 +107,7 @@ func TestCapacityConstraints(t *testing.T) {
 
 	assert.Equal(t, 1, len(flushedItems), "Exactly one item should be evicted when capacity is exceeded")
 
-	evictedKey := constructEventStatsKey("serviceD", 101112, Phase_PRE, "proc4", "cust4", "coll4", time.Now().Truncate(time.Hour).UnixMilli(), nil)
+	evictedKey := constructEventStatsKey("serviceD", 101112, Phase_PRE, "proc4", "cust4", "coll4", mockClock.Now().UnixMilli(), nil)
 	for _, item := range flushedItems {
 		assert.NotEqual(t, evictedKey, constructEventStatsKey(item.ServiceName, item.Fingerprint, item.Phase, item.ProcessorId, item.CustomerId, item.CollectorId, item.TsHour, item.Attributes), "The new entry should not be evicted")
 	}

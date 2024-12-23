@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,7 +15,8 @@
 package chqpb
 
 import (
-	"fmt"
+	"crypto/sha256"
+	"encoding/binary"
 	"math/rand"
 	"sync"
 	"time"
@@ -29,29 +30,34 @@ type Entry[T any] struct {
 	timestamp time.Time
 	mutex     sync.Mutex // Per-entry lock for fine-grained locking
 }
+
 type StatsCache[T any] struct {
 	capacity      int
-	cache         map[string]*Entry[T]
-	keys          []string
-	keyIndex      map[string]int
+	numBins       uint16
+	cache         map[int64]map[int]map[string]*Entry[T]
+	bucketLocks   map[int64]*sync.RWMutex
+	binLocks      map[int64]map[int]*sync.RWMutex
 	cacheMutex    sync.RWMutex
 	expiry        time.Duration
 	flushCallback FlushCallback[T]
 	initialize    func() (T, error)
-	clock         Clock // Use Clock interface for time
+	clock         Clock
 	stopCleanup   chan struct{}
 	randSource    *rand.Rand
 }
 
-func NewStatsCache[T any](capacity int, expiry time.Duration,
+func NewStatsCache[T any](capacity int,
+	numBins uint16,
+	expiry time.Duration,
 	flushCallback FlushCallback[T],
 	initialize func() (T, error),
 	clock Clock) *StatsCache[T] {
 	return &StatsCache[T]{
 		capacity:      capacity,
-		cache:         make(map[string]*Entry[T]),
-		keys:          []string{},
-		keyIndex:      make(map[string]int),
+		numBins:       numBins,
+		cache:         make(map[int64]map[int]map[string]*Entry[T]),
+		bucketLocks:   make(map[int64]*sync.RWMutex),
+		binLocks:      make(map[int64]map[int]*sync.RWMutex),
 		expiry:        expiry,
 		flushCallback: flushCallback,
 		initialize:    initialize,
@@ -62,56 +68,105 @@ func NewStatsCache[T any](capacity int, expiry time.Duration,
 }
 
 func (b *StatsCache[T]) cleanupExpiredEntries() {
-	b.cacheMutex.Lock()
-	defer b.cacheMutex.Unlock()
-
 	now := b.clock.Now()
-	var expiredItems []T
+	expiredBucket := now.Truncate(b.expiry).Add(-b.expiry).Unix()
 
-	for key, entry := range b.cache {
-		entry.mutex.Lock()
-		if now.Sub(entry.timestamp) > b.expiry {
-			expiredItems = append(expiredItems, entry.value)
-			b.removeKey(key)
-		}
-		entry.mutex.Unlock()
+	b.cacheMutex.Lock()
+	expiredBucketLock, bucketExists := b.bucketLocks[expiredBucket]
+	if !bucketExists {
+		b.cacheMutex.Unlock()
+		return
 	}
+
+	expiredBinLocks := b.binLocks[expiredBucket]
+	delete(b.bucketLocks, expiredBucket)
+
+	keyBuckets, found := b.cache[expiredBucket]
+	if found {
+		delete(b.cache, expiredBucket)
+		delete(b.binLocks, expiredBucket)
+	}
+	b.cacheMutex.Unlock()
+
+	if !found {
+		return
+	}
+
+	expiredBucketLock.Lock()
+	var expiredItems []T
+	for binIndex, entryMap := range keyBuckets {
+		binLock, binExists := expiredBinLocks[binIndex]
+		if binExists {
+			binLock.Lock()
+
+			for _, entry := range entryMap {
+				expiredItems = append(expiredItems, entry.value)
+			}
+
+			binLock.Unlock()
+		}
+	}
+	expiredBucketLock.Unlock()
 
 	if len(expiredItems) > 0 && b.flushCallback != nil {
 		go b.flushCallback(expiredItems)
 	}
 }
 
-func (b *StatsCache[T]) startCleanup() {
-	ticker := time.NewTicker(b.expiry / 2)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			b.cleanupExpiredEntries()
-		case <-b.stopCleanup:
-			return
-		}
-	}
-}
-
 func (b *StatsCache[T]) Compute(key string, entryUpdater func(existing T) error) error {
+	now := b.clock.Now()
+	truncatedTimestamp := now.Truncate(b.expiry).Unix()
+
+	hash := sha256.Sum256([]byte(key))
+	binIndex := int(binary.BigEndian.Uint16(hash[:]) % b.numBins)
+
 	b.cacheMutex.RLock()
-	entry, found := b.cache[key]
+	binMap, bucketExists := b.cache[truncatedTimestamp]
+	bucketLock, lockExists := b.bucketLocks[truncatedTimestamp]
 	b.cacheMutex.RUnlock()
 
-	if found {
+	if !bucketExists {
+		b.cacheMutex.Lock()
+		// Double check that bucket wasn't added during lock upgrade
+		if binMap, bucketExists = b.cache[truncatedTimestamp]; !bucketExists {
+			binMap = make(map[int]map[string]*Entry[T])
+			b.cache[truncatedTimestamp] = binMap
+			b.bucketLocks[truncatedTimestamp] = &sync.RWMutex{}
+			b.binLocks[truncatedTimestamp] = make(map[int]*sync.RWMutex)
+		}
+		if _, lockExists = b.bucketLocks[truncatedTimestamp]; !lockExists {
+			b.bucketLocks[truncatedTimestamp] = &sync.RWMutex{}
+			b.binLocks[truncatedTimestamp] = make(map[int]*sync.RWMutex)
+		}
+		b.cacheMutex.Unlock()
+	}
+
+	bucketLock = b.bucketLocks[truncatedTimestamp]
+	bucketLock.RLock()
+	entryMap, binExists := binMap[binIndex]
+	bucketLock.RUnlock()
+
+	if !binExists {
+		bucketLock.Lock()
+		if entryMap, binExists = binMap[binIndex]; !binExists {
+			entryMap = make(map[string]*Entry[T])
+			binMap[binIndex] = entryMap
+			if b.binLocks[truncatedTimestamp][binIndex] == nil {
+				b.binLocks[truncatedTimestamp][binIndex] = &sync.RWMutex{}
+			}
+		}
+		bucketLock.Unlock()
+	}
+
+	binLock := b.binLocks[truncatedTimestamp][binIndex]
+
+	binLock.RLock()
+	entry, entryExists := entryMap[key]
+	binLock.RUnlock()
+
+	if entryExists {
 		entry.mutex.Lock()
 		defer entry.mutex.Unlock()
-
-		if time.Since(entry.timestamp) > b.expiry {
-			b.cacheMutex.Lock()
-			defer b.cacheMutex.Unlock()
-			b.removeKey(key)
-			return fmt.Errorf("entry expired")
-		}
-
 		return entryUpdater(entry.value)
 	}
 
@@ -119,67 +174,47 @@ func (b *StatsCache[T]) Compute(key string, entryUpdater func(existing T) error)
 	if err != nil {
 		return err
 	}
-	err = entryUpdater(value)
-	if err != nil {
+	if err = entryUpdater(value); err != nil {
 		return err
 	}
 
-	b.cacheMutex.Lock()
-	defer b.cacheMutex.Unlock()
+	binLock.Lock()
+	defer binLock.Unlock()
 
-	if len(b.cache) >= b.capacity {
-		b.evictRandom()
+	// Check if entry was added during lock upgrade to avoid duplicate entries
+	if _, entryExists = entryMap[key]; !entryExists {
+		if len(entryMap) >= b.capacity {
+			b.evictRandom(entryMap)
+		}
+		entryMap[key] = &Entry[T]{
+			key:       key,
+			value:     value,
+			timestamp: now,
+		}
 	}
 
-	b.addKey(key, value)
 	return nil
 }
 
-func (b *StatsCache[T]) addKey(key string, value T) {
-	entry := &Entry[T]{
-		key:       key,
-		value:     value,
-		timestamp: time.Now(),
-	}
-	b.cache[key] = entry
-	b.keys = append(b.keys, key)
-	b.keyIndex[key] = len(b.keys) - 1
-}
-
-func (b *StatsCache[T]) removeKey(key string) {
-	index, found := b.keyIndex[key]
-	if !found {
+func (b *StatsCache[T]) evictRandom(entryMap map[string]*Entry[T]) {
+	if len(entryMap) == 0 {
 		return
 	}
 
-	delete(b.cache, key)
-
-	// Remove key from keys slice by swapping it with the last element
-	lastKey := b.keys[len(b.keys)-1]
-	b.keys[index] = lastKey
-	b.keyIndex[lastKey] = index
-	b.keys = b.keys[:len(b.keys)-1]
-
-	// Remove from keyIndex map
-	delete(b.keyIndex, key)
-}
-
-func (b *StatsCache[T]) evictRandom() {
-	if len(b.keys) == 0 {
-		return
+	keys := make([]string, 0, len(entryMap))
+	for key := range entryMap {
+		keys = append(keys, key)
 	}
-
-	randomIndex := b.randSource.Intn(len(b.keys))
-	randomKey := b.keys[randomIndex]
-
-	entry := b.cache[randomKey]
+	randomKey := keys[b.randSource.Intn(len(keys))]
 	if b.flushCallback != nil {
+		entry := entryMap[randomKey]
 		b.flushCallback([]T{entry.value})
 	}
 
-	b.removeKey(randomKey)
+	delete(entryMap, randomKey)
 }
 
+// Close stops the cleanup goroutine
 func (b *StatsCache[T]) Close() {
 	close(b.stopCleanup)
 }
