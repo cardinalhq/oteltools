@@ -36,6 +36,10 @@ func NewEventStatsCache(capacity int,
 	return c
 }
 
+func (e *EventStatsCache) Start() {
+	e.statsCache.Start()
+}
+
 func InitializeEventStats(tsHour int64, key string) (*EventStats, error) {
 	return &EventStats{}, nil
 }

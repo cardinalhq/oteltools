@@ -49,6 +49,10 @@ func NewMetricStatsCache(capacity int,
 	return c
 }
 
+func (e *MetricStatsCache) Start() {
+	e.statsCache.Start()
+}
+
 func updateMetricStats(phase Phase, existing *MetricStatsWrapper, metricName, metricType, tagScope, tagName, processorId, customerId, collectorId, tagValue string, attributes []*Attribute) error {
 	existing.Stats.MetricName = metricName
 	existing.Stats.MetricType = metricType
