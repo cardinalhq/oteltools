@@ -26,7 +26,7 @@ type MetricStatsCache struct {
 	statsCache *StatsCache[*MetricStatsWrapper]
 }
 
-func initializeMetricStats(tsHour int64, key string) (*MetricStatsWrapper, error) {
+func InitializeMetricStats(tsHour int64, key string) (*MetricStatsWrapper, error) {
 	wrapper := &MetricStatsWrapper{}
 	wrapper.Stats = &MetricStats{}
 	union, err := hll.NewUnion(12)

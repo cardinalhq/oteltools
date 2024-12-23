@@ -35,7 +35,7 @@ func TestAggregationAndFlush(t *testing.T) {
 
 	capacity := 3
 	expiry := 5 * time.Minute
-	cache := NewEventStatsCache(capacity, 1, expiry, flushCallback, initializeEventStats, mockClock)
+	cache := NewEventStatsCache(capacity, 1, expiry, flushCallback, InitializeEventStats, mockClock)
 
 	serviceName := "serviceA"
 	fingerprint := int64(123)
@@ -88,7 +88,7 @@ func TestCapacityConstraints(t *testing.T) {
 	}
 
 	mockClock := NewMockClock(time.Now().Truncate(time.Hour))
-	cache := NewEventStatsCache(3, 1, 5*time.Minute, flushCallback, initializeEventStats, mockClock)
+	cache := NewEventStatsCache(3, 1, 5*time.Minute, flushCallback, InitializeEventStats, mockClock)
 
 	err := cache.Record("serviceA", 123, Phase_PRE, "proc1", "coll1", "cust1", nil, 5, 100)
 	assert.NoError(t, err)

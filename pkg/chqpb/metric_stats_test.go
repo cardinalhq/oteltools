@@ -36,7 +36,7 @@ func TestMetricStatsCacheAggregation(t *testing.T) {
 
 	capacity := 3
 	expiry := 5 * time.Minute
-	cache := NewMetricStatsCache(capacity, 1, expiry, flushCallback, initializeMetricStats, mockClock)
+	cache := NewMetricStatsCache(capacity, 1, expiry, flushCallback, InitializeMetricStats, mockClock)
 
 	metricName := "metricA"
 	metricType := "counter"
