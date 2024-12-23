@@ -72,17 +72,19 @@ func NewStatsCache[T any](capacity int,
 }
 
 func (b *StatsCache[T]) Start() {
-	ticker := time.NewTicker(b.expiry / 2)
-	defer ticker.Stop()
+	go func() {
+		ticker := time.NewTicker(b.expiry / 2)
+		defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			b.cleanupExpiredEntries()
-		case <-b.stopCleanup:
-			return
+		for {
+			select {
+			case <-ticker.C:
+				b.cleanupExpiredEntries()
+			case <-b.stopCleanup:
+				return
+			}
 		}
-	}
+	}()
 }
 
 func (b *StatsCache[T]) cleanupExpiredEntries() {
