@@ -26,7 +26,7 @@ type MetricStatsCache struct {
 	statsCache *StatsCache[*MetricStatsWrapper]
 }
 
-func initializeMetricStats() (*MetricStatsWrapper, error) {
+func initializeMetricStats(key string) (*MetricStatsWrapper, error) {
 	wrapper := &MetricStatsWrapper{}
 	wrapper.Stats = &MetricStats{}
 	union, err := hll.NewUnion(12)
@@ -37,9 +37,14 @@ func initializeMetricStats() (*MetricStatsWrapper, error) {
 	return wrapper, nil
 }
 
-func NewMetricStatsCache(capacity int, numBins uint16, flushInterval time.Duration, flushCallback FlushCallback[*MetricStatsWrapper], clock Clock) *MetricStatsCache {
+func NewMetricStatsCache(capacity int,
+	numBins uint16,
+	flushInterval time.Duration,
+	flushCallback FlushCallback[*MetricStatsWrapper],
+	initializeCallback InitializeCallback[*MetricStatsWrapper],
+	clock Clock) *MetricStatsCache {
 	c := &MetricStatsCache{
-		statsCache: NewStatsCache[*MetricStatsWrapper](capacity, numBins, flushInterval, flushCallback, initializeMetricStats, clock),
+		statsCache: NewStatsCache[*MetricStatsWrapper](capacity, numBins, flushInterval, flushCallback, initializeCallback, clock),
 	}
 	return c
 }

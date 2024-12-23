@@ -24,14 +24,19 @@ type EventStatsCache struct {
 	statsCache *StatsCache[*EventStats]
 }
 
-func NewEventStatsCache(capacity int, numBins uint16, flushInterval time.Duration, flushCallback FlushCallback[*EventStats], clock Clock) *EventStatsCache {
+func NewEventStatsCache(capacity int,
+	numBins uint16,
+	flushInterval time.Duration,
+	flushCallback FlushCallback[*EventStats],
+	initializeCallback InitializeCallback[*EventStats],
+	clock Clock) *EventStatsCache {
 	c := &EventStatsCache{
-		statsCache: NewStatsCache[*EventStats](capacity, numBins, flushInterval, flushCallback, initializeEventStats, clock),
+		statsCache: NewStatsCache[*EventStats](capacity, numBins, flushInterval, flushCallback, initializeCallback, clock),
 	}
 	return c
 }
 
-func initializeEventStats() (*EventStats, error) {
+func initializeEventStats(key string) (*EventStats, error) {
 	return &EventStats{}, nil
 }
 

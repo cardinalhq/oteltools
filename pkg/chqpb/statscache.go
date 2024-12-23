@@ -24,6 +24,8 @@ import (
 
 type FlushCallback[T any] func(expiredItems []T)
 
+type InitializeCallback[T any] func(key string) (T, error)
+
 type Entry[T any] struct {
 	key       string
 	value     T
@@ -32,38 +34,38 @@ type Entry[T any] struct {
 }
 
 type StatsCache[T any] struct {
-	capacity      int
-	numBins       uint16
-	cache         map[int64]map[int]map[string]*Entry[T]
-	bucketLocks   map[int64]*sync.RWMutex
-	binLocks      map[int64]map[int]*sync.RWMutex
-	cacheMutex    sync.RWMutex
-	expiry        time.Duration
-	flushCallback FlushCallback[T]
-	initialize    func() (T, error)
-	clock         Clock
-	stopCleanup   chan struct{}
-	randSource    *rand.Rand
+	capacity           int
+	numBins            uint16
+	cache              map[int64]map[int]map[string]*Entry[T]
+	bucketLocks        map[int64]*sync.RWMutex
+	binLocks           map[int64]map[int]*sync.RWMutex
+	cacheMutex         sync.RWMutex
+	expiry             time.Duration
+	flushCallback      FlushCallback[T]
+	initializeCallback InitializeCallback[T]
+	clock              Clock
+	stopCleanup        chan struct{}
+	randSource         *rand.Rand
 }
 
 func NewStatsCache[T any](capacity int,
 	numBins uint16,
 	expiry time.Duration,
 	flushCallback FlushCallback[T],
-	initialize func() (T, error),
+	initializeCallback InitializeCallback[T],
 	clock Clock) *StatsCache[T] {
 	return &StatsCache[T]{
-		capacity:      capacity,
-		numBins:       numBins,
-		cache:         make(map[int64]map[int]map[string]*Entry[T]),
-		bucketLocks:   make(map[int64]*sync.RWMutex),
-		binLocks:      make(map[int64]map[int]*sync.RWMutex),
-		expiry:        expiry,
-		flushCallback: flushCallback,
-		initialize:    initialize,
-		clock:         clock,
-		stopCleanup:   make(chan struct{}),
-		randSource:    rand.New(rand.NewSource(clock.Now().UnixNano())),
+		capacity:           capacity,
+		numBins:            numBins,
+		cache:              make(map[int64]map[int]map[string]*Entry[T]),
+		bucketLocks:        make(map[int64]*sync.RWMutex),
+		binLocks:           make(map[int64]map[int]*sync.RWMutex),
+		expiry:             expiry,
+		flushCallback:      flushCallback,
+		initializeCallback: initializeCallback,
+		clock:              clock,
+		stopCleanup:        make(chan struct{}),
+		randSource:         rand.New(rand.NewSource(clock.Now().UnixNano())),
 	}
 }
 
@@ -170,7 +172,7 @@ func (b *StatsCache[T]) Compute(key string, entryUpdater func(existing T) error)
 		return entryUpdater(entry.value)
 	}
 
-	value, err := b.initialize()
+	value, err := b.initializeCallback(key)
 	if err != nil {
 		return err
 	}
