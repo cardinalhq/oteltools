@@ -17,6 +17,7 @@ package chqpb
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -54,7 +55,7 @@ func NewStatsCache[T any](capacity int,
 	flushCallback FlushCallback[T],
 	initializeCallback InitializeCallback[T],
 	clock Clock) *StatsCache[T] {
-	return &StatsCache[T]{
+	statsCache := &StatsCache[T]{
 		capacity:           capacity,
 		numBins:            numBins,
 		cache:              make(map[int64]map[int]map[string]*Entry[T]),
@@ -66,6 +67,22 @@ func NewStatsCache[T any](capacity int,
 		clock:              clock,
 		stopCleanup:        make(chan struct{}),
 		randSource:         rand.New(rand.NewSource(clock.Now().UnixNano())),
+	}
+	statsCache.startCleanup()
+	return statsCache
+}
+
+func (b *StatsCache[T]) startCleanup() {
+	ticker := time.NewTicker(b.expiry / 2)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			b.cleanupExpiredEntries()
+		case <-b.stopCleanup:
+			return
+		}
 	}
 }
 
@@ -100,7 +117,7 @@ func (b *StatsCache[T]) cleanupExpiredEntries() {
 		binLock, binExists := expiredBinLocks[binIndex]
 		if binExists {
 			binLock.Lock()
-
+			fmt.Printf("cleanupExpiredEntries: expiredBucket:%d, numEntries:%d", expiredBucket, len(entryMap))
 			for _, entry := range entryMap {
 				expiredItems = append(expiredItems, entry.value)
 			}
