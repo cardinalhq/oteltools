@@ -53,7 +53,8 @@ func (e *MetricStatsCache) Start() {
 	e.statsCache.Start()
 }
 
-func updateMetricStats(phase Phase, existing *MetricStatsWrapper, metricName, metricType, tagScope, tagName, processorId, customerId, collectorId, tagValue string, attributes []*Attribute) error {
+func updateMetricStats(phase Phase, existing *MetricStatsWrapper, serviceName, metricName, metricType, tagScope, tagName, processorId, customerId, collectorId, tagValue string, attributes []*Attribute) error {
+	existing.Stats.ServiceName = serviceName
 	existing.Stats.MetricName = metricName
 	existing.Stats.MetricType = metricType
 	existing.Stats.TagScope = tagScope
@@ -84,7 +85,7 @@ func (e *MetricStatsCache) Record(phase Phase, metricName, metricType, tagScope,
 	truncatedHour := now.Truncate(time.Hour).UnixMilli()
 	key := constructMetricStatsKey(phase, truncatedHour, metricName, metricType, tagScope, tagName, serviceName, processorId, collectorId, customerId, attributes)
 	err := e.statsCache.Compute(truncatedHour, key, func(existing *MetricStatsWrapper) error {
-		err := updateMetricStats(phase, existing, metricName, metricType, tagScope, tagName, processorId, customerId, collectorId, tagValue, attributes)
+		err := updateMetricStats(phase, existing, serviceName, metricName, metricType, tagScope, tagName, processorId, customerId, collectorId, tagValue, attributes)
 		if err != nil {
 			return err
 		}
@@ -98,6 +99,7 @@ func (e *MetricStatsCache) Record(phase Phase, metricName, metricType, tagScope,
 
 func (e *MetricStatsCache) RecordMetricStats(metricStats *MetricStats) error {
 	err := e.statsCache.Compute(metricStats.TsHour, metricStats.Key(), func(existing *MetricStatsWrapper) error {
+		existing.Stats.ServiceName = metricStats.ServiceName
 		existing.Stats.MetricName = metricStats.MetricName
 		existing.Stats.MetricType = metricStats.MetricType
 		existing.Stats.TagScope = metricStats.TagScope
