@@ -26,7 +26,7 @@ type MetricStatsCache struct {
 	statsCache *StatsCache[*MetricStatsWrapper]
 }
 
-func initializeMetricStats(key string) (*MetricStatsWrapper, error) {
+func initializeMetricStats(tsHour int64, key string) (*MetricStatsWrapper, error) {
 	wrapper := &MetricStatsWrapper{}
 	wrapper.Stats = &MetricStats{}
 	union, err := hll.NewUnion(12)
@@ -79,7 +79,7 @@ func (e *MetricStatsCache) Record(phase Phase, metricName, metricType, tagScope,
 	now := time.Now()
 	truncatedHour := now.Truncate(time.Hour).UnixMilli()
 	key := constructMetricStatsKey(phase, truncatedHour, metricName, metricType, tagScope, tagName, serviceName, processorId, collectorId, customerId, attributes)
-	err := e.statsCache.Compute(key, func(existing *MetricStatsWrapper) error {
+	err := e.statsCache.Compute(truncatedHour, key, func(existing *MetricStatsWrapper) error {
 		err := updateMetricStats(phase, existing, metricName, metricType, tagScope, tagName, processorId, customerId, collectorId, tagValue, attributes)
 		if err != nil {
 			return err
@@ -93,7 +93,7 @@ func (e *MetricStatsCache) Record(phase Phase, metricName, metricType, tagScope,
 }
 
 func (e *MetricStatsCache) RecordMetricStats(metricStats *MetricStats) error {
-	err := e.statsCache.Compute(metricStats.Key(), func(existing *MetricStatsWrapper) error {
+	err := e.statsCache.Compute(metricStats.TsHour, metricStats.Key(), func(existing *MetricStatsWrapper) error {
 		existing.Stats.MetricName = metricStats.MetricName
 		existing.Stats.MetricType = metricStats.MetricType
 		existing.Stats.TagScope = metricStats.TagScope

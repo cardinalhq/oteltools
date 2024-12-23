@@ -24,7 +24,7 @@ import (
 
 type FlushCallback[T any] func(expiredItems []T)
 
-type InitializeCallback[T any] func(key string) (T, error)
+type InitializeCallback[T any] func(tsHour int64, key string) (T, error)
 
 type Entry[T any] struct {
 	key       string
@@ -115,7 +115,7 @@ func (b *StatsCache[T]) cleanupExpiredEntries() {
 	}
 }
 
-func (b *StatsCache[T]) Compute(key string, entryUpdater func(existing T) error) error {
+func (b *StatsCache[T]) Compute(tsHour int64, key string, entryUpdater func(existing T) error) error {
 	now := b.clock.Now()
 	truncatedTimestamp := now.Truncate(b.expiry).Unix()
 
@@ -172,7 +172,7 @@ func (b *StatsCache[T]) Compute(key string, entryUpdater func(existing T) error)
 		return entryUpdater(entry.value)
 	}
 
-	value, err := b.initializeCallback(key)
+	value, err := b.initializeCallback(tsHour, key)
 	if err != nil {
 		return err
 	}

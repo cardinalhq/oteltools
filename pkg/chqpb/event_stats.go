@@ -36,7 +36,7 @@ func NewEventStatsCache(capacity int,
 	return c
 }
 
-func initializeEventStats(key string) (*EventStats, error) {
+func initializeEventStats(tsHour int64, key string) (*EventStats, error) {
 	return &EventStats{}, nil
 }
 
@@ -73,7 +73,7 @@ func (e *EventStatsCache) Record(serviceName string,
 	now := time.Now()
 	truncatedHour := now.Truncate(time.Hour).UnixMilli()
 	key := constructEventStatsKey(serviceName, fingerprint, phase, processorId, customerId, collectorId, truncatedHour, attributes)
-	err := e.statsCache.Compute(key, func(existing *EventStats) error {
+	err := e.statsCache.Compute(truncatedHour, key, func(existing *EventStats) error {
 		err := updateEventStats(existing, fingerprint, phase, truncatedHour, serviceName, processorId, customerId, collectorId, attributes, count, size)
 		if err != nil {
 			return err
@@ -87,7 +87,7 @@ func (e *EventStatsCache) Record(serviceName string,
 }
 
 func (e *EventStatsCache) RecordEventStats(eventStats *EventStats) error {
-	err := e.statsCache.Compute(eventStats.Key(), func(existing *EventStats) error {
+	err := e.statsCache.Compute(eventStats.TsHour, eventStats.Key(), func(existing *EventStats) error {
 		updateStatsObject(existing, eventStats)
 		return nil
 	})
