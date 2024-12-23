@@ -15,7 +15,7 @@
 package chqpb
 
 import (
-	"fmt"
+	"errors"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -78,13 +78,8 @@ func TestAggregationAndFlush(t *testing.T) {
 }
 
 func TestCapacityConstraints(t *testing.T) {
-	var wg sync.WaitGroup
 
-	var flushedItems []*EventStats
 	flushCallback := func(expiredItems []*EventStats) {
-		flushedItems = append(flushedItems, expiredItems...)
-		fmt.Printf("Flush callback invoked: %v items flushed\n", len(expiredItems))
-		wg.Done()
 	}
 
 	mockClock := NewMockClock(time.Now().Truncate(time.Hour))
@@ -99,18 +94,9 @@ func TestCapacityConstraints(t *testing.T) {
 	err = cache.Record("serviceC", 789, Phase_PRE, "proc3", "coll3", "cust3", nil, 20, 300)
 	assert.NoError(t, err)
 
-	wg.Add(1)
 	err = cache.Record("serviceD", 101112, Phase_PRE, "proc4", "coll4", "cust4", nil, 15, 150)
-	assert.NoError(t, err)
-
-	wg.Wait()
-
-	assert.Equal(t, 1, len(flushedItems), "Exactly one item should be evicted when capacity is exceeded")
-
-	evictedKey := constructEventStatsKey("serviceD", 101112, Phase_PRE, "proc4", "cust4", "coll4", mockClock.Now().UnixMilli(), nil)
-	for _, item := range flushedItems {
-		assert.NotEqual(t, evictedKey, constructEventStatsKey(item.ServiceName, item.Fingerprint, item.Phase, item.ProcessorId, item.CustomerId, item.CollectorId, item.TsHour, item.Attributes), "The new entry should not be evicted")
-	}
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, ErrCacheFull))
 
 	cache.statsCache.Close()
 }

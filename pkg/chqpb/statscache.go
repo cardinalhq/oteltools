@@ -17,6 +17,7 @@ package chqpb
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -32,6 +33,22 @@ type Entry[T any] struct {
 	timestamp time.Time
 	mutex     sync.Mutex // Per-entry lock for fine-grained locking
 }
+
+type CacheError struct {
+	Code    string
+	Message string
+}
+
+func (e *CacheError) Error() string {
+	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+}
+
+var (
+	ErrCacheFull = &CacheError{
+		Code:    "CACHE_IS_FULL",
+		Message: "The cache is at capacity and cannot accept new entries",
+	}
+)
 
 type StatsCache[T any] struct {
 	capacity           int
@@ -202,7 +219,7 @@ func (b *StatsCache[T]) Compute(tsHour int64, key string, entryUpdater func(exis
 	// Check if entry was added during lock upgrade to avoid duplicate entries
 	if _, entryExists = entryMap[key]; !entryExists {
 		if len(entryMap) >= b.capacity {
-			b.evictRandom(entryMap)
+			return ErrCacheFull
 		}
 		entryMap[key] = &Entry[T]{
 			key:       key,
@@ -210,26 +227,7 @@ func (b *StatsCache[T]) Compute(tsHour int64, key string, entryUpdater func(exis
 			timestamp: now,
 		}
 	}
-
 	return nil
-}
-
-func (b *StatsCache[T]) evictRandom(entryMap map[string]*Entry[T]) {
-	if len(entryMap) == 0 {
-		return
-	}
-
-	keys := make([]string, 0, len(entryMap))
-	for key := range entryMap {
-		keys = append(keys, key)
-	}
-	randomKey := keys[b.randSource.Intn(len(keys))]
-	//if b.flushCallback != nil {
-	//	entry := entryMap[randomKey]
-	//	b.flushCallback([]T{entry.value})
-	//}
-
-	delete(entryMap, randomKey)
 }
 
 // Close stops the cleanup goroutine
