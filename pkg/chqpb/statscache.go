@@ -18,7 +18,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"math/rand"
 	"sync"
 	"time"
 )
@@ -62,7 +61,6 @@ type StatsCache[T any] struct {
 	initializeCallback InitializeCallback[T]
 	clock              Clock
 	stopCleanup        chan struct{}
-	randSource         *rand.Rand
 }
 
 func NewStatsCache[T any](capacity int,
@@ -82,7 +80,6 @@ func NewStatsCache[T any](capacity int,
 		initializeCallback: initializeCallback,
 		clock:              clock,
 		stopCleanup:        make(chan struct{}),
-		randSource:         rand.New(rand.NewSource(clock.Now().UnixNano())),
 	}
 	return statsCache
 }
