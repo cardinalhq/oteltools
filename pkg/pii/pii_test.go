@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTokenizeInput(t *testing.T) {
+func TestTokenize(t *testing.T) {
 	detector := NewDetector()
 
 	tests := []struct {
@@ -30,21 +30,13 @@ func TestTokenizeInput(t *testing.T) {
 		hasError bool
 	}{
 		{
-			input: "test input",
-			expected: []Token{
-				{Type: tokenizer.TokenString, Value: "test"},
-				{Type: tokenizer.TokenString, Value: "input"},
-			},
+			input:    "test input",
+			expected: []Token{},
 			hasError: false,
 		},
 		{
-			input: "  test input with spaces  ",
-			expected: []Token{
-				{Type: tokenizer.TokenString, Value: "test"},
-				{Type: tokenizer.TokenString, Value: "input"},
-				{Type: tokenizer.TokenString, Value: "with"},
-				{Type: tokenizer.TokenString, Value: "spaces"},
-			},
+			input:    "  test input with spaces  ",
+			expected: []Token{},
 			hasError: false,
 		},
 		{
@@ -56,9 +48,6 @@ func TestTokenizeInput(t *testing.T) {
 		{
 			input: "test input email example@example.com",
 			expected: []Token{
-				{Type: tokenizer.TokenString, Value: "test"},
-				{Type: tokenizer.TokenString, Value: "input"},
-				{Type: tokenizer.TokenString, Value: "email"},
 				{Type: tokenizer.TokenEmail, Value: "example@example.com"},
 			},
 			hasError: false,
@@ -72,9 +61,6 @@ func TestTokenizeInput(t *testing.T) {
 		{
 			input: "test input ip 10.42.20.100",
 			expected: []Token{
-				{Type: tokenizer.TokenString, Value: "test"},
-				{Type: tokenizer.TokenString, Value: "input"},
-				{Type: tokenizer.TokenString, Value: "ip"},
 				{Type: tokenizer.TokenIPv4, Value: "10.42.20.100"},
 			},
 		},
@@ -86,7 +72,7 @@ func TestTokenizeInput(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tokens, err := detector.TokenizeInput(tt.input)
+		tokens, err := detector.Tokenize(tt.input)
 		if tt.hasError {
 			assert.Error(t, err)
 		} else {

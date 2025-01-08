@@ -24,7 +24,6 @@ import (
 )
 
 type Detector interface {
-	TokenizeInput(input string) ([]Token, error)
 	Tokenize(input string) ([]Token, error)
 }
 
@@ -49,12 +48,6 @@ func NewDetector(opts ...Option) *DetectorImpl {
 
 type Option func(*DetectorImpl)
 
-func (fp *DetectorImpl) TokenizeInput(input string) ([]Token, error) {
-	message := strings.TrimSpace(input)
-
-	return fp.Tokenize(message)
-}
-
 func (fp *DetectorImpl) Tokenize(input string) ([]Token, error) {
 	tk := tokenizer.NewPIITokenizer()
 	s := ragel.New("test", strings.NewReader(input), tk)
@@ -66,6 +59,8 @@ func (fp *DetectorImpl) Tokenize(input string) ([]Token, error) {
 			return tokens, nil
 		case ragel.Error:
 			return nil, fmt.Errorf("error: %s", literal)
+		case tokenizer.TokenString:
+			continue
 		default:
 			tokens = append(tokens, Token{tok, literal})
 		}
