@@ -1,4 +1,4 @@
-# Copyright 2024 CardinalHQ, Inc
+# Copyright 2024-2025 CardinalHQ, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-#
-# Below here lies magic...
-#
 
 # Due to the way we build, we will make the universe no matter which files
 # actually change.  With the many targets, this is just so much easier,

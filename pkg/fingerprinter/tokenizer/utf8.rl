@@ -1,4 +1,4 @@
-// Copyright 2024 CardinalHQ, Inc
+// Copyright 2024-2025 CardinalHQ, Inc
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 //
 // This file defines uany, uletter, ulower, uupper
 //
-// Generated from the Go unicode package (unicode version 15.0.0). 
+// Generated from the Go unicode package (unicode version 15.0.0).
 // Make sure that alphtype is set to unsigned char for C, and byte for Go.
 
 %%{

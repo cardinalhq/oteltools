@@ -1,4 +1,4 @@
-// Copyright 2024 CardinalHQ, Inc
+// Copyright 2024-2025 CardinalHQ, Inc
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -119,7 +119,7 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
         path = ('/'{1} (alnum_u | '.')+)+ '/'{0,1};
 
         durationIdentifier =
-            [Nn][Ss] | [Nn] 'ano' | [Nn] 'nano' [Ss] 'econd' 
+            [Nn][Ss] | [Nn] 'ano' | [Nn] 'nano' [Ss] 'econd'
             | 'us' | 'micro' | 'microsecond'
             | 'ms' | 'mil' | 'mils' | 'milli' | 'millis' | 'millisecond' | 'milliseconds'
             | 's' | 'sec' | 'secs' | 'second' | 'seconds'
@@ -156,7 +156,7 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
         timesep = ':' | '.';
         iso8601 = digit{4} '-' digit{2} '-' digit{2} 'T' digit{2} ':' digit{2} ':' digit{2} (('.' | ',') digit{1,9})* ('Z' | ('+' | '-') digit{2} ':' digit{2})?;
         time = digit{2} timesep digit{2} timesep digit{2} (('.' | ',') digit{1,9})?;
-    
+
         wordEndOfSentence = [a-zA-Z]+ '. ';
 
         idchars = alnum_u | '_' | '.' | '-' | '@' | ':';
