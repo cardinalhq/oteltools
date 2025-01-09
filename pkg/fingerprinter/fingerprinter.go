@@ -114,7 +114,7 @@ func (fp *fingerprinterImpl) Fingerprint(input string) (fingerprint int64, token
 	if err != nil {
 		return 0, []string{}, "", err
 	}
-	return int64(xxhash.Sum64String(s)), tokens, level, nil
+	return int64(xxhash.Sum64String(s)), t, level, nil
 }
 
 func (fp *fingerprinterImpl) TokenizeInput(input string) ([]string, string, error) {
