@@ -259,7 +259,7 @@ func TestFingerprinter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tokens, level, err := fp.TokenizeInput(tt.input)
 			assert.NoError(t, err, "input: %s", tt.input)
-			assert.Equal(t, tt.want, tokens, "input: %s", tt.input)
+			assert.Equal(t, tt.want, strings.Join(tokens, " "), "input: %s", tt.input)
 			assert.Equal(t, tt.wantLevel, level, "input: %s", tt.input)
 		})
 	}
@@ -287,7 +287,7 @@ func TestFingerprinterWithLineLimit(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tokens, _, err := fp.TokenizeInput(tt.input)
 			assert.NoError(t, err)
-			assert.Equal(t, tt.want, tokens)
+			assert.Equal(t, tt.want, strings.Join(tokens, " "))
 		})
 	}
 }
@@ -297,7 +297,7 @@ func BenchmarkFingerprinter1(b *testing.B) {
 	fp := NewFingerprinter()
 	log.Printf("Running loop for %d times", b.N)
 	for i := 0; i < b.N; i++ {
-		_, _, err := fp.Fingerprint(input)
+		_, _, _, err := fp.Fingerprint(input)
 		if err != nil {
 			b.Fatal(err)
 		}

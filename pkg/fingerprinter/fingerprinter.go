@@ -29,9 +29,9 @@ import (
 
 type Fingerprinter interface {
 	IsWord(word string) bool
-	Fingerprint(input string) (fingerprint int64, level string, err error)
-	TokenizeInput(input string) (string, string, error)
-	Tokenize(input string) (string, string, error)
+	Fingerprint(input string) (fingerprint int64, tokens []string, level string, err error)
+	TokenizeInput(input string) ([]string, string, error)
+	Tokenize(input string) ([]string, string, error)
 }
 
 type fingerprinterImpl struct {
@@ -89,7 +89,7 @@ func getStringKey(v map[string]any, keys ...string) string {
 	return ""
 }
 
-func (fp *fingerprinterImpl) tokenizeJSONContent(prefix string, data map[string]any, suffix string) (string, string, error) {
+func (fp *fingerprinterImpl) tokenizeJSONContent(prefix string, data map[string]any, suffix string) ([]string, string, error) {
 	message := getStringKey(data, "message", "msg")
 	level := getStringKey(data, "level", "loglevel")
 	level = strings.ToLower(level)
@@ -100,7 +100,7 @@ func (fp *fingerprinterImpl) tokenizeJSONContent(prefix string, data map[string]
 	body := prefix + " " + level + "" + message + " " + suffix + " "
 	s, nlevel, err := fp.Tokenize(body)
 	if err != nil {
-		return "", "", err
+		return nil, "", err
 	}
 	if level == "" {
 		level = nlevel
@@ -108,22 +108,27 @@ func (fp *fingerprinterImpl) tokenizeJSONContent(prefix string, data map[string]
 	return s, level, nil
 }
 
-func (fp *fingerprinterImpl) Fingerprint(input string) (fingerprint int64, level string, err error) {
-	s, level, err := fp.TokenizeInput(input)
+func (fp *fingerprinterImpl) Fingerprint(input string) (fingerprint int64, tokens []string, level string, err error) {
+	t, level, err := fp.TokenizeInput(input)
+	s := strings.Join(t, " ")
 	if err != nil {
-		return 0, "", err
+		return 0, []string{}, "", err
 	}
-	return int64(xxhash.Sum64String(s)), level, nil
+	return int64(xxhash.Sum64String(s)), tokens, level, nil
 }
 
-func (fp *fingerprinterImpl) TokenizeInput(input string) (string, string, error) {
+func (fp *fingerprinterImpl) TokenizeInput(input string) ([]string, string, error) {
 	message := strings.TrimSpace(input)
 
 	prefix, jsonContent, suffix := findJSONContent(message)
 	if jsonContent != "" {
 		var data map[string]any
 		if err := json.Unmarshal([]byte(jsonContent), &data); err == nil {
-			return fp.tokenizeJSONContent(prefix, data, suffix)
+			tokenized, level, err := fp.tokenizeJSONContent(prefix, data, suffix)
+			if err != nil {
+				return []string{}, "", err
+			}
+			return tokenized, level, nil
 		}
 	}
 
@@ -131,7 +136,11 @@ func (fp *fingerprinterImpl) TokenizeInput(input string) (string, string, error)
 	if i := strings.IndexAny(message, "\n\r"); i != -1 {
 		message = message[:i]
 	}
-	return fp.Tokenize(message)
+	tokenized, level, err := fp.Tokenize(message)
+	if err != nil {
+		return []string{}, "", err
+	}
+	return tokenized, level, nil
 }
 
 func (fp *fingerprinterImpl) IsWord(word string) bool {
@@ -152,22 +161,22 @@ func (fp *fingerprinterImpl) IsWord(word string) bool {
 	return true
 }
 
-func (fp *fingerprinterImpl) Tokenize(input string) (string, string, error) {
+func (fp *fingerprinterImpl) Tokenize(input string) ([]string, string, error) {
 	tk := tokenizer.NewFingerprintTokenizer()
 	s := ragel.New("test", strings.NewReader(input), tk)
-	items := []string{}
+	var items []string
 	level := ""
 	for {
 		// Check length prior to adding the next token since we use 'continue' liberally
 		if len(items) >= fp.maxTokens {
-			return strings.Join(items, " "), strings.ToLower(level), nil
+			return items, strings.ToLower(level), nil
 		}
 		_, tok, literal := s.Next()
 		switch tok {
 		case ragel.EOF:
-			return strings.Join(items, " "), strings.ToLower(level), nil
+			return items, strings.ToLower(level), nil
 		case ragel.Error:
-			return "", "", fmt.Errorf("error: %s", literal)
+			return nil, "", fmt.Errorf("error: %s", literal)
 		case tokenizer.TokenLoglevel:
 			if level == "" {
 				level = literal

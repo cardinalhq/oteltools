@@ -51,7 +51,7 @@ type Option func(*DetectorImpl)
 func (fp *DetectorImpl) Tokenize(input string) ([]Token, error) {
 	tk := tokenizer.NewPIITokenizer()
 	s := ragel.New("test", strings.NewReader(input), tk)
-	tokens := []Token{}
+	var tokens []Token
 	for {
 		_, tok, literal := s.Next()
 		switch tok {
