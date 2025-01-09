@@ -16,6 +16,7 @@ package pii
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/db47h/ragel/v2"
@@ -25,20 +26,43 @@ import (
 
 type Detector interface {
 	Tokenize(input string) ([]Token, error)
+	Sanitize(input string, tokens []Token) string
 }
 
+type PIIType int
+
+const (
+	PIITypeEmail = PIIType(tokenizer.TokenEmail)
+	PIITypeIPv4  = PIIType(tokenizer.TokenIPv4)
+	PIITypeURL   = PIIType(tokenizer.TokenURL)
+	PIITypeFQDN  = PIIType(tokenizer.TokenFQDN)
+	PIITypePhone = PIIType(tokenizer.TokenPhone)
+	PIITypeSSN   = PIIType(tokenizer.TokenSSN)
+	PIITypeCCN   = PIIType(tokenizer.TokenCCN)
+)
+
 type DetectorImpl struct {
+	piiTypes            []PIIType
+	redactedReplacement string
 }
 
 var _ Detector = (*DetectorImpl)(nil)
 
 type Token struct {
-	Type  ragel.Token
+	Type  PIIType
 	Value string
 }
 
 func NewDetector(opts ...Option) *DetectorImpl {
-	fp := DetectorImpl{}
+	fp := DetectorImpl{
+		piiTypes: []PIIType{
+			PIITypeEmail,
+			PIITypePhone,
+			PIITypeSSN,
+			PIITypeCCN,
+		},
+		redactedReplacement: "REDACTED",
+	}
 
 	for _, opt := range opts {
 		opt(&fp)
@@ -47,6 +71,18 @@ func NewDetector(opts ...Option) *DetectorImpl {
 }
 
 type Option func(*DetectorImpl)
+
+func WithPIITypes(types ...PIIType) Option {
+	return func(fp *DetectorImpl) {
+		fp.piiTypes = types
+	}
+}
+
+func WithRedactedReplacement(replacement string) Option {
+	return func(fp *DetectorImpl) {
+		fp.redactedReplacement = replacement
+	}
+}
 
 func (fp *DetectorImpl) Tokenize(input string) ([]Token, error) {
 	tk := tokenizer.NewPIITokenizer()
@@ -58,11 +94,52 @@ func (fp *DetectorImpl) Tokenize(input string) ([]Token, error) {
 		case ragel.EOF:
 			return tokens, nil
 		case ragel.Error:
-			return nil, fmt.Errorf("error: %s", literal)
+			return nil, fmt.Errorf("tokenization: %s", literal)
 		case tokenizer.TokenString:
 			continue
+		case tokenizer.TokenCCN:
+			if validCCN(literal) {
+				tokens = append(tokens, Token{PIIType(tok), literal})
+			}
 		default:
-			tokens = append(tokens, Token{tok, literal})
+			tokens = append(tokens, Token{PIIType(tok), literal})
 		}
 	}
+}
+
+func (fp *DetectorImpl) Sanitize(input string, tokens []Token) string {
+	for _, t := range tokens {
+		if len(fp.piiTypes) == 0 || slices.Contains(fp.piiTypes, t.Type) {
+			input = strings.ReplaceAll(input, t.Value, fp.redactedReplacement)
+		}
+	}
+	return input
+}
+
+func validCCN(ccn string) bool {
+	// Luhn algorithm
+	// https://en.wikipedia.org/wiki/Luhn_algorithm
+	// https://rosettacode.org/wiki/Luhn_test_of_credit_card_numbers
+	ccn = strings.ReplaceAll(ccn, "-", "")
+	ccn = strings.ReplaceAll(ccn, " ", "")
+	if len(ccn) < 13 || len(ccn) > 19 {
+		return false
+	}
+	sum := 0
+	parity := len(ccn) % 2
+	for i, c := range ccn {
+		digit := int(c - '0')
+		if digit < 0 || digit > 9 {
+			return false
+		}
+		if i%2 == parity {
+			digit *= 2
+			if digit > 9 {
+				digit -= 9
+			}
+		}
+		sum += digit
+	}
+
+	return sum%10 == 0
 }

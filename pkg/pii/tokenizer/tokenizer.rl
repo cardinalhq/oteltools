@@ -25,20 +25,24 @@ import (
 // Token types
 const (
     TokenString ragel.Token = iota
-    TokenUrl
+    TokenURL
     TokenIPv4
-    TokenIPv6
     TokenEmail
     TokenFQDN
+    TokenPhone
+    TokenSSN
+    TokenCCN
 )
 
 var TokenNames = map[ragel.Token]string{
     TokenString:      "String",
-    TokenUrl:         "Url",
+    TokenURL:         "URL",
     TokenIPv4:        "IPv4",
-    TokenIPv6:        "IPv6",
     TokenEmail:       "Email",
     TokenFQDN:        "FQDN",
+    TokenPhone:       "Phone",
+    TokenSSN:         "SSN",
+    TokenCCN:         "CCN",
 }
 
 // make golangci-lint happy
@@ -82,20 +86,32 @@ func (*PIITokenizer) TokenString(t ragel.Token) string {
         email = alnum_u+ (('.' | '-' | '+' | '_') alnum_u+)* '@' fqdn;
 
         ipv4 = digit{1,3} '.' digit{1,3} '.' digit{1,3} '.' digit{1,3};
-
         protocol = alnum_u+;
         url_creds = (alnum_u+)? ':' (alnum_u+)? '@';
         url_path = ('/' alnum_u+)*;
         url_host = fqdn | ipv4;
         url_port = ':' digit{1,5};
         url = protocol '://' (url_creds)? url_host? url_port? url_path;
-        httpmethod = [Gg][Ee][Tt] | [Pp][Oo][Ss][Tt] | [Pp][Uu][Tt] | [Dd][Ee][Ll][Ee][Tt][Ee] | [Hh][Ee][Aa][Dd] | [Pp][Aa][Tt][Cc][Hh];
 
         brackets = '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>';
         punctuation = '.' | ',' | ';' | ':' | '!' | '?' | '"' | '\'' | '*' | '-' | '_' | '@' | '#' | '$' | '%' | '&' | '^' | '|' | '~' | '`' | '+' | '=' | '\\' | '|';
-        skipcharacters = space | newline | cntrl | 0x7f | brackets |  punctuation;
+        skipcharacters = space | newline | cntrl | 0x7f | brackets | punctuation;
 
         wordEndOfSentence = [a-zA-Z]+ '. ';
+
+        ccnsep = '-' | ' ';
+        ccn = [3456]. digit{3} ccnsep? digit{4} ccnsep? digit{4} ccnsep? digit{4} |
+               digit{4} ccnsep? digit{6} ccnsep? digit{5} |
+               digit{4} ccnsep? digit{4} ccnsep? digit{4} ccnsep? digit{2};
+
+        ssn = digit{3} '-' digit{2} '-' digit{4};
+
+        phone_sep = '-' | '.' | space;
+        intl_prefix = '+' digit+ phone_sep?;
+        # North American phone number
+        phone_na = '(' digit{3} ')' space? digit{3} phone_sep digit{4} |
+                    digit{3} phone_sep digit{3} phone_sep digit{4};
+        phone = (intl_prefix? phone_na);
 
         # pre-filtering
         ansicode;
@@ -104,8 +120,20 @@ func (*PIITokenizer) TokenString(t ragel.Token) string {
             s.Emit(ts, TokenIPv4, string(data[ts:te]))
         };
 
+        ccn {
+            s.Emit(ts, TokenCCN, string(data[ts:te]))
+        };
+
+        ssn {
+            s.Emit(ts, TokenSSN, string(data[ts:te]))
+        };
+
+        phone {
+            s.Emit(ts, TokenPhone, string(data[ts:te]))
+        };
+
         url {
-            s.Emit(ts, TokenUrl, string(data[ts:te]))
+            s.Emit(ts, TokenURL, string(data[ts:te]))
         };
 
         email {
@@ -127,6 +155,10 @@ func (*PIITokenizer) TokenString(t ragel.Token) string {
         skipcharacters+;
 
         '/';
+
+        number+ {
+            s.Emit(ts, TokenString, string(data[ts:te]))
+        };
     *|;
 }%%
 
