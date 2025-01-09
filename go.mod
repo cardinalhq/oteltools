@@ -8,7 +8,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/db47h/ragel/v2 v2.2.4
 	github.com/elastic/go-grok v0.3.1
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.117.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.116.0
 	github.com/oschwald/geoip2-golang v1.11.0
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/collector/client v1.23.0
