@@ -22,6 +22,7 @@ const (
 	CardinalFieldCounts            = CardinalFieldPrefixDot + "counts"
 	CardinalFieldFiltered          = CardinalFieldPrefixDot + "filtered"
 	CardinalFieldTokens            = CardinalFieldPrefixDot + "tokens"
+	CardinalFieldTokenMap          = CardinalFieldPrefixDot + "tokenMap"
 	CardinalFieldFingerprint       = CardinalFieldPrefixDot + "fingerprint"
 	CardinalFieldDropForVendor     = CardinalFieldPrefixDot + "drop_for_vendor"
 	CardinalFieldRulesMatched      = CardinalFieldPrefixDot + "rules_matched"
