@@ -16,6 +16,8 @@ package fingerprinter
 
 import (
 	"bufio"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/plog"
 	"log"
 	"os"
 	"strings"
@@ -540,4 +542,19 @@ func TestTokenMapConstruction(t *testing.T) {
 	assert.Equal(t, s, "info")
 	assert.NotEmpty(t, tMap.Items)
 	assert.Equal(t, tMap.Get(4), "/api/v1/endpoint")
+}
+
+func TestJSONBodyFingerprint(t *testing.T) {
+	exemplarData, err := os.ReadFile("testdata/payload.json")
+	require.NoError(t, err, "Failed to read exemplar data")
+
+	unmarshaller := plog.JSONUnmarshaler{}
+	logs, err := unmarshaller.UnmarshalLogs(exemplarData)
+	lr := logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+	msg := lr.Body().AsString()
+	fp := NewFingerprinter()
+	fingerprint, tMap, _, err := fp.Fingerprint(msg)
+	assert.NoError(t, err)
+	assert.NotEqual(t, 0, fingerprint)
+	assert.NotEmpty(t, tMap.Items)
 }

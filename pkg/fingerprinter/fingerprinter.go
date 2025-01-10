@@ -85,10 +85,33 @@ func findJSONContent(input string) (string, string, string) {
 	return message, jsonContent, extra
 }
 
-func getStringKey(v map[string]any, keys ...string) string {
-	for _, k := range keys {
-		if s, ok := v[k].(string); ok {
-			return s
+func lookupKey(bodyMap map[string]any, key string) string {
+	var findKey func(map[string]any, string) string
+	findKey = func(currentMap map[string]any, searchKey string) string {
+		for k, v := range currentMap {
+			if k == searchKey {
+				if str, ok := v.(string); ok {
+					return str
+				}
+				return ""
+			}
+			if nestedMap, ok := v.(map[string]any); ok {
+				result := findKey(nestedMap, searchKey)
+				if result != "" {
+					return result
+				}
+			}
+		}
+		return ""
+	}
+
+	return findKey(bodyMap, key)
+}
+
+func getStringKey(body map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if value := lookupKey(body, key); value != "" {
+			return value
 		}
 	}
 	return ""
