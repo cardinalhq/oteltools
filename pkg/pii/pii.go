@@ -20,8 +20,11 @@ import (
 	"strings"
 
 	"github.com/db47h/ragel/v2"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/cardinalhq/oteltools/pkg/pii/tokenizer"
+	"github.com/cardinalhq/oteltools/pkg/telemetry"
 )
 
 type Detector interface {
@@ -41,9 +44,32 @@ const (
 	PIITypeCCN   = PIIType(tokenizer.TokenCCN)
 )
 
+func (t PIIType) String() string {
+	switch t {
+	case PIITypeEmail:
+		return "email"
+	case PIITypeIPv4:
+		return "ipv4"
+	case PIITypeURL:
+		return "url"
+	case PIITypeFQDN:
+		return "fqdn"
+	case PIITypePhone:
+		return "phone"
+	case PIITypeSSN:
+		return "ssn"
+	case PIITypeCCN:
+		return "ccn"
+	default:
+		return "unknown"
+	}
+}
+
 type DetectorImpl struct {
 	piiTypes            []PIIType
 	redactedReplacement string
+	detectionStats      telemetry.DeferrableCounter
+	redactionStats      telemetry.DeferrableCounter
 }
 
 var _ Detector = (*DetectorImpl)(nil)
@@ -84,6 +110,18 @@ func WithRedactedReplacement(replacement string) Option {
 	}
 }
 
+func WithRedactionStats(stats telemetry.DeferrableCounter) Option {
+	return func(fp *DetectorImpl) {
+		fp.redactionStats = stats
+	}
+}
+
+func WithDetectionStats(stats telemetry.DeferrableCounter) Option {
+	return func(fp *DetectorImpl) {
+		fp.detectionStats = stats
+	}
+}
+
 func (fp *DetectorImpl) Tokenize(input string) ([]Token, error) {
 	tk := tokenizer.NewPIITokenizer()
 	s := ragel.New("test", strings.NewReader(input), tk)
@@ -109,7 +147,12 @@ func (fp *DetectorImpl) Tokenize(input string) ([]Token, error) {
 
 func (fp *DetectorImpl) Sanitize(input string, tokens []Token) string {
 	for _, t := range tokens {
+		attrset := attribute.NewSet(
+			attribute.String("pii.type", t.Type.String()),
+		)
+		telemetry.CounterAdd(fp.detectionStats, 1, metric.WithAttributeSet(attrset))
 		if len(fp.piiTypes) == 0 || slices.Contains(fp.piiTypes, t.Type) {
+			telemetry.CounterAdd(fp.redactionStats, 1, metric.WithAttributeSet(attrset))
 			input = strings.ReplaceAll(input, t.Value, fp.redactedReplacement)
 		}
 	}
