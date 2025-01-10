@@ -257,9 +257,9 @@ func TestFingerprinter(t *testing.T) {
 	for _, tt := range tests {
 		fp := NewFingerprinter()
 		t.Run(tt.name, func(t *testing.T) {
-			tokens, level, err := fp.TokenizeInput(tt.input)
+			tokenMap, level, err := fp.TokenizeInput(tt.input)
 			assert.NoError(t, err, "input: %s", tt.input)
-			assert.Equal(t, tt.want, strings.Join(tokens, " "), "input: %s", tt.input)
+			assert.Equal(t, tt.want, strings.Join(tokenMap.Items, " "), "input: %s", tt.input)
 			assert.Equal(t, tt.wantLevel, level, "input: %s", tt.input)
 		})
 	}
@@ -285,9 +285,9 @@ func TestFingerprinterWithLineLimit(t *testing.T) {
 	for _, tt := range tests {
 		fp := NewFingerprinter(WithMaxTokens(5))
 		t.Run(tt.name, func(t *testing.T) {
-			tokens, _, err := fp.TokenizeInput(tt.input)
+			tokenMap, _, err := fp.TokenizeInput(tt.input)
 			assert.NoError(t, err)
-			assert.Equal(t, tt.want, strings.Join(tokens, " "))
+			assert.Equal(t, tt.want, strings.Join(tokenMap.Items, " "))
 		})
 	}
 }
@@ -530,4 +530,14 @@ func BenchmarkIsWord(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		fp.IsWord("heLLo")
 	}
+}
+
+func TestTokenMapConstruction(t *testing.T) {
+	fp := NewFingerprinter()
+	fingerprint, tMap, s, err := fp.Fingerprint("INFO Received request for /api/v1/endpoint from userId=12345")
+	assert.NoError(t, err)
+	assert.NotEqual(t, 0, fingerprint)
+	assert.Equal(t, s, "info")
+	assert.NotEmpty(t, tMap.Items)
+	assert.Equal(t, tMap.Get(4), "/api/v1/endpoint")
 }
