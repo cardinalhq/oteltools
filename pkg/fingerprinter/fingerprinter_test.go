@@ -16,12 +16,13 @@ package fingerprinter
 
 import (
 	"bufio"
-	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/pdata/plog"
 	"log"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/plog"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -550,6 +551,7 @@ func TestJSONBodyFingerprint(t *testing.T) {
 
 	unmarshaller := plog.JSONUnmarshaler{}
 	logs, err := unmarshaller.UnmarshalLogs(exemplarData)
+	require.NoError(t, err)
 	lr := logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
 	msg := lr.Body().AsString()
 	fp := NewFingerprinter()
