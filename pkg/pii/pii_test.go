@@ -72,6 +72,15 @@ func TestSanitize(t *testing.T) {
 			expected: "test input ip REDACTED",
 		},
 		{
+			input: `test input "10.162.8.237,10.25.31.44"`,
+			types: []PIIType{PIITypeIPv4},
+			expectedTokens: []Token{
+				{Type: PIITypeIPv4, Value: "10.162.8.237"},
+				{Type: PIITypeIPv4, Value: "10.25.31.44"},
+			},
+			expected: `test input "REDACTED,REDACTED"`,
+		},
+		{
 			input: "test input 8.8.8.8, sender=example@example.com",
 			types: []PIIType{PIITypeIPv4},
 			expectedTokens: []Token{
