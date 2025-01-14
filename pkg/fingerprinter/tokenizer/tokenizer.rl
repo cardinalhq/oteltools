@@ -44,23 +44,23 @@ const (
 )
 
 var TokenNames = map[ragel.Token]string{
-    TokenIdentifier:  "Identifier",
-    TokenString:      "String",
-    TokenUrl:         "Url",
-    TokenDuration:    "Duration",
-    TokenDate:        "Date",
-    TokenTime:        "Time",
-    TokenNumber:      "Number",
-    TokenBool:        "Bool",
-    TokenLoglevel:    "Loglevel",
-    TokenIPv4:        "IPv4",
-    TokenHTTPMethod:  "HTTPMethod",
-    TokenUUID:        "UUID",
-    TokenEmail:       "Email",
-    TokenPath:        "Path",
-    TokenFQDN:        "FQDN",
-    TokenISO8601:     "ISO8601",
-    TokenModuleName:  "ModuleName",
+    TokenIdentifier:   "Identifier",
+    TokenString:       "String",
+    TokenUrl:          "Url",
+    TokenDuration:     "Duration",
+    TokenDate:         "Date",
+    TokenTime:         "Time",
+    TokenNumber:       "Number",
+    TokenBool:         "Bool",
+    TokenLoglevel:     "Loglevel",
+    TokenIPv4:         "IPv4",
+    TokenHTTPMethod:   "HTTPMethod",
+    TokenUUID:         "UUID",
+    TokenEmail:        "Email",
+    TokenPath:         "Path",
+    TokenFQDN:         "FQDN",
+    TokenISO8601:      "ISO8601",
+    TokenModuleName:   "ModuleName",
 }
 
 var LogLevelNames = []string {
@@ -108,15 +108,14 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
 
         number = digit+ ('.' digit+)? | '.' digit+ | digit + '.';
 
-        ansicode = digit+ (';' digit+)*  uletter;
-
         uuid = xdigit{8} [_\-] (xdigit{4} [_\-]){3} xdigit{12};
 
-        dnslabel = alnum_u+ ('-' alnum_u+)*;
+        dnslabel = alpha_u alnum_u+ (('-' | '_') alnum_u+)*;
         fqdn = dnslabel ('.' dnslabel)+;
         email = alnum_u+ (('.' | '-' | '+' | '_') alnum_u+)* '@' fqdn;
 
-        path = ('/'{1} (alnum_u | '.')+)+ '/'{0,1};
+        pathchars = alnum_u | '_' | '-' | '.' | '@' | ':' | '~' | '+' | '=' | '&' | '?' | '!' | '*' | '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>' | ';' | '$' | '|';
+        path = ('/'{1} (alnum_u | pathchars | ('%' xdigit{2}))+)* '/'{0,1};
 
         durationIdentifier =
             [Nn][Ss] | [Nn] 'ano' | [Nn] 'nano' [Ss] 'econd'
@@ -129,7 +128,7 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
             | 'week' | 'weeks'
             | 'mon' | 'month' | 'months'
             | 'year' | 'years';
-        duration = digit+ space* durationIdentifier ('s' | '(s)')?;
+        duration = (digit | '.')+ space* durationIdentifier ('s' | '(s)')?;
 
         ipv4 = digit{1,3} '.' digit{1,3} '.' digit{1,3} '.' digit{1,3};
 
@@ -145,7 +144,7 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
 
         brackets = '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>';
         punctuation = '.' | ',' | ';' | ':' | '!' | '?' | '"' | '\'' | '*' | '-' | '_' | '@' | '#' | '$' | '%' | '&' | '^' | '|' | '~' | '`' | '+' | '=' | '\\' | '|';
-        skipcharacters = space | newline | cntrl | 0x7f | brackets |  punctuation;
+        skipcharacters = space | newline | cntrl | 0x7f | brackets | punctuation;
 
         dateyear = digit{4} | digit{2};
         datemonth = digit{2} | 'jan' | 'feb' | 'mar' | 'apr' | 'may' | 'jun' | 'jul' | 'aug' | 'sep' | 'oct' | 'nov' | 'dec';
@@ -154,20 +153,15 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
 
         date = dateyear datesep datemonth datesep dateday;
         timesep = ':' | '.';
-        iso8601 = digit{4} '-' digit{2} '-' digit{2} 'T' digit{2} ':' digit{2} ':' digit{2} (('.' | ',') digit{1,9})* ('Z' | ('+' | '-') digit{2} ':' digit{2})?;
+        iso8601 = digit{4} '-' digit{2} '-' digit{2} 'T' digit{2} ':' digit{2} ':' digit{2} (('.' | ',') digit{1,9})* ('Z' | ' '? ('+' | '-') digit{2} ':'? digit{2})?;
         time = digit{2} timesep digit{2} timesep digit{2} (('.' | ',') digit{1,9})?;
 
         wordEndOfSentence = [a-zA-Z]+ '. ';
 
         idchars = alnum_u | '_' | '.' | '-' | '@' | ':';
-        identifier = idchars+;
-
-        #identifier = alnum_u+ (('_' | '.' | '-' | '@' | ':')+ alnum_u+)+;
+        identifier = idchars{4,};
 
         goModuleAndFile = alnum_u+ '@' (alnum_u | '.' | '-' | '_')+ path ':' digit+;
-
-        # pre-filtering
-        ansicode;
 
         iso8601 {
             s.Emit(ts, TokenISO8601, string(data[ts:te]))
@@ -179,10 +173,6 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
 
         path {
             s.Emit(ts, TokenPath, string(data[ts:te]))
-        };
-
-        ipv4 {
-            s.Emit(ts, TokenIPv4, string(data[ts:te]))
         };
 
         uuid {
@@ -197,10 +187,6 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
             s.Emit(ts, TokenEmail, string(data[ts:te]))
         };
 
-        fqdn {
-            s.Emit(ts, TokenFQDN, string(data[ts:te]))
-        };
-
         time {
             s.Emit(ts, TokenTime, string(data[ts:te]))
         };
@@ -211,6 +197,14 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
 
         duration {
             s.Emit(ts, TokenDuration, string(data[ts:te]))
+        };
+
+        ipv4 {
+            s.Emit(ts, TokenIPv4, string(data[ts:te]))
+        };
+
+        fqdn {
+            s.Emit(ts, TokenFQDN, string(data[ts:te]))
         };
 
         number {
@@ -246,8 +240,6 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
         };
 
         skipcharacters+;
-
-        '/';
     *|;
 }%%
 
