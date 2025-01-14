@@ -157,7 +157,7 @@ func (b *StatsCache[T]) Compute(tsHour int64, key string, entryUpdater func(exis
 
 	b.cacheMutex.RLock()
 	binMap, bucketExists := b.cache[truncatedTimestamp]
-	bucketLock, lockExists := b.bucketLocks[truncatedTimestamp]
+	bucketLock := b.bucketLocks[truncatedTimestamp]
 	b.cacheMutex.RUnlock()
 
 	if !bucketExists {
@@ -169,7 +169,7 @@ func (b *StatsCache[T]) Compute(tsHour int64, key string, entryUpdater func(exis
 			b.bucketLocks[truncatedTimestamp] = &sync.RWMutex{}
 			b.binLocks[truncatedTimestamp] = make(map[int]*sync.RWMutex)
 		}
-		if _, lockExists = b.bucketLocks[truncatedTimestamp]; !lockExists {
+		if _, lockExists := b.bucketLocks[truncatedTimestamp]; !lockExists {
 			b.bucketLocks[truncatedTimestamp] = &sync.RWMutex{}
 			b.binLocks[truncatedTimestamp] = make(map[int]*sync.RWMutex)
 		}
