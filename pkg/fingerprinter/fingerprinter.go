@@ -14,6 +14,9 @@
 
 package fingerprinter
 
+// TODO:  include JSON (or json-like) keys as an ordered list in the fingerprint
+// TODO:  add the map<string,any> as a return value for when we parse json-like content
+
 import (
 	"encoding/json"
 	"fmt"
@@ -24,7 +27,9 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/db47h/ragel/v2"
 
+	"github.com/cardinalhq/oteltools/maputils"
 	"github.com/cardinalhq/oteltools/pkg/fingerprinter/tokenizer"
+	"github.com/cardinalhq/oteltools/stringutils"
 )
 
 const (
@@ -34,8 +39,8 @@ const (
 
 type Fingerprinter interface {
 	IsWord(word string) bool
-	Fingerprint(input string) (fingerprint int64, tokens *TokenMap, level string, err error)
-	TokenizeInput(input string) (*TokenMap, string, error)
+	Fingerprint(input string) (fingerprint int64, tokens *TokenMap, level string, js map[string]any, err error)
+	TokenizeInput(input string) (*TokenMap, string, map[string]any, error)
 	Tokenize(input string) (*TokenMap, string, error)
 }
 
@@ -133,42 +138,65 @@ func (fp *fingerprinterImpl) tokenizeJSONContent(prefix string, data map[string]
 	if level == "" {
 		level = nlevel
 	}
+
 	return s, level, nil
 }
 
-func (fp *fingerprinterImpl) Fingerprint(input string) (fingerprint int64, tokenMap *TokenMap, level string, err error) {
-	t, level, err := fp.TokenizeInput(input)
-	s := strings.Join(t.Items, " ")
+func (fp *fingerprinterImpl) Fingerprint(input string) (fingerprint int64, tokenMap *TokenMap, level string, js map[string]any, err error) {
+	t, level, js, err := fp.TokenizeInput(input)
 	if err != nil {
-		return 0, newTokenMap(), "", err
+		return 0, newTokenMap(), "", nil, err
 	}
-	return int64(xxhash.Sum64String(s)), t, level, nil
+
+	xx := xxhash.New()
+	for i, item := range t.Items {
+		if i != 0 {
+			xx.WriteString(":")
+		}
+		xx.WriteString(item)
+	}
+
+	names := maputils.DeepKeys(js)
+	for _, name := range names {
+		xx.WriteString(":")
+		xx.WriteString(name)
+	}
+
+	return int64(xx.Sum64()), t, level, js, nil
 }
 
-func (fp *fingerprinterImpl) TokenizeInput(input string) (*TokenMap, string, error) {
-	message := strings.TrimSpace(input)
+func (fp *fingerprinterImpl) TokenizeInput(input string) (*TokenMap, string, map[string]any, error) {
+	// Do some light pre-processing here to make it easer on the ragel code.
+	input = strings.TrimSpace(input)
+	input = stringutils.RemoveANSICodes(input)
 
-	prefix, jsonContent, suffix := findJSONContent(message)
+	prefix, jsonContent, suffix := findJSONContent(input)
 	if jsonContent != "" {
 		var data map[string]any
-		if err := json.Unmarshal([]byte(jsonContent), &data); err == nil {
+		err := json.Unmarshal([]byte(jsonContent), &data)
+		if err != nil {
+			// Try to see if we can just replace `=>` with `:` and parse it then.
+			jsonContent = strings.ReplaceAll(jsonContent, "=>", ":")
+			err = json.Unmarshal([]byte(jsonContent), &data)
+		}
+		if err == nil {
 			tokenized, level, err := fp.tokenizeJSONContent(prefix, data, suffix)
 			if err != nil {
-				return newTokenMap(), "", err
+				return newTokenMap(), "", nil, err
 			}
-			return tokenized, level, nil
+			return tokenized, level, data, nil
 		}
 	}
 
 	// Truncate the string to the first newline or CR character
-	if i := strings.IndexAny(message, "\n\r"); i != -1 {
-		message = message[:i]
+	if i := strings.IndexAny(input, "\n\r"); i != -1 {
+		input = input[:i]
 	}
-	tokenized, level, err := fp.Tokenize(message)
+	tokenized, level, err := fp.Tokenize(input)
 	if err != nil {
-		return newTokenMap(), "", err
+		return newTokenMap(), "", nil, err
 	}
-	return tokenized, level, nil
+	return tokenized, level, nil, nil
 }
 
 func (fp *fingerprinterImpl) IsWord(word string) bool {
