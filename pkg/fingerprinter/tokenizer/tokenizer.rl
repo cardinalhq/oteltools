@@ -41,6 +41,8 @@ const (
     TokenFQDN
     TokenISO8601
     TokenModuleName
+    TokenQuotedString
+    TokenList
 )
 
 var TokenNames = map[ragel.Token]string{
@@ -61,6 +63,8 @@ var TokenNames = map[ragel.Token]string{
     TokenFQDN:         "FQDN",
     TokenISO8601:      "ISO8601",
     TokenModuleName:   "ModuleName",
+    TokenQuotedString: "QuotedString",
+    TokenList:         "List",
 }
 
 var LogLevelNames = []string {
@@ -108,7 +112,8 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
 
         number = digit+ ('.' digit+)? | '.' digit+ | digit + '.';
 
-        uuid = xdigit{8} [_\-] (xdigit{4} [_\-]){3} xdigit{12};
+        uuidComponent = xdigit{8} [_\-] (xdigit{4} [_\-]){3} xdigit{12};
+        uuid = uuidComponent | '{' uuidComponent '}' | '(' uuidComponent ')' | '[' uuidComponent ']';
 
         dnslabel = alpha_u alnum_u+ (('-' | '_') alnum_u+)*;
         fqdn = dnslabel ('.' dnslabel)+;
@@ -131,6 +136,8 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
         duration = (digit | '.')+ space* durationIdentifier ('s' | '(s)')?;
 
         ipv4 = digit{1,3} '.' digit{1,3} '.' digit{1,3} '.' digit{1,3};
+
+        ipv4NumberPort = digit{1,3} '.' digit{1,3} '.' digit{1,3} '.' digit{1,3} ':' digit{1,5};
 
         protocol = alnum_u+;
         url_creds = (alnum_u+)? ':' (alnum_u+)? '@';
@@ -162,6 +169,23 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
         identifier = idchars{4,};
 
         goModuleAndFile = alnum_u+ '@' (alnum_u | '.' | '-' | '_')+ path ':' digit+;
+
+        quotedStringPlaceholder = 'quotedstringplaceholder';
+
+        listMember = space* quotedStringPlaceholder space*;
+        listItemSeparator = (',' space?);
+        list =
+          '[' listMember (listItemSeparator listMember)* ']' |
+          '(' listMember (listItemSeparator listMember)* ')' |
+          '{' listMember (listItemSeparator listMember)* '}';
+
+        quotedStringPlaceholder {
+            s.Emit(ts, TokenQuotedString, string(data[ts:te]))
+        };
+
+        list {
+            s.Emit(ts, TokenList, string(data[ts:te]))
+        };
 
         iso8601 {
             s.Emit(ts, TokenISO8601, string(data[ts:te]))
@@ -203,6 +227,10 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
             s.Emit(ts, TokenIPv4, string(data[ts:te]))
         };
 
+        ipv4NumberPort {
+            s.Emit(ts, TokenIPv4, string(data[ts:te]))
+        };
+
         fqdn {
             s.Emit(ts, TokenFQDN, string(data[ts:te]))
         };
@@ -237,6 +265,10 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
 
         alpha_u alnum_u* {
             s.Emit(ts, TokenString, string(data[ts:te]))
+        };
+
+        alnum_u* '|' (alnum_u | punctuation)+ {
+            s.Emit(ts, TokenIdentifier, string(data[ts:te]))
         };
 
         skipcharacters+;

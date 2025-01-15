@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -x
-
-ragel -Z -G2 tokenizer.rl -o /dev/stdout | sed '1 s,^.*$,// GENERATED CODE.  DO NOT EDIT.,' > tokenizer.go
+# only rebuild if missing, empty, or out of date
+if [ ! -f tokenizer.go ] || [ -z tokenizer.go ] || [ tokenizer.rl -nt tokenizer.go ]; then
+    set -x
+    ragel -Z -G2 tokenizer.rl -o /dev/stdout | sed '1 s,^.*$,// GENERATED CODE.  DO NOT EDIT.,' > tokenizer.go
+fi

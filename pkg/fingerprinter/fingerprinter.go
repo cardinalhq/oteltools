@@ -20,6 +20,7 @@ package fingerprinter
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"unicode"
@@ -243,9 +244,44 @@ func newTokenMap() *TokenMap {
 
 func (fp *fingerprinterImpl) Tokenize(input string) (*TokenMap, string, error) {
 	tk := tokenizer.NewFingerprintTokenizer()
-	s := ragel.New("test", strings.NewReader(input), tk)
-	tokenMap := newTokenMap()
+
+	quotedStrings := []string{}
+	targetString := ""
+
+	substrings := stringutils.SplitQuotedStrings(input)
+	for _, substr := range substrings {
+		switch substr.(type) {
+		case stringutils.LiteralStringPart:
+			if targetString != "" {
+				targetString += " "
+			}
+			targetString += substr.Value()
+		case stringutils.QuotedStringPart:
+			quotedStrings = append(quotedStrings, substr.Value())
+			if targetString != "" {
+				targetString += " "
+			}
+			targetString += "quotedstringplaceholder"
+		}
+	}
+
+	var err error
+	tokenMap, level, err := fp.tokenize(tk, targetString, quotedStrings)
+	if err != nil {
+		return nil, "", err
+	}
+
+	slog.Info("input", slog.String("input", targetString))
+
+	return tokenMap, strings.ToLower(level), nil
+}
+
+func (fp *fingerprinterImpl) tokenize(tk *tokenizer.FingerprintTokenizer, input string, quotedStrings []string) (*TokenMap, string, error) {
 	level := ""
+	tokenMap := newTokenMap()
+	currentQuotedStringIndex := 0
+
+	s := ragel.New("test", strings.NewReader(input), tk)
 	for {
 		// Check length prior to adding the next token since we use 'continue' liberally
 		if tokenMap.index >= fp.maxTokens {
@@ -259,6 +295,11 @@ func (fp *fingerprinterImpl) Tokenize(input string) (*TokenMap, string, error) {
 			return tokenMap, strings.ToLower(level), nil
 		case ragel.Error:
 			return nil, "", fmt.Errorf("error: %s", literal)
+		case tokenizer.TokenQuotedString:
+			if currentQuotedStringIndex < len(quotedStrings) {
+				tokenMap.Put("<QuotedString>", quotedStrings[currentQuotedStringIndex])
+				currentQuotedStringIndex += 1
+			}
 		case tokenizer.TokenLoglevel:
 			if level == "" {
 				level = literal
