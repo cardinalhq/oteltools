@@ -106,8 +106,8 @@ func (*PIITokenizer) TokenString(t ragel.Token) string {
 
         ssn = digit{3} '-' digit{2} '-' digit{4};
 
-        phone_sep = '-' | '.' | space;
-        intl_prefix = '+' digit+ phone_sep?;
+        phone_sep = '-' | '.';
+        intl_prefix = '+' digit+ space?;
         # North American phone number
         phone_na = '(' digit{3} ')' space? digit{3} phone_sep digit{4} |
                     digit{3} phone_sep digit{3} phone_sep digit{4};
