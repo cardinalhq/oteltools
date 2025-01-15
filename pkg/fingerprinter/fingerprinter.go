@@ -20,7 +20,6 @@ package fingerprinter
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"slices"
 	"strings"
 	"unicode"
@@ -270,8 +269,6 @@ func (fp *fingerprinterImpl) Tokenize(input string) (*TokenMap, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-
-	slog.Info("input", slog.String("input", targetString))
 
 	return tokenMap, strings.ToLower(level), nil
 }
