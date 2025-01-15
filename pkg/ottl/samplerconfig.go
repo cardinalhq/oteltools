@@ -22,11 +22,11 @@ package ottl
 
 type ControlPlaneConfig struct {
 	// Processor targets
-	Pitbulls       map[string]*PitbullProcessorConfig        `json:"pitbulls,omitempty" yaml:"pitbulls,omitempty"`
-	Stats          map[string]*StatsProcessorConfig          `json:"stats,omitempty" yaml:"stats,omitempty"`
-	ExtractMetrics map[string]*ExtractMetricsProcessorConfig `json:"extract_metrics,omitempty" yaml:"extract_metrics,omitempty"`
-
-	hash uint64
+	Pitbulls        map[string]*PitbullProcessorConfig        `json:"pitbulls,omitempty" yaml:"pitbulls,omitempty"`
+	Stats           map[string]*StatsProcessorConfig          `json:"stats,omitempty" yaml:"stats,omitempty"`
+	ExtractMetrics  map[string]*ExtractMetricsProcessorConfig `json:"extract_metrics,omitempty" yaml:"extract_metrics,omitempty"`
+	FingerprintMaps map[string]*FingerprintMap                `json:"fingerprint_maps,omitempty" yaml:"fingerprint_maps,omitempty"`
+	hash            uint64
 }
 
 type PitbullProcessorConfig struct {
@@ -63,6 +63,16 @@ type MetricExtractorConfig struct {
 type StatsEnrichment struct {
 	Context string   `json:"context,omitempty" yaml:"context,omitempty"`
 	Tags    []string `json:"tags,omitempty" yaml:"tags,omitempty"`
+}
+
+type WordMap struct {
+	Words       []string `json:"words,omitempty" yaml:"words,omitempty"`
+	Fingerprint int64    `json:"fingerprint,omitempty" yaml:"fingerprint,omitempty"`
+}
+
+type FingerprintMap struct {
+	MapByServiceName map[string]map[int64]int64 `json:"map_by_service_name,omitempty" yaml:"map_by_service_name,omitempty"`
+	WordMaps         map[string][]WordMap       `json:"word_maps,omitempty" yaml:"word_maps,omitempty"`
 }
 
 type SamplingConfig struct {
