@@ -300,6 +300,12 @@ func (fp *fingerprinterImpl) tokenize(tk *tokenizer.FingerprintTokenizer, input 
 				tokenMap.Put("<QuotedString>", quotedStrings[currentQuotedStringIndex])
 				currentQuotedStringIndex += 1
 			}
+		case tokenizer.TokenList:
+			quotedStringCount := strings.Count(lowerCaseLiteral, "quotedstringplaceholder")
+			if currentQuotedStringIndex < len(quotedStrings) && currentQuotedStringIndex+quotedStringCount <= len(quotedStrings) {
+				quotedString := strings.Join(quotedStrings[currentQuotedStringIndex:currentQuotedStringIndex+quotedStringCount], " ")
+				tokenMap.Put("<List>", quotedString)
+			}
 		case tokenizer.TokenLoglevel:
 			if level == "" {
 				level = literal
