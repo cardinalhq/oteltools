@@ -92,6 +92,6 @@ type FingerprintConfig struct {
 }
 
 type FingerprintMapping struct {
-	ClusterID int64   `json:"cluster_id,omitempty" yaml:"cluster_id,omitempty"`
-	Aliases   []int64 `json:"aliases,omitempty" yaml:"aliases,omitempty"`
+	Primary int64   `json:"primary,omitempty" yaml:"primary,omitempty"`
+	Aliases []int64 `json:"aliases,omitempty" yaml:"aliases,omitempty"`
 }
