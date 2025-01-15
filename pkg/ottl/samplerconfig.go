@@ -22,9 +22,10 @@ package ottl
 
 type ControlPlaneConfig struct {
 	// Processor targets
-	Pitbulls       map[string]*PitbullProcessorConfig        `json:"pitbulls,omitempty" yaml:"pitbulls,omitempty"`
-	Stats          map[string]*StatsProcessorConfig          `json:"stats,omitempty" yaml:"stats,omitempty"`
-	ExtractMetrics map[string]*ExtractMetricsProcessorConfig `json:"extract_metrics,omitempty" yaml:"extract_metrics,omitempty"`
+	Pitbulls          map[string]*PitbullProcessorConfig        `json:"pitbulls,omitempty" yaml:"pitbulls,omitempty"`
+	Stats             map[string]*StatsProcessorConfig          `json:"stats,omitempty" yaml:"stats,omitempty"`
+	ExtractMetrics    map[string]*ExtractMetricsProcessorConfig `json:"extract_metrics,omitempty" yaml:"extract_metrics,omitempty"`
+	FingerprintConfig FingerprintConfig                         `json:"fingerprint_config,omitempty" yaml:"fingerprint_config,omitempty"`
 
 	hash uint64
 }
@@ -84,4 +85,15 @@ type ContextStatement struct {
 	Statements     []string       `json:"statements,omitempty" yaml:"statements,omitempty"`
 	SamplingConfig SamplingConfig `json:"sampling_config,omitempty" yaml:"sampling_config,omitempty"`
 	Version        int            `json:"version,omitempty" yaml:"version,omitempty"`
+}
+
+type FingerprintConfig struct {
+	LogMappings    []FingerprintMapping `json:"log_mappings,omitempty" yaml:"log_mappings,omitempty"`
+	MetricMappings []FingerprintMapping `json:"metric_mappings,omitempty" yaml:"metric_mappings,omitempty"`
+	SpanMappings   []FingerprintMapping `json:"span_mappings,omitempty" yaml:"span_mappings,omitempty"`
+}
+
+type FingerprintMapping struct {
+	ClusterID int64   `json:"cluster_id,omitempty" yaml:"cluster_id,omitempty"`
+	Aliases   []int64 `json:"aliases,omitempty" yaml:"aliases,omitempty"`
 }
