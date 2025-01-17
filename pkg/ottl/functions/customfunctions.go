@@ -24,6 +24,7 @@ func factories[K any]() []ottl.Factory[K] {
 		NewExistsFactory[K](),
 		NewDeriveSourceTypeFactory[K](),
 		NewLookupFactory[K](),
+		NewUrlScrubFactory[K](),
 	}
 }
 
