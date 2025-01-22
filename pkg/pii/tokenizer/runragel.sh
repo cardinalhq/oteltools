@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # only rebuild if missing, empty, or out of date
-if [ ! -f tokenizer.go ] || [ -z tokenizer.go ] || [ tokenizer.rl -nt tokenizer.go ]; then
+if [ ! -f tokenizer.go ] || [ ! -s tokenizer.go ] || [ tokenizer.rl -nt tokenizer.go ] || [ runragel.sh -nt tokenizer.go ]; then
     set -x
     ragel -Z -G2 tokenizer.rl -o /dev/stdout | sed '1 s,^.*$,// GENERATED CODE.  DO NOT EDIT.,' > tokenizer.go
 fi
