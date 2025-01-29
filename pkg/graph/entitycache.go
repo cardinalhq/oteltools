@@ -22,10 +22,10 @@ import (
 )
 
 type ResourceEntity struct {
-	Name       string
-	Type       string
-	Attributes map[string]string
-	Edges      map[string]string // Key: (entityName:entityType), Value: relationship info
+	Name       string            `json:"name"`
+	Type       string            `json:"type"`
+	Attributes map[string]string `json:"attributes"`
+	Edges      map[string]string `json:"edges"`
 }
 
 type ResourceEntityCache struct {
