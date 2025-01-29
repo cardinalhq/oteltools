@@ -473,12 +473,15 @@ var AllRelationships = []RelationshipMap{
 func (ec *ResourceEntityCache) Provision(attributes pcommon.Map) {
 	// Shared global entity map across all relationship maps
 	globalEntityMap := make(map[string]*ResourceEntity)
+	usedRelationships := make([]RelationshipMap, 0, len(AllRelationships))
 
 	for _, relationship := range AllRelationships {
-		ec.provisionEntities(attributes, relationship, globalEntityMap)
+		if ec.provisionEntities(attributes, relationship, globalEntityMap) {
+			usedRelationships = append(usedRelationships, relationship)
+		}
 	}
 
-	for _, relationship := range AllRelationships {
+	for _, relationship := range usedRelationships {
 		ec.provisionRelationships(relationship, globalEntityMap)
 	}
 }
@@ -504,15 +507,17 @@ func (ec *ResourceEntityCache) provisionRelationships(relationships Relationship
 	}
 }
 
-func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, relationships RelationshipMap, entityMap map[string]*ResourceEntity) {
+func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, relationships RelationshipMap, entityMap map[string]*ResourceEntity) bool {
+	used := false
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		entityValue := v.AsString()
 		if entityInfo, exists := relationships[k]; exists {
 			entityAttrs := make(map[string]string)
+			used = true
 
 			attributes.Range(func(attrKey string, attrValue pcommon.Value) bool {
 				for _, prefix := range entityInfo.AttributePrefixes {
-					if strings.HasPrefix(attrKey, prefix) {
+					if attrKey != k && strings.HasPrefix(attrKey, prefix) {
 						entityAttrs[attrKey] = attrValue.AsString()
 						break
 					}
@@ -525,4 +530,5 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, relatio
 		}
 		return true
 	})
+	return used
 }
