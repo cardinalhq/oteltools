@@ -100,54 +100,59 @@ func (re *ResourceEntity) AddEdge(targetName, targetType, relationship string) {
 }
 
 const (
-	BelongsToNamespace           = "belongs to namespace"
-	IsPartOfCluster              = "is part of cluster"
-	IsDeployedOnPod              = "is deployed on pod"
-	IsRunningOnNode              = "is running on node"
-	IsManagedByDeployment        = "is managed by deployment"
-	IsManagedByStatefulSet       = "is managed by statefulset"
-	IsManagedByReplicaSet        = "is managed by replicaset"
-	HasNode                      = "has a node"
-	HasNamespace                 = "has a namespace"
-	ManagesDeployments           = "manages deployments"
-	ManagesDaemonSets            = "manages daemon sets"
-	ManagesStatefulSets          = "manages stateful sets"
-	ManagesJobs                  = "manages jobs"
-	ManagesCronJobs              = "manages cron jobs"
-	BelongsToCluster             = "belongs to cluster"
-	SchedulesPod                 = "schedules pod"
-	RunsOnOperatingSystem        = "runs on operating system"
-	ContainsPod                  = "contains pod"
-	ContainsDeployment           = "contains deployment"
-	ContainsStatefulSet          = "contains statefulset"
-	ContainsDaemonSet            = "contains daemonset"
-	ContainsReplicaSet           = "contains replicaset"
-	ContainsJob                  = "contains job"
-	ContainsCronJob              = "contains cronjob"
-	IsPartOfDeployment           = "is part of deployment"
-	IsPartOfStatefulSet          = "is part of statefulset"
-	IsPartOfDaemonSet            = "is part of daemonset"
-	IsScheduledOnNode            = "is scheduled on node"
-	RunsInPod                    = "runs in pod"
-	IsPartOfNamespace            = "is part of namespace"
-	IsDeployedOnNode             = "is deployed on node"
-	IsManagedByCluster           = "is managed by cluster"
-	ManagesReplicaset            = "manages replicaset"
-	UsesImage                    = "uses image"
-	IsUsedByContainer            = "is used by container"
-	IsAssociatedWithTask         = "is associated with task"
-	IsAssociatedWithCluster      = "is associated with cluster"
-	IsAssociatedWithNode         = "is associated with node"
-	IsInstanceOfFunction         = "is instance of function"
-	HasInstance                  = "has instance"
-	ContainsTask                 = "contains task"
-	ManagesAccount               = "manages account"
-	ContainsRegion               = "contains region"
-	ContainsAvailabilityZone     = "contains availability zone"
-	BelongsToProvider            = "belongs to provider"
-	HasResourcesInRegion         = "has resources in region"
-	ContainsResourcesFromAccount = "contains resources from account"
-	BelongsToRegion              = "belongs to region"
+	BelongsToNamespace       = "belongs to namespace"
+	IsPartOfCluster          = "is part of cluster"
+	IsDeployedOnPod          = "is deployed on pod"
+	IsRunningOnNode          = "is running on node"
+	IsManagedByDeployment    = "is managed by deployment"
+	IsManagedByStatefulSet   = "is managed by statefulset"
+	IsManagedByReplicaSet    = "is managed by replicaset"
+	HasNode                  = "has a node"
+	HasNamespace             = "has a namespace"
+	ManagesDeployments       = "manages deployments"
+	ManagesDaemonSets        = "manages daemon sets"
+	ManagesStatefulSets      = "manages stateful sets"
+	ManagesJobs              = "manages jobs"
+	ManagesCronJobs          = "manages cron jobs"
+	BelongsToCluster         = "belongs to cluster"
+	SchedulesPod             = "schedules pod"
+	RunsOnOperatingSystem    = "runs on operating system"
+	ContainsPod              = "contains pod"
+	ContainsDeployment       = "contains deployment"
+	ContainsStatefulSet      = "contains statefulset"
+	ContainsDaemonSet        = "contains daemonset"
+	ContainsReplicaSet       = "contains replicaset"
+	ContainsJob              = "contains job"
+	ContainsCronJob          = "contains cronjob"
+	IsPartOfDeployment       = "is part of deployment"
+	IsPartOfStatefulSet      = "is part of statefulset"
+	IsPartOfDaemonSet        = "is part of daemonset"
+	IsScheduledOnNode        = "is scheduled on node"
+	RunsInPod                = "runs in pod"
+	IsPartOfNamespace        = "is part of namespace"
+	IsDeployedOnNode         = "is deployed on node"
+	IsManagedByCluster       = "is managed by cluster"
+	ManagesReplicaset        = "manages replicaset"
+	UsesImage                = "uses image"
+	IsUsedByContainer        = "is used by container"
+	IsAssociatedWithTask     = "is associated with task"
+	IsAssociatedWithCluster  = "is associated with cluster"
+	IsAssociatedWithNode     = "is associated with node"
+	IsInstanceOfFunction     = "is instance of function"
+	HasInstance              = "has instance"
+	ContainsTask             = "contains task"
+	ManagesAccount           = "manages account"
+	ContainsRegion           = "contains region"
+	ContainsAvailabilityZone = "contains availability zone"
+	BelongsToProvider        = "belongs to provider"
+	HasResourcesInRegion     = "has resources in region"
+	BelongsToRegion          = "belongs to region"
+	BelongsToZone            = "belongs to zone"
+	BelongsToAccount         = "belongs to account"
+	HostsService             = "hosts service"
+	HostsPod                 = "hosts pod"
+	HostsCluster             = "hosts cluster"
+	IsAssociatedWith         = "is associated with"
 )
 
 func (ec *ResourceEntityCache) Provision(attributes pcommon.Map) {
@@ -159,43 +164,79 @@ func (ec *ResourceEntityCache) Provision(attributes pcommon.Map) {
 }
 
 func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityMap map[string]*ResourceEntity) {
+	matches := make(map[*EntityInfo]*ResourceEntity)
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		entityValue := v.AsString()
-		if entityInfo, exists := Relationships[k]; exists {
+		if entityInfo, exists := EntityRelationships[k]; exists {
 			entityAttrs := make(map[string]string)
-
-			attributes.Range(func(attrKey string, attrValue pcommon.Value) bool {
-				for _, prefix := range entityInfo.AttributePrefixes {
-					if attrKey != k && strings.HasPrefix(attrKey, prefix) {
-						entityAttrs[attrKey] = attrValue.AsString()
-						break
-					}
-				}
-				return true
-			})
-
 			entity := ec.PutEntity(k, entityValue, entityInfo.Type, entityAttrs)
+			matches[entityInfo] = entity
 			entityMap[k] = entity
 		}
 		return true
 	})
+
+	for entityInfo, entity := range matches {
+		for _, attributeName := range entityInfo.AttributeNames {
+			if v, exists := attributes.Get(attributeName); exists {
+				entity.Attributes[attributeName] = v.AsString()
+			}
+		}
+		if len(entityInfo.AttributePrefixes) > 0 {
+			attributes.Range(func(k string, v pcommon.Value) bool {
+				for _, prefix := range entityInfo.AttributePrefixes {
+					if k == entity.AttributeName {
+						return true
+					}
+					if !strings.HasPrefix(k, prefix) {
+						return true
+					}
+					entity.Attributes[k] = v.AsString()
+				}
+				return true
+			})
+		}
+	}
 }
 
 func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string]*ResourceEntity) {
-	for _, parentEntity := range globalEntityMap {
-		if entityInfo, exists := Relationships[parentEntity.AttributeName]; exists {
+	unlinkedEntities := make(map[string]*ResourceEntity)
 
-			parentLock := ec.getOrCreateEntityLock(toEntityId(parentEntity.Name, parentEntity.Type))
+	for _, parentEntity := range globalEntityMap {
+		if entityInfo, exists := EntityRelationships[parentEntity.AttributeName]; exists {
+
+			parentEntityId := toEntityId(parentEntity.Name, parentEntity.Type)
+			parentLock := ec.getOrCreateEntityLock(parentEntityId)
 			parentLock.Lock()
 
+			foundLinkage := false
 			for childKey, relationship := range entityInfo.Relationships {
 				childEntity, childExists := globalEntityMap[childKey]
 				if childExists {
 					parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
+					foundLinkage = true
 				}
 			}
-
+			if !foundLinkage {
+				unlinkedEntities[parentEntityId] = parentEntity
+			}
 			parentLock.Unlock()
 		}
+	}
+
+	for _, unlinkedEntity := range unlinkedEntities {
+		unlinkedEntityId := toEntityId(unlinkedEntity.Name, unlinkedEntity.Type)
+		unlinkedEntityLock := ec.getOrCreateEntityLock(unlinkedEntityId)
+		unlinkedEntityLock.Lock()
+
+		for _, otherEntity := range globalEntityMap {
+			if unlinkedEntity == otherEntity {
+				continue
+			}
+
+			unlinkedEntity.AddEdge(otherEntity.Name, otherEntity.Type, IsAssociatedWith)
+			break
+		}
+		unlinkedEntityLock.Unlock()
 	}
 }

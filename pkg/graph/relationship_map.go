@@ -19,12 +19,13 @@ import semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 type EntityInfo struct {
 	Type              string
 	Relationships     map[string]string
+	AttributeNames    []string
 	AttributePrefixes []string
 }
 
 type RelationshipMap map[string]*EntityInfo
 
-var Relationships = RelationshipMap{
+var EntityRelationships = RelationshipMap{
 	// Service
 	string(semconv.ServiceNameKey): {
 		Type: "service",
@@ -38,7 +39,15 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SDaemonSetNameKey):   IsManagedByDeployment,
 			string(semconv.K8SReplicaSetNameKey):  IsManagedByReplicaSet,
 		},
-		AttributePrefixes: []string{"service."},
+		AttributeNames: []string{
+			string(semconv.ServiceInstanceIDKey),
+			string(semconv.ServiceVersionKey),
+			string(semconv.ServiceNamespaceKey),
+			string(semconv.TelemetrySDKNameKey),
+			string(semconv.TelemetrySDKLanguageKey),
+			string(semconv.TelemetrySDKVersionKey),
+		},
+		AttributePrefixes: []string{},
 	},
 
 	// Cluster
@@ -53,7 +62,9 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SJobNameKey):         ManagesJobs,
 			string(semconv.K8SCronJobNameKey):     ManagesCronJobs,
 		},
-		AttributePrefixes: []string{"k8s.cluster."},
+		AttributeNames: []string{
+			string(semconv.K8SClusterUIDKey),
+		},
 	},
 
 	// Node
@@ -64,7 +75,9 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SPodNameKey):     SchedulesPod,
 			string(semconv.OSNameKey):         RunsOnOperatingSystem,
 		},
-		AttributePrefixes: []string{"k8s.node."},
+		AttributeNames: []string{
+			string(semconv.K8SNodeUIDKey),
+		},
 	},
 
 	// Namespace
@@ -80,7 +93,8 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SJobNameKey):         ContainsJob,
 			string(semconv.K8SCronJobNameKey):     ContainsCronJob,
 		},
-		AttributePrefixes: []string{"k8s.namespace."},
+		AttributeNames:    []string{},
+		AttributePrefixes: []string{},
 	},
 
 	// Pod
@@ -95,7 +109,11 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SStatefulSetNameKey): IsPartOfStatefulSet,
 			string(semconv.K8SDaemonSetNameKey):   IsPartOfDaemonSet,
 		},
-		AttributePrefixes: []string{"k8s.pod."},
+		AttributeNames: []string{
+			"k8s.pod.ip",
+			string(semconv.K8SPodUIDKey),
+		},
+		AttributePrefixes: []string{"k8s.pod.label.", "k8s.pod.annotation."},
 	},
 
 	// Container
@@ -106,7 +124,11 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SNamespaceNameKey): IsPartOfNamespace,
 			string(semconv.K8SNodeNameKey):      IsDeployedOnNode,
 		},
-		AttributePrefixes: []string{"k8s.container."},
+		AttributeNames: []string{
+			string(semconv.K8SContainerRestartCountKey),
+			string(semconv.K8SContainerStatusLastTerminatedReasonKey),
+		},
+		AttributePrefixes: []string{},
 	},
 
 	// ReplicaSet
@@ -117,7 +139,8 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SDeploymentNameKey): IsManagedByDeployment,
 			string(semconv.K8SClusterNameKey):    IsPartOfCluster,
 		},
-		AttributePrefixes: []string{"k8s.replicaset."},
+		AttributeNames:    []string{string(semconv.K8SReplicaSetUIDKey)},
+		AttributePrefixes: []string{},
 	},
 
 	// Deployment
@@ -128,7 +151,8 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey):    IsManagedByCluster,
 			string(semconv.K8SReplicaSetNameKey): ManagesReplicaset,
 		},
-		AttributePrefixes: []string{"k8s.deployment."},
+		AttributeNames:    []string{string(semconv.K8SDeploymentUIDKey)},
+		AttributePrefixes: []string{},
 	},
 
 	// DaemonSet
@@ -138,7 +162,8 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SNamespaceNameKey): BelongsToNamespace,
 			string(semconv.K8SClusterNameKey):   IsManagedByCluster,
 		},
-		AttributePrefixes: []string{"k8s.daemonset."},
+		AttributeNames:    []string{string(semconv.K8SDaemonSetUIDKey)},
+		AttributePrefixes: []string{},
 	},
 
 	// StatefulSet
@@ -148,7 +173,8 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SNamespaceNameKey): BelongsToNamespace,
 			string(semconv.K8SClusterNameKey):   IsManagedByCluster,
 		},
-		AttributePrefixes: []string{"k8s.statefulset."},
+		AttributeNames:    []string{string(semconv.K8SStatefulSetUIDKey)},
+		AttributePrefixes: []string{},
 	},
 
 	// Job
@@ -158,7 +184,8 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SNamespaceNameKey): BelongsToNamespace,
 			string(semconv.K8SClusterNameKey):   IsManagedByCluster,
 		},
-		AttributePrefixes: []string{"k8s.job."},
+		AttributeNames:    []string{string(semconv.K8SJobUIDKey)},
+		AttributePrefixes: []string{},
 	},
 
 	// CronJob
@@ -168,20 +195,24 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SNamespaceNameKey): BelongsToNamespace,
 			string(semconv.K8SClusterNameKey):   IsManagedByCluster,
 		},
-		AttributePrefixes: []string{"k8s.cronjob."},
+		AttributeNames:    []string{string(semconv.K8SCronJobUIDKey)},
+		AttributePrefixes: []string{},
 	},
 
-	// Container Entity
+	// Docker Container
 	string(semconv.ContainerNameKey): {
 		Type: "container",
 		Relationships: map[string]string{
 			string(semconv.ContainerImageNameKey): UsesImage,
 		},
-		AttributePrefixes: []string{
-			"container.command",
-			"container.",
-			"oci.",
+		AttributeNames: []string{
+			string(semconv.ContainerIDKey),
+			string(semconv.ContainerCommandKey),
+			string(semconv.ContainerCommandArgsKey),
+			string(semconv.ContainerRuntimeKey),
+			string(semconv.ContainerCommandLineKey),
 		},
+		AttributePrefixes: []string{"container.label"},
 	},
 
 	// Container Image Entity
@@ -190,41 +221,67 @@ var Relationships = RelationshipMap{
 		Relationships: map[string]string{
 			string(semconv.ContainerNameKey): IsUsedByContainer,
 		},
-		AttributePrefixes: []string{
-			"container.image",
+		AttributeNames: []string{
+			string(semconv.ContainerImageIDKey),
+			string(semconv.ContainerImageTagsKey),
+			string(semconv.ContainerImageRepoDigestsKey),
 		},
+		AttributePrefixes: []string{},
 	},
+
 	string(semconv.OSNameKey): {
-		Type:              "os",
-		Relationships:     map[string]string{},
-		AttributePrefixes: []string{"os."},
+		Type:          "os",
+		Relationships: map[string]string{},
+		AttributeNames: []string{
+			string(semconv.OSVersionKey),
+			string(semconv.OSDescriptionKey),
+			string(semconv.OSBuildIDKey),
+		},
+		AttributePrefixes: []string{},
 	},
+
 	string(semconv.ProcessCommandKey): {
-		Type:              "process",
-		Relationships:     map[string]string{},
-		AttributePrefixes: []string{"process."},
+		Type:          "process",
+		Relationships: map[string]string{},
+		AttributeNames: []string{
+			string(semconv.ProcessExecutableNameKey),
+			string(semconv.ProcessExecutablePathKey),
+			string(semconv.ProcessCommandKey),
+			string(semconv.ProcessCommandArgsKey),
+			string(semconv.ProcessCommandLineKey),
+			string(semconv.ProcessOwnerKey),
+			string(semconv.ProcessCreationTimeKey),
+			string(semconv.ProcessContextSwitchTypeKey),
+			string(semconv.ProcessGroupLeaderPIDKey),
+			string(semconv.ProcessParentPIDKey),
+			string(semconv.ProcessPIDKey),
+		},
+		AttributePrefixes: []string{},
 	},
+
 	// ECS Container
 	string(semconv.AWSECSContainerARNKey): {
 		Type: "aws.ecs.container",
 		Relationships: map[string]string{
 			string(semconv.AWSECSClusterARNKey): IsPartOfCluster,
-			string(semconv.AWSECSTaskIDKey):     IsAssociatedWithTask,
+			string(semconv.AWSECSTaskARNKey):    IsAssociatedWithTask,
 		},
-		AttributePrefixes: []string{
-			"aws.ecs.task.",
-		},
+		AttributeNames:    []string{},
+		AttributePrefixes: []string{},
 	},
 
 	// ECS Task
-	string(semconv.AWSECSTaskIDKey): {
+	string(semconv.AWSECSTaskARNKey): {
 		Type: "aws.ecs.task",
 		Relationships: map[string]string{
 			string(semconv.AWSECSClusterARNKey): IsPartOfCluster,
 		},
-		AttributePrefixes: []string{
-			"aws.ecs.task.",
+		AttributeNames: []string{
+			string(semconv.AWSECSTaskFamilyKey),
+			string(semconv.AWSECSTaskRevisionKey),
+			string(semconv.AWSECSTaskIDKey),
 		},
+		AttributePrefixes: []string{},
 	},
 
 	// ECS Cluster
@@ -233,10 +290,12 @@ var Relationships = RelationshipMap{
 		Relationships: map[string]string{
 			string(semconv.AWSECSTaskIDKey): ContainsTask,
 		},
-		AttributePrefixes: []string{
-			"aws.ecs.launchtype.",
+		AttributeNames: []string{
+			string(semconv.AWSECSLaunchtypeKey),
 		},
+		AttributePrefixes: []string{},
 	},
+
 	// EKS Cluster
 	string(semconv.AWSEKSClusterARNKey): {
 		Type: "aws.eks.cluster",
@@ -244,17 +303,18 @@ var Relationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey): IsAssociatedWithCluster,
 			string(semconv.K8SNodeNameKey):    IsAssociatedWithNode,
 		},
-		AttributePrefixes: []string{
-			"aws.eks.",
-		},
+		AttributeNames:    []string{},
+		AttributePrefixes: []string{},
 	},
+
 	// FaaS Instance
 	string(semconv.FaaSInstanceKey): {
 		Type: "faas.instance",
 		Relationships: map[string]string{
 			string(semconv.FaaSNameKey): IsInstanceOfFunction,
 		},
-		AttributePrefixes: []string{"faas.instance."},
+		AttributeNames:    []string{},
+		AttributePrefixes: []string{},
 	},
 
 	// FaaS Function
@@ -263,8 +323,20 @@ var Relationships = RelationshipMap{
 		Relationships: map[string]string{
 			string(semconv.FaaSInstanceKey): HasInstance,
 		},
-		AttributePrefixes: []string{"faas."},
+		AttributeNames: []string{
+			string(semconv.FaaSColdstartKey),
+			string(semconv.FaaSCronKey),
+			string(semconv.FaaSDocumentCollectionKey),
+			string(semconv.FaaSDocumentOperationKey),
+			string(semconv.FaaSDocumentNameKey),
+			string(semconv.FaaSDocumentTimeKey),
+			string(semconv.FaaSInvokedRegionKey),
+			string(semconv.FaaSMaxMemoryKey),
+			string(semconv.FaaSInvokedNameKey),
+		},
+		AttributePrefixes: []string{},
 	},
+
 	// Cloud Provider (e.g., AWS, GCP, Azure)
 	string(semconv.CloudProviderKey): {
 		Type: "cloud.provider",
@@ -273,17 +345,20 @@ var Relationships = RelationshipMap{
 			string(semconv.CloudRegionKey):           ContainsRegion,
 			string(semconv.CloudAvailabilityZoneKey): ContainsAvailabilityZone,
 		},
-		AttributePrefixes: []string{"cloud."},
+		AttributeNames:    []string{},
+		AttributePrefixes: []string{},
 	},
 
 	// Cloud Account
 	string(semconv.CloudAccountIDKey): {
 		Type: "cloud.account",
 		Relationships: map[string]string{
-			string(semconv.CloudProviderKey): BelongsToProvider,
-			string(semconv.CloudRegionKey):   HasResourcesInRegion,
+			string(semconv.CloudProviderKey):         BelongsToProvider,
+			string(semconv.CloudRegionKey):           HasResourcesInRegion,
+			string(semconv.CloudAvailabilityZoneKey): ContainsAvailabilityZone,
 		},
-		AttributePrefixes: []string{"cloud.account."},
+		AttributeNames:    []string{},
+		AttributePrefixes: []string{},
 	},
 
 	// Cloud Region
@@ -292,17 +367,58 @@ var Relationships = RelationshipMap{
 		Relationships: map[string]string{
 			string(semconv.CloudProviderKey):         BelongsToProvider,
 			string(semconv.CloudAvailabilityZoneKey): ContainsAvailabilityZone,
-			string(semconv.CloudAccountIDKey):        ContainsResourcesFromAccount,
+			string(semconv.CloudAccountIDKey):        BelongsToAccount,
 		},
-		AttributePrefixes: []string{"cloud.region."},
+		AttributeNames:    []string{},
+		AttributePrefixes: []string{},
 	},
 
 	// Cloud Availability Zone
 	string(semconv.CloudAvailabilityZoneKey): {
 		Type: "cloud.availability_zone",
 		Relationships: map[string]string{
-			string(semconv.CloudRegionKey): BelongsToRegion,
+			string(semconv.CloudRegionKey):    BelongsToRegion,
+			string(semconv.CloudAccountIDKey): BelongsToAccount,
+			string(semconv.CloudProviderKey):  BelongsToProvider,
 		},
-		AttributePrefixes: []string{"cloud.availability_zone."},
+		AttributeNames:    []string{},
+		AttributePrefixes: []string{},
+	},
+
+	// Cloud Availability Zone
+	string(semconv.CloudResourceIDKey): {
+		Type: "cloud.resource_id",
+		Relationships: map[string]string{
+			string(semconv.CloudRegionKey):           BelongsToRegion,
+			string(semconv.CloudAvailabilityZoneKey): BelongsToZone,
+			string(semconv.CloudAccountIDKey):        BelongsToAccount,
+			string(semconv.CloudProviderKey):         BelongsToProvider,
+		},
+		AttributeNames:    []string{},
+		AttributePrefixes: []string{},
+	},
+
+	string(semconv.HostNameKey): {
+		Type: "host",
+		Relationships: map[string]string{
+			string(semconv.ServiceNameKey):        HostsService,
+			string(semconv.K8SClusterNameKey):     HostsCluster,
+			string(semconv.K8SPodNameKey):         HostsPod,
+			string(semconv.K8SStatefulSetNameKey): HostsPod,
+		},
+		AttributeNames: []string{
+			string(semconv.HostIDKey),
+			string(semconv.HostTypeKey),
+			string(semconv.HostImageIDKey),
+			string(semconv.HostImageNameKey),
+			string(semconv.HostImageVersionKey),
+			string(semconv.HostCPUFamilyKey),
+			string(semconv.HostCPUSteppingKey),
+			string(semconv.HostCPUCacheL2SizeKey),
+			string(semconv.HostCPUVendorIDKey),
+			string(semconv.HostArchKey),
+			string(semconv.HostIPKey),
+		},
+		AttributePrefixes: []string{},
 	},
 }
