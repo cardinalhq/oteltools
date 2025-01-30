@@ -57,12 +57,11 @@ func toEntityId(name, entityType string) string {
 
 func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType string, attributes map[string]string) *ResourceEntity {
 	entityId := toEntityId(entityName, entityType)
-	entityLock := ec.getOrCreateEntityLock(entityId)
-	entityLock.Lock()
-	defer entityLock.Unlock()
 
 	ec.mapLock.Lock()
-	entity, exists := ec.entityMap[entityName]
+	defer ec.mapLock.Unlock()
+
+	entity, exists := ec.entityMap[entityId]
 	if !exists {
 		entity = &ResourceEntity{
 			AttributeName: attributeName,
@@ -73,13 +72,21 @@ func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType s
 		}
 		ec.entityMap[entityId] = entity
 	}
-	ec.mapLock.Unlock()
 
 	// Update attributes
 	for key, value := range attributes {
 		entity.Attributes[key] = value
 	}
 	return entity
+}
+
+func (ec *ResourceEntityCache) PutEntityObject(entity *ResourceEntity) {
+	entityId := toEntityId(entity.Name, entity.Type)
+	ec.mapLock.Lock()
+	defer ec.mapLock.Unlock()
+
+	ec.entityMap[entityId] = entity
+
 }
 
 func (ec *ResourceEntityCache) GetAllEntities() map[string]*ResourceEntity {
@@ -109,6 +116,7 @@ const (
 	IsManagedByReplicaSet    = "is managed by replicaset"
 	HasNode                  = "has a node"
 	HasNamespace             = "has a namespace"
+	HasCollection            = "has a collection"
 	ManagesDeployments       = "manages deployments"
 	ManagesDaemonSets        = "manages daemon sets"
 	ManagesStatefulSets      = "manages stateful sets"
@@ -153,13 +161,38 @@ const (
 	HostsPod                 = "hosts pod"
 	HostsCluster             = "hosts cluster"
 	IsAssociatedWith         = "is associated with"
+	NetPeerName              = "net.peer.name"
+	DBQuerySummary           = "db.query.summary"
+	DBStatement              = "db.statement"
+	UsesDatabase             = "uses database"
+	IsUsedByDatabase         = "is used by database"
+	IsDatabaseHostedOn       = "is a database hosted on"
+	IsCollectionHostedOn     = "is a collection hosted on"
+	MessagingProducer        = "messaging.producer"
+	MessagingConsumer        = "messaging.consumer"
+	ConsumesFrom             = "consumes from"
+	ProducesTo               = "produces to"
 )
 
-func (ec *ResourceEntityCache) Provision(attributes pcommon.Map) {
+func (ec *ResourceEntityCache) Provision(resourceAttributes pcommon.Map, attributes pcommon.Map) {
 	// Shared global entity map across all relationship maps
 	globalEntityMap := make(map[string]*ResourceEntity)
 
-	ec.provisionEntities(attributes, globalEntityMap)
+	ec.provisionEntities(resourceAttributes, globalEntityMap)
+	dbEntities := toDBEntities(attributes)
+	if len(dbEntities) > 0 {
+		for _, v := range dbEntities {
+			globalEntityMap[v.AttributeName] = v
+			ec.PutEntityObject(v)
+		}
+	}
+	messagingEntities := toMessagingEntities(attributes)
+	if len(messagingEntities) > 0 {
+		for _, v := range messagingEntities {
+			globalEntityMap[v.AttributeName] = v
+			ec.PutEntityObject(v)
+		}
+	}
 	ec.provisionRelationships(globalEntityMap)
 }
 
@@ -224,6 +257,7 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 		}
 	}
 
+	// Link unlinked entities to all other entities with an IsAssociatedWith relationship
 	for _, unlinkedEntity := range unlinkedEntities {
 		unlinkedEntityId := toEntityId(unlinkedEntity.Name, unlinkedEntity.Type)
 		unlinkedEntityLock := ec.getOrCreateEntityLock(unlinkedEntityId)
