@@ -30,25 +30,19 @@ type ResourceEntity struct {
 
 type ResourceEntityCache struct {
 	entityMap   map[string]*ResourceEntity
-	entityLocks map[string]*sync.RWMutex
+	entityLocks sync.Map
 	mapLock     sync.RWMutex // Global lock for entityMap
 }
 
 func NewResourceEntityCache() *ResourceEntityCache {
 	return &ResourceEntityCache{
-		entityMap:   make(map[string]*ResourceEntity),
-		entityLocks: make(map[string]*sync.RWMutex),
+		entityMap: make(map[string]*ResourceEntity),
 	}
 }
 
-func (ec *ResourceEntityCache) getOrCreateEntityLock(name string) *sync.RWMutex {
-	ec.mapLock.Lock()
-	defer ec.mapLock.Unlock()
-
-	if _, exists := ec.entityLocks[name]; !exists {
-		ec.entityLocks[name] = &sync.RWMutex{}
-	}
-	return ec.entityLocks[name]
+func (ec *ResourceEntityCache) getOrCreateEntityLock(entityId string) *sync.RWMutex {
+	lock, _ := ec.entityLocks.LoadOrStore(entityId, &sync.RWMutex{})
+	return lock.(*sync.RWMutex)
 }
 
 func toEntityId(name, entityType string) string {
@@ -57,29 +51,47 @@ func toEntityId(name, entityType string) string {
 
 func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType string, attributes map[string]string) *ResourceEntity {
 	entityId := toEntityId(entityName, entityType)
-	entityLock := ec.getOrCreateEntityLock(entityId)
-	entityLock.Lock()
-	defer entityLock.Unlock()
 
-	ec.mapLock.Lock()
-	entity, exists := ec.entityMap[entityName]
+	ec.mapLock.RLock()
+	entity, exists := ec.entityMap[entityId]
+	ec.mapLock.RUnlock()
+
 	if !exists {
-		entity = &ResourceEntity{
-			AttributeName: attributeName,
-			Name:          entityName,
-			Type:          entityType,
-			Attributes:    make(map[string]string),
-			Edges:         make(map[string]string),
+		ec.mapLock.Lock()
+		if entity, exists = ec.entityMap[entityId]; !exists {
+			entity = &ResourceEntity{
+				AttributeName: attributeName,
+				Name:          entityName,
+				Type:          entityType,
+				Attributes:    make(map[string]string),
+				Edges:         make(map[string]string),
+			}
+			ec.entityMap[entityId] = entity
 		}
-		ec.entityMap[entityId] = entity
+		ec.mapLock.Unlock()
 	}
-	ec.mapLock.Unlock()
 
-	// Update attributes
 	for key, value := range attributes {
 		entity.Attributes[key] = value
 	}
+
 	return entity
+}
+
+func (ec *ResourceEntityCache) PutEntityObject(entity *ResourceEntity) {
+	entityId := toEntityId(entity.Name, entity.Type)
+
+	ec.mapLock.RLock()
+	_, exists := ec.entityMap[entityId]
+	ec.mapLock.RUnlock()
+
+	if !exists {
+		ec.mapLock.Lock()
+		if _, exists := ec.entityMap[entityId]; !exists {
+			ec.entityMap[entityId] = entity
+		}
+		ec.mapLock.Unlock()
+	}
 }
 
 func (ec *ResourceEntityCache) GetAllEntities() map[string]*ResourceEntity {
@@ -88,7 +100,6 @@ func (ec *ResourceEntityCache) GetAllEntities() map[string]*ResourceEntity {
 
 	entities := ec.entityMap
 	ec.entityMap = make(map[string]*ResourceEntity)
-	ec.entityLocks = make(map[string]*sync.RWMutex)
 	return entities
 }
 
@@ -109,6 +120,7 @@ const (
 	IsManagedByReplicaSet    = "is managed by replicaset"
 	HasNode                  = "has a node"
 	HasNamespace             = "has a namespace"
+	HasCollection            = "has a collection"
 	ManagesDeployments       = "manages deployments"
 	ManagesDaemonSets        = "manages daemon sets"
 	ManagesStatefulSets      = "manages stateful sets"
@@ -153,13 +165,38 @@ const (
 	HostsPod                 = "hosts pod"
 	HostsCluster             = "hosts cluster"
 	IsAssociatedWith         = "is associated with"
+	NetPeerName              = "net.peer.name"
+	DBQuerySummary           = "db.query.summary"
+	DBStatement              = "db.statement"
+	UsesDatabase             = "uses database"
+	IsUsedByDatabase         = "is used by database"
+	IsDatabaseHostedOn       = "is a database hosted on"
+	IsCollectionHostedOn     = "is a collection hosted on"
+	MessagingProducer        = "messaging.producer"
+	MessagingConsumer        = "messaging.consumer"
+	ConsumesFrom             = "consumes from"
+	ProducesTo               = "produces to"
 )
 
-func (ec *ResourceEntityCache) Provision(attributes pcommon.Map) {
+func (ec *ResourceEntityCache) Provision(resourceAttributes pcommon.Map, attributes pcommon.Map) {
 	// Shared global entity map across all relationship maps
 	globalEntityMap := make(map[string]*ResourceEntity)
 
-	ec.provisionEntities(attributes, globalEntityMap)
+	ec.provisionEntities(resourceAttributes, globalEntityMap)
+	dbEntities := toDBEntities(attributes)
+	if len(dbEntities) > 0 {
+		for _, v := range dbEntities {
+			globalEntityMap[v.AttributeName] = v
+			ec.PutEntityObject(v)
+		}
+	}
+	messagingEntities := toMessagingEntities(attributes)
+	if len(messagingEntities) > 0 {
+		for _, v := range messagingEntities {
+			globalEntityMap[v.AttributeName] = v
+			ec.PutEntityObject(v)
+		}
+	}
 	ec.provisionRelationships(globalEntityMap)
 }
 
@@ -200,43 +237,41 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 }
 
 func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string]*ResourceEntity) {
-	unlinkedEntities := make(map[string]*ResourceEntity)
+	var unlinkedEntities []*ResourceEntity
 
+	// Lock per entity to avoid contention
 	for _, parentEntity := range globalEntityMap {
 		if entityInfo, exists := EntityRelationships[parentEntity.AttributeName]; exists {
-
-			parentEntityId := toEntityId(parentEntity.Name, parentEntity.Type)
-			parentLock := ec.getOrCreateEntityLock(parentEntityId)
+			parentLock := ec.getOrCreateEntityLock(toEntityId(parentEntity.Name, parentEntity.Type))
 			parentLock.Lock()
 
 			foundLinkage := false
 			for childKey, relationship := range entityInfo.Relationships {
-				childEntity, childExists := globalEntityMap[childKey]
-				if childExists {
+				if childEntity, childExists := globalEntityMap[childKey]; childExists {
 					parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
 					foundLinkage = true
 				}
 			}
+
 			if !foundLinkage {
-				unlinkedEntities[parentEntityId] = parentEntity
+				unlinkedEntities = append(unlinkedEntities, parentEntity)
 			}
+
 			parentLock.Unlock()
 		}
 	}
 
-	for _, unlinkedEntity := range unlinkedEntities {
-		unlinkedEntityId := toEntityId(unlinkedEntity.Name, unlinkedEntity.Type)
-		unlinkedEntityLock := ec.getOrCreateEntityLock(unlinkedEntityId)
-		unlinkedEntityLock.Lock()
+	for _, entity := range unlinkedEntities {
+		entityLock := ec.getOrCreateEntityLock(toEntityId(entity.Name, entity.Type))
+		entityLock.Lock()
 
 		for _, otherEntity := range globalEntityMap {
-			if unlinkedEntity == otherEntity {
+			if entity == otherEntity {
 				continue
 			}
-
-			unlinkedEntity.AddEdge(otherEntity.Name, otherEntity.Type, IsAssociatedWith)
+			entity.AddEdge(otherEntity.Name, otherEntity.Type, IsAssociatedWith)
 			break
 		}
-		unlinkedEntityLock.Unlock()
+		entityLock.Unlock()
 	}
 }
