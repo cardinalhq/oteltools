@@ -135,7 +135,9 @@ func TestDatabaseEntityRelationships(t *testing.T) {
 	dbAttributes.PutStr(string(semconv.DBCollectionNameKey), "transactions")                              // Table/collection
 	dbAttributes.PutStr(string(semconv.DBQueryTextKey), "SELECT * FROM transactions WHERE amount > 100;") // Query to be normalized
 
-	ec.Provision(resourceAttributes, dbAttributes)
+	globalEntityMap := ec.ProvisionResourceAttributes(resourceAttributes)
+	ec.ProvisionRecordAttributes(globalEntityMap, dbAttributes)
+
 	entities := ec.GetAllEntities()
 
 	expectedEntities := map[string]string{
@@ -176,7 +178,9 @@ func TestMessagingEntityRelationships(t *testing.T) {
 	messagingAttributes.PutStr(string(semconv.MessagingConsumerGroupNameKey), "payment-group")
 	messagingAttributes.PutStr(string(semconv.NetworkPeerAddressKey), "kafka-broker-1")
 
-	ec.Provision(resourceAttributes, messagingAttributes)
+	globalEntityMap := ec.ProvisionResourceAttributes(resourceAttributes)
+	ec.ProvisionRecordAttributes(globalEntityMap, messagingAttributes)
+
 	entities := ec.GetAllEntities()
 
 	expectedEntities := map[string]string{

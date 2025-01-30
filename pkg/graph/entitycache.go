@@ -16,6 +16,7 @@ package graph
 
 import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"strings"
 	"sync"
 )
@@ -169,7 +170,6 @@ const (
 	DBQuerySummary           = "db.query.summary"
 	DBStatement              = "db.statement"
 	UsesDatabase             = "uses database"
-	IsUsedByDatabase         = "is used by database"
 	IsDatabaseHostedOn       = "is a database hosted on"
 	IsCollectionHostedOn     = "is a collection hosted on"
 	MessagingProducer        = "messaging.producer"
@@ -178,26 +178,33 @@ const (
 	ProducesTo               = "produces to"
 )
 
-func (ec *ResourceEntityCache) Provision(resourceAttributes pcommon.Map, attributes pcommon.Map) {
-	// Shared global entity map across all relationship maps
-	globalEntityMap := make(map[string]*ResourceEntity)
+func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Map) map[string]*ResourceEntity {
+	entityMap := make(map[string]*ResourceEntity)
+	ec.provisionEntities(attributes, entityMap)
+	ec.provisionRelationships(entityMap)
+	return entityMap
+}
 
-	ec.provisionEntities(resourceAttributes, globalEntityMap)
-	dbEntities := toDBEntities(attributes)
-	if len(dbEntities) > 0 {
-		for _, v := range dbEntities {
-			globalEntityMap[v.AttributeName] = v
-			ec.PutEntityObject(v)
+func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
+	if serviceEntity, exists := resourceEntityMap[string(semconv.ServiceNameKey)]; exists {
+		entityMap := make(map[string]*ResourceEntity)
+		entityMap[string(semconv.ServiceNameKey)] = serviceEntity
+		dbEntities := toDBEntities(recordAttributes)
+		if len(dbEntities) > 0 {
+			for _, v := range dbEntities {
+				entityMap[v.AttributeName] = v
+				ec.PutEntityObject(v)
+			}
 		}
-	}
-	messagingEntities := toMessagingEntities(attributes)
-	if len(messagingEntities) > 0 {
-		for _, v := range messagingEntities {
-			globalEntityMap[v.AttributeName] = v
-			ec.PutEntityObject(v)
+		messagingEntities := toMessagingEntities(recordAttributes)
+		if len(messagingEntities) > 0 {
+			for _, v := range messagingEntities {
+				entityMap[v.AttributeName] = v
+				ec.PutEntityObject(v)
+			}
 		}
+		ec.provisionRelationships(entityMap)
 	}
-	ec.provisionRelationships(globalEntityMap)
 }
 
 func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityMap map[string]*ResourceEntity) {
