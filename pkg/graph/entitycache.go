@@ -15,9 +15,10 @@
 package graph
 
 import (
-	"encoding/json"
+	"github.com/cardinalhq/oteltools/pkg/chqpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+	"google.golang.org/protobuf/proto"
 	"strings"
 	"sync"
 )
@@ -49,9 +50,11 @@ func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType s
 
 	if entity, exists := ec.entityMap.Load(entityId); exists {
 		re := entity.(*ResourceEntity)
+		re.mu.Lock()
 		for key, value := range attributes {
 			re.PutAttribute(key, value)
 		}
+		re.mu.Unlock()
 		return re
 	}
 
@@ -77,30 +80,46 @@ func (ec *ResourceEntityCache) PutEntityObject(entity *ResourceEntity) {
 	ec.entityMap.Store(entityId, entity)
 }
 
+const batchSize = 100
+
 func (ec *ResourceEntityCache) GetAllEntities() [][]byte {
-	var jsonEntities [][]byte
+	var serializedEntities [][]byte
+	var batch []*chqpb.ResourceEntityProto
 
 	ec.entityMap.Range(func(key, value interface{}) bool {
 		entity := value.(*ResourceEntity)
-
 		entity.mu.Lock()
-		jsonData, err := json.Marshal(entity)
+		protoEntity := &chqpb.ResourceEntityProto{
+			Name:       entity.Name,
+			Type:       entity.Type,
+			Attributes: entity.Attributes,
+			Edges:      entity.Edges,
+		}
 		entity.mu.Unlock()
 
-		if err == nil {
-			jsonEntities = append(jsonEntities, jsonData)
-		}
+		batch = append(batch, protoEntity)
 
+		if len(batch) >= batchSize {
+			serialized, err := proto.Marshal(&chqpb.ResourceEntityProtoList{Entities: batch})
+			if err == nil {
+				serializedEntities = append(serializedEntities, serialized)
+			}
+			batch = batch[:0]
+		}
 		return true
 	})
 
-	return jsonEntities
+	if len(batch) > 0 {
+		serialized, err := proto.Marshal(&chqpb.ResourceEntityProtoList{Entities: batch})
+		if err == nil {
+			serializedEntities = append(serializedEntities, serialized)
+		}
+	}
+
+	return serializedEntities
 }
 
 func (re *ResourceEntity) AddEdge(targetName, targetType, relationship string) {
-	re.mu.Lock()
-	defer re.mu.Unlock()
-
 	if re.Edges == nil {
 		re.Edges = make(map[string]string)
 	}
@@ -108,8 +127,6 @@ func (re *ResourceEntity) AddEdge(targetName, targetType, relationship string) {
 }
 
 func (re *ResourceEntity) PutAttribute(k, v string) {
-	re.mu.Lock()
-	defer re.mu.Unlock()
 	re.Attributes[k] = v
 }
 
@@ -155,9 +172,11 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 
 	for entityInfo, entity := range matches {
 		for _, attributeName := range entityInfo.AttributeNames {
+			entity.mu.Lock()
 			if v, exists := attributes.Get(attributeName); exists {
 				entity.PutAttribute(attributeName, v.AsString())
 			}
+			entity.mu.Unlock()
 		}
 		if len(entityInfo.AttributePrefixes) > 0 {
 			attributes.Range(func(k string, v pcommon.Value) bool {
@@ -183,12 +202,14 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 		if entityInfo, exists := EntityRelationships[parentEntity.AttributeName]; exists {
 
 			foundLinkage := false
+			parentEntity.mu.Lock()
 			for childKey, relationship := range entityInfo.Relationships {
 				if childEntity, childExists := globalEntityMap[childKey]; childExists {
 					parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
 					foundLinkage = true
 				}
 			}
+			parentEntity.mu.Unlock()
 
 			if !foundLinkage {
 				unlinkedEntities = append(unlinkedEntities, parentEntity)
@@ -197,6 +218,7 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 	}
 
 	for _, entity := range unlinkedEntities {
+		entity.mu.Lock()
 		for _, otherEntity := range globalEntityMap {
 			if entity == otherEntity {
 				continue
@@ -204,5 +226,6 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 			entity.AddEdge(otherEntity.Name, otherEntity.Type, IsAssociatedWith)
 			break
 		}
+		entity.mu.Unlock()
 	}
 }
