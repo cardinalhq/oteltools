@@ -27,18 +27,16 @@ type ResourceEntity struct {
 	Type          string            `json:"type"`
 	Attributes    map[string]string `json:"attributes"`
 	Edges         map[string]string `json:"edges"`
+	mu            sync.Mutex
 }
 
 type ResourceEntityCache struct {
-	entityMap   map[string]*ResourceEntity
+	entityMap   sync.Map
 	entityLocks sync.Map
-	mapLock     sync.RWMutex // Global lock for entityMap
 }
 
 func NewResourceEntityCache() *ResourceEntityCache {
-	return &ResourceEntityCache{
-		entityMap: make(map[string]*ResourceEntity),
-	}
+	return &ResourceEntityCache{}
 }
 
 func (ec *ResourceEntityCache) getOrCreateEntityLock(entityId string) *sync.RWMutex {
@@ -53,130 +51,56 @@ func toEntityId(name, entityType string) string {
 func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType string, attributes map[string]string) *ResourceEntity {
 	entityId := toEntityId(entityName, entityType)
 
-	ec.mapLock.RLock()
-	entity, exists := ec.entityMap[entityId]
-	ec.mapLock.RUnlock()
-
-	if !exists {
-		ec.mapLock.Lock()
-		if entity, exists = ec.entityMap[entityId]; !exists {
-			entity = &ResourceEntity{
-				AttributeName: attributeName,
-				Name:          entityName,
-				Type:          entityType,
-				Attributes:    make(map[string]string),
-				Edges:         make(map[string]string),
-			}
-			ec.entityMap[entityId] = entity
+	if entity, exists := ec.entityMap.Load(entityId); exists {
+		re := entity.(*ResourceEntity)
+		for key, value := range attributes {
+			re.Attributes[key] = value
 		}
-		ec.mapLock.Unlock()
+		return re
 	}
+
+	newEntity := &ResourceEntity{
+		AttributeName: attributeName,
+		Name:          entityName,
+		Type:          entityType,
+		Attributes:    make(map[string]string),
+		Edges:         make(map[string]string),
+	}
+
+	entity, _ := ec.entityMap.LoadOrStore(entityId, newEntity)
+	re := entity.(*ResourceEntity)
 
 	for key, value := range attributes {
-		entity.Attributes[key] = value
+		re.Attributes[key] = value
 	}
-
-	return entity
+	return re
 }
 
 func (ec *ResourceEntityCache) PutEntityObject(entity *ResourceEntity) {
 	entityId := toEntityId(entity.Name, entity.Type)
-
-	ec.mapLock.RLock()
-	_, exists := ec.entityMap[entityId]
-	ec.mapLock.RUnlock()
-
-	if !exists {
-		ec.mapLock.Lock()
-		if _, exists := ec.entityMap[entityId]; !exists {
-			ec.entityMap[entityId] = entity
-		}
-		ec.mapLock.Unlock()
-	}
+	ec.entityMap.Store(entityId, entity)
 }
 
 func (ec *ResourceEntityCache) GetAllEntities() map[string]*ResourceEntity {
-	ec.mapLock.Lock()
-	defer ec.mapLock.Unlock()
+	entities := make(map[string]*ResourceEntity)
 
-	entities := ec.entityMap
-	ec.entityMap = make(map[string]*ResourceEntity)
+	ec.entityMap.Range(func(key, value interface{}) bool {
+		entities[key.(string)] = value.(*ResourceEntity)
+		return true
+	})
+
 	return entities
 }
 
 func (re *ResourceEntity) AddEdge(targetName, targetType, relationship string) {
+	re.mu.Lock()
+	defer re.mu.Unlock()
+
 	if re.Edges == nil {
 		re.Edges = make(map[string]string)
 	}
 	re.Edges[toEntityId(targetName, targetType)] = relationship
 }
-
-const (
-	BelongsToNamespace       = "belongs to namespace"
-	IsPartOfCluster          = "is part of cluster"
-	IsDeployedOnPod          = "is deployed on pod"
-	IsRunningOnNode          = "is running on node"
-	IsManagedByDeployment    = "is managed by deployment"
-	IsManagedByStatefulSet   = "is managed by statefulset"
-	IsManagedByReplicaSet    = "is managed by replicaset"
-	HasNode                  = "has a node"
-	HasNamespace             = "has a namespace"
-	HasCollection            = "has a collection"
-	ManagesDeployments       = "manages deployments"
-	ManagesDaemonSets        = "manages daemon sets"
-	ManagesStatefulSets      = "manages stateful sets"
-	ManagesJobs              = "manages jobs"
-	ManagesCronJobs          = "manages cron jobs"
-	BelongsToCluster         = "belongs to cluster"
-	SchedulesPod             = "schedules pod"
-	RunsOnOperatingSystem    = "runs on operating system"
-	ContainsPod              = "contains pod"
-	ContainsDeployment       = "contains deployment"
-	ContainsStatefulSet      = "contains statefulset"
-	ContainsDaemonSet        = "contains daemonset"
-	ContainsReplicaSet       = "contains replicaset"
-	ContainsJob              = "contains job"
-	ContainsCronJob          = "contains cronjob"
-	IsPartOfDeployment       = "is part of deployment"
-	IsPartOfStatefulSet      = "is part of statefulset"
-	IsPartOfDaemonSet        = "is part of daemonset"
-	IsScheduledOnNode        = "is scheduled on node"
-	RunsInPod                = "runs in pod"
-	IsPartOfNamespace        = "is part of namespace"
-	IsDeployedOnNode         = "is deployed on node"
-	IsManagedByCluster       = "is managed by cluster"
-	ManagesReplicaset        = "manages replicaset"
-	UsesImage                = "uses image"
-	IsUsedByContainer        = "is used by container"
-	IsAssociatedWithTask     = "is associated with task"
-	IsAssociatedWithCluster  = "is associated with cluster"
-	IsAssociatedWithNode     = "is associated with node"
-	IsInstanceOfFunction     = "is instance of function"
-	HasInstance              = "has instance"
-	ContainsTask             = "contains task"
-	ManagesAccount           = "manages account"
-	ContainsRegion           = "contains region"
-	ContainsAvailabilityZone = "contains availability zone"
-	BelongsToProvider        = "belongs to provider"
-	HasResourcesInRegion     = "has resources in region"
-	BelongsToRegion          = "belongs to region"
-	BelongsToZone            = "belongs to zone"
-	BelongsToAccount         = "belongs to account"
-	HostsService             = "hosts service"
-	HostsPod                 = "hosts pod"
-	HostsCluster             = "hosts cluster"
-	IsAssociatedWith         = "is associated with"
-	NetPeerName              = "net.peer.name"
-	DBQuerySummary           = "db.query.summary"
-	DBStatement              = "db.statement"
-	UsesDatabase             = "uses database"
-	IsDatabaseHostedOn       = "is a database hosted on"
-	IsCollectionHostedOn     = "is a collection hosted on"
-	MessagingProducer        = "messaging.producer"
-	MessagingConsumer        = "messaging.consumer"
-	ConsumesFrom             = "consumes from"
-	ProducesTo               = "produces to"
-)
 
 func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Map) map[string]*ResourceEntity {
 	entityMap := make(map[string]*ResourceEntity)
@@ -187,22 +111,20 @@ func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Ma
 
 func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
 	if serviceEntity, exists := resourceEntityMap[string(semconv.ServiceNameKey)]; exists {
-		entityMap := make(map[string]*ResourceEntity)
-		entityMap[string(semconv.ServiceNameKey)] = serviceEntity
+		entityMap := map[string]*ResourceEntity{string(semconv.ServiceNameKey): serviceEntity}
+
 		dbEntities := toDBEntities(recordAttributes)
-		if len(dbEntities) > 0 {
-			for _, v := range dbEntities {
-				entityMap[v.AttributeName] = v
-				ec.PutEntityObject(v)
-			}
+		for _, v := range dbEntities {
+			entityMap[v.AttributeName] = v
+			ec.PutEntityObject(v)
 		}
+
 		messagingEntities := toMessagingEntities(recordAttributes)
-		if len(messagingEntities) > 0 {
-			for _, v := range messagingEntities {
-				entityMap[v.AttributeName] = v
-				ec.PutEntityObject(v)
-			}
+		for _, v := range messagingEntities {
+			entityMap[v.AttributeName] = v
+			ec.PutEntityObject(v)
 		}
+
 		ec.provisionRelationships(entityMap)
 	}
 }
@@ -246,7 +168,6 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string]*ResourceEntity) {
 	var unlinkedEntities []*ResourceEntity
 
-	// Lock per entity to avoid contention
 	for _, parentEntity := range globalEntityMap {
 		if entityInfo, exists := EntityRelationships[parentEntity.AttributeName]; exists {
 			parentLock := ec.getOrCreateEntityLock(toEntityId(parentEntity.Name, parentEntity.Type))
