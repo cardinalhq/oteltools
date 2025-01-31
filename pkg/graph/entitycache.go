@@ -39,11 +39,6 @@ func NewResourceEntityCache() *ResourceEntityCache {
 	return &ResourceEntityCache{}
 }
 
-func (ec *ResourceEntityCache) getOrCreateEntityLock(entityId string) *sync.RWMutex {
-	lock, _ := ec.entityLocks.LoadOrStore(entityId, &sync.RWMutex{})
-	return lock.(*sync.RWMutex)
-}
-
 func toEntityId(name, entityType string) string {
 	return name + ":" + entityType
 }
@@ -54,7 +49,7 @@ func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType s
 	if entity, exists := ec.entityMap.Load(entityId); exists {
 		re := entity.(*ResourceEntity)
 		for key, value := range attributes {
-			re.Attributes[key] = value
+			re.PutAttribute(key, value)
 		}
 		return re
 	}
@@ -102,6 +97,12 @@ func (re *ResourceEntity) AddEdge(targetName, targetType, relationship string) {
 	re.Edges[toEntityId(targetName, targetType)] = relationship
 }
 
+func (re *ResourceEntity) PutAttribute(k, v string) {
+	re.mu.Lock()
+	defer re.mu.Unlock()
+	re.Attributes[k] = v
+}
+
 func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Map) map[string]*ResourceEntity {
 	entityMap := make(map[string]*ResourceEntity)
 	ec.provisionEntities(attributes, entityMap)
@@ -145,7 +146,7 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 	for entityInfo, entity := range matches {
 		for _, attributeName := range entityInfo.AttributeNames {
 			if v, exists := attributes.Get(attributeName); exists {
-				entity.Attributes[attributeName] = v.AsString()
+				entity.PutAttribute(attributeName, v.AsString())
 			}
 		}
 		if len(entityInfo.AttributePrefixes) > 0 {
@@ -170,8 +171,6 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 
 	for _, parentEntity := range globalEntityMap {
 		if entityInfo, exists := EntityRelationships[parentEntity.AttributeName]; exists {
-			parentLock := ec.getOrCreateEntityLock(toEntityId(parentEntity.Name, parentEntity.Type))
-			parentLock.Lock()
 
 			foundLinkage := false
 			for childKey, relationship := range entityInfo.Relationships {
@@ -184,15 +183,10 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 			if !foundLinkage {
 				unlinkedEntities = append(unlinkedEntities, parentEntity)
 			}
-
-			parentLock.Unlock()
 		}
 	}
 
 	for _, entity := range unlinkedEntities {
-		entityLock := ec.getOrCreateEntityLock(toEntityId(entity.Name, entity.Type))
-		entityLock.Lock()
-
 		for _, otherEntity := range globalEntityMap {
 			if entity == otherEntity {
 				continue
@@ -200,6 +194,5 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 			entity.AddEdge(otherEntity.Name, otherEntity.Type, IsAssociatedWith)
 			break
 		}
-		entityLock.Unlock()
 	}
 }
