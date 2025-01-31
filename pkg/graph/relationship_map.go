@@ -83,6 +83,37 @@ const (
 	ProducesTo               = "produces to"
 )
 
+const (
+	Service               = "service"
+	KubernetesPod         = "k8s.pod"
+	KubernetesContainer   = "k8s.container"
+	KubernetesCluster     = "k8s.cluster"
+	Node                  = "k8s.node"
+	KubernetesNamespace   = "k8s.namespace"
+	KubernetesReplicaSet  = "k8s.cluster"
+	KubernetesDeployment  = "k8s.deployment"
+	KubernetesStatefulSet = "k8s.statefulset"
+	KubernetesDaemonSet   = "k8s.daemonset"
+	KubernetesJob         = "k8s.job"
+	KubernetesCronJob     = "k8s.cronjob"
+	Container             = "container"
+	ContainerImage        = "container.image"
+	Os                    = "os"
+	Process               = "process"
+	AwsEcsContainer       = "aws.ecs.container"
+	AwsEcsTask            = "aws.ecs.task"
+	AwsEcsCluster         = "aws.ecs.cluster"
+	AwsEksCluster         = "aws.eks.cluster"
+	FaasInstance          = "faas.instance"
+	FaasFunction          = "faas.function"
+	CloudProvider         = "cloud.provider"
+	CloudAccount          = "cloud.account"
+	CloudRegion           = "cloud.region"
+	CloudAvailabilityZone = "cloud.availability_zone"
+	CloudResourceId       = "cloud.resource_id"
+	Host                  = "host"
+)
+
 type EntityInfo struct {
 	Type              string
 	Relationships     map[string]string
@@ -95,7 +126,7 @@ type RelationshipMap map[string]*EntityInfo
 var EntityRelationships = RelationshipMap{
 	// Service
 	string(semconv.ServiceNameKey): {
-		Type: "service",
+		Type: Service,
 		Relationships: map[string]string{
 			string(semconv.K8SNamespaceNameKey):           BelongsToNamespace,
 			string(semconv.K8SClusterNameKey):             IsPartOfCluster,
@@ -122,7 +153,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Cluster
 	string(semconv.K8SClusterNameKey): {
-		Type: "k8s.cluster",
+		Type: KubernetesCluster,
 		Relationships: map[string]string{
 			string(semconv.K8SNodeNameKey):        HasNode,
 			string(semconv.K8SNamespaceNameKey):   HasNamespace,
@@ -139,7 +170,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Node
 	string(semconv.K8SNodeNameKey): {
-		Type: "k8s.node",
+		Type: Node,
 		Relationships: map[string]string{
 			string(semconv.K8SClusterNameKey): BelongsToCluster,
 			string(semconv.K8SPodNameKey):     SchedulesPod,
@@ -152,7 +183,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Namespace
 	string(semconv.K8SNamespaceNameKey): {
-		Type: "k8s.namespace",
+		Type: KubernetesNamespace,
 		Relationships: map[string]string{
 			string(semconv.K8SClusterNameKey):     BelongsToCluster,
 			string(semconv.K8SPodNameKey):         ContainsPod,
@@ -169,7 +200,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Pod
 	string(semconv.K8SPodNameKey): {
-		Type: "k8s.pod",
+		Type: KubernetesPod,
 		Relationships: map[string]string{
 			string(semconv.K8SNamespaceNameKey):   BelongsToNamespace,
 			string(semconv.K8SNodeNameKey):        IsScheduledOnNode,
@@ -188,7 +219,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Container
 	string(semconv.K8SContainerNameKey): {
-		Type: "k8s.container",
+		Type: KubernetesContainer,
 		Relationships: map[string]string{
 			string(semconv.K8SPodNameKey):       RunsInPod,
 			string(semconv.K8SNamespaceNameKey): IsPartOfNamespace,
@@ -203,7 +234,7 @@ var EntityRelationships = RelationshipMap{
 
 	// ReplicaSet
 	string(semconv.K8SReplicaSetNameKey): {
-		Type: "k8s.replicaset",
+		Type: KubernetesReplicaSet,
 		Relationships: map[string]string{
 			string(semconv.K8SNamespaceNameKey):  BelongsToNamespace,
 			string(semconv.K8SDeploymentNameKey): IsManagedByDeployment,
@@ -215,7 +246,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Deployment
 	string(semconv.K8SDeploymentNameKey): {
-		Type: "k8s.deployment",
+		Type: KubernetesDeployment,
 		Relationships: map[string]string{
 			string(semconv.K8SNamespaceNameKey):  BelongsToNamespace,
 			string(semconv.K8SClusterNameKey):    IsManagedByCluster,
@@ -227,7 +258,7 @@ var EntityRelationships = RelationshipMap{
 
 	// DaemonSet
 	string(semconv.K8SDaemonSetNameKey): {
-		Type: "k8s.daemonset",
+		Type: KubernetesDaemonSet,
 		Relationships: map[string]string{
 			string(semconv.K8SNamespaceNameKey): BelongsToNamespace,
 			string(semconv.K8SClusterNameKey):   IsManagedByCluster,
@@ -238,7 +269,7 @@ var EntityRelationships = RelationshipMap{
 
 	// StatefulSet
 	string(semconv.K8SStatefulSetNameKey): {
-		Type: "k8s.statefulset",
+		Type: KubernetesStatefulSet,
 		Relationships: map[string]string{
 			string(semconv.K8SNamespaceNameKey): BelongsToNamespace,
 			string(semconv.K8SClusterNameKey):   IsManagedByCluster,
@@ -249,7 +280,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Job
 	string(semconv.K8SJobNameKey): {
-		Type: "k8s.job",
+		Type: KubernetesJob,
 		Relationships: map[string]string{
 			string(semconv.K8SNamespaceNameKey): BelongsToNamespace,
 			string(semconv.K8SClusterNameKey):   IsManagedByCluster,
@@ -260,7 +291,7 @@ var EntityRelationships = RelationshipMap{
 
 	// CronJob
 	string(semconv.K8SCronJobNameKey): {
-		Type: "k8s.cronjob",
+		Type: KubernetesCronJob,
 		Relationships: map[string]string{
 			string(semconv.K8SNamespaceNameKey): BelongsToNamespace,
 			string(semconv.K8SClusterNameKey):   IsManagedByCluster,
@@ -271,7 +302,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Docker Container
 	string(semconv.ContainerNameKey): {
-		Type: "container",
+		Type: Container,
 		Relationships: map[string]string{
 			string(semconv.ContainerImageNameKey): UsesImage,
 		},
@@ -287,7 +318,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Container Image Entity
 	string(semconv.ContainerImageNameKey): {
-		Type: "container.image",
+		Type: ContainerImage,
 		Relationships: map[string]string{
 			string(semconv.ContainerNameKey): IsUsedByContainer,
 		},
@@ -300,7 +331,7 @@ var EntityRelationships = RelationshipMap{
 	},
 
 	string(semconv.OSNameKey): {
-		Type:          "os",
+		Type:          Os,
 		Relationships: map[string]string{},
 		AttributeNames: []string{
 			string(semconv.OSVersionKey),
@@ -311,7 +342,7 @@ var EntityRelationships = RelationshipMap{
 	},
 
 	string(semconv.ProcessCommandKey): {
-		Type:          "process",
+		Type:          Process,
 		Relationships: map[string]string{},
 		AttributeNames: []string{
 			string(semconv.ProcessExecutableNameKey),
@@ -331,7 +362,7 @@ var EntityRelationships = RelationshipMap{
 
 	// ECS Container
 	string(semconv.AWSECSContainerARNKey): {
-		Type: "aws.ecs.container",
+		Type: AwsEcsContainer,
 		Relationships: map[string]string{
 			string(semconv.AWSECSClusterARNKey): IsPartOfCluster,
 			string(semconv.AWSECSTaskARNKey):    IsAssociatedWithTask,
@@ -342,7 +373,7 @@ var EntityRelationships = RelationshipMap{
 
 	// ECS Task
 	string(semconv.AWSECSTaskARNKey): {
-		Type: "aws.ecs.task",
+		Type: AwsEcsTask,
 		Relationships: map[string]string{
 			string(semconv.AWSECSClusterARNKey): IsPartOfCluster,
 		},
@@ -356,7 +387,7 @@ var EntityRelationships = RelationshipMap{
 
 	// ECS Cluster
 	string(semconv.AWSECSClusterARNKey): {
-		Type: "aws.ecs.cluster",
+		Type: AwsEcsCluster,
 		Relationships: map[string]string{
 			string(semconv.AWSECSTaskIDKey): ContainsTask,
 		},
@@ -368,7 +399,7 @@ var EntityRelationships = RelationshipMap{
 
 	// EKS Cluster
 	string(semconv.AWSEKSClusterARNKey): {
-		Type: "aws.eks.cluster",
+		Type: AwsEksCluster,
 		Relationships: map[string]string{
 			string(semconv.K8SClusterNameKey): IsAssociatedWithCluster,
 			string(semconv.K8SNodeNameKey):    IsAssociatedWithNode,
@@ -379,7 +410,7 @@ var EntityRelationships = RelationshipMap{
 
 	// FaaS Instance
 	string(semconv.FaaSInstanceKey): {
-		Type: "faas.instance",
+		Type: FaasInstance,
 		Relationships: map[string]string{
 			string(semconv.FaaSNameKey): IsInstanceOfFunction,
 		},
@@ -389,7 +420,7 @@ var EntityRelationships = RelationshipMap{
 
 	// FaaS Function
 	string(semconv.FaaSNameKey): {
-		Type: "faas.function",
+		Type: FaasFunction,
 		Relationships: map[string]string{
 			string(semconv.FaaSInstanceKey): HasInstance,
 		},
@@ -409,7 +440,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Cloud Provider (e.g., AWS, GCP, Azure)
 	string(semconv.CloudProviderKey): {
-		Type: "cloud.provider",
+		Type: CloudProvider,
 		Relationships: map[string]string{
 			string(semconv.CloudAccountIDKey):        ManagesAccount,
 			string(semconv.CloudRegionKey):           ContainsRegion,
@@ -421,7 +452,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Cloud Account
 	string(semconv.CloudAccountIDKey): {
-		Type: "cloud.account",
+		Type: CloudAccount,
 		Relationships: map[string]string{
 			string(semconv.CloudProviderKey):         BelongsToProvider,
 			string(semconv.CloudRegionKey):           HasResourcesInRegion,
@@ -433,7 +464,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Cloud Region
 	string(semconv.CloudRegionKey): {
-		Type: "cloud.region",
+		Type: CloudRegion,
 		Relationships: map[string]string{
 			string(semconv.CloudProviderKey):         BelongsToProvider,
 			string(semconv.CloudAvailabilityZoneKey): ContainsAvailabilityZone,
@@ -445,7 +476,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Cloud Availability Zone
 	string(semconv.CloudAvailabilityZoneKey): {
-		Type: "cloud.availability_zone",
+		Type: CloudAvailabilityZone,
 		Relationships: map[string]string{
 			string(semconv.CloudRegionKey):    BelongsToRegion,
 			string(semconv.CloudAccountIDKey): BelongsToAccount,
@@ -457,7 +488,7 @@ var EntityRelationships = RelationshipMap{
 
 	// Cloud Availability Zone
 	string(semconv.CloudResourceIDKey): {
-		Type: "cloud.resource_id",
+		Type: CloudResourceId,
 		Relationships: map[string]string{
 			string(semconv.CloudRegionKey):           BelongsToRegion,
 			string(semconv.CloudAvailabilityZoneKey): BelongsToZone,
@@ -469,7 +500,7 @@ var EntityRelationships = RelationshipMap{
 	},
 
 	string(semconv.HostNameKey): {
-		Type: "host",
+		Type: Host,
 		Relationships: map[string]string{
 			string(semconv.ServiceNameKey):        HostsService,
 			string(semconv.K8SClusterNameKey):     HostsCluster,
