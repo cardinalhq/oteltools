@@ -15,6 +15,7 @@
 package graph
 
 import (
+	"encoding/json"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"strings"
@@ -76,15 +77,24 @@ func (ec *ResourceEntityCache) PutEntityObject(entity *ResourceEntity) {
 	ec.entityMap.Store(entityId, entity)
 }
 
-func (ec *ResourceEntityCache) GetAllEntities() map[string]*ResourceEntity {
-	entities := make(map[string]*ResourceEntity)
+func (ec *ResourceEntityCache) GetAllEntities() [][]byte {
+	var jsonEntities [][]byte
 
 	ec.entityMap.Range(func(key, value interface{}) bool {
-		entities[key.(string)] = value.(*ResourceEntity)
+		entity := value.(*ResourceEntity)
+
+		entity.mu.Lock()
+		jsonData, err := json.Marshal(entity)
+		entity.mu.Unlock()
+
+		if err == nil {
+			jsonEntities = append(jsonEntities, jsonData)
+		}
+
 		return true
 	})
 
-	return entities
+	return jsonEntities
 }
 
 func (re *ResourceEntity) AddEdge(targetName, targetType, relationship string) {
