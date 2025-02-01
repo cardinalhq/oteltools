@@ -18,6 +18,7 @@ import (
 	"github.com/cardinalhq/oteltools/pkg/chqpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+	"golang.org/x/exp/slog"
 	"google.golang.org/protobuf/proto"
 	"strings"
 	"sync"
@@ -80,8 +81,6 @@ func (ec *ResourceEntityCache) PutEntityObject(entity *ResourceEntity) {
 	ec.entityMap.Store(entityId, entity)
 }
 
-const batchSize = 100
-
 func (ec *ResourceEntityCache) _allEntities() map[string]*ResourceEntity {
 	entities := make(map[string]*ResourceEntity)
 
@@ -93,8 +92,7 @@ func (ec *ResourceEntityCache) _allEntities() map[string]*ResourceEntity {
 	return entities
 }
 
-func (ec *ResourceEntityCache) GetAllEntities() [][]byte {
-	var serializedEntities [][]byte
+func (ec *ResourceEntityCache) GetAllEntities() []byte {
 	var batch []*chqpb.ResourceEntityProto
 
 	ec.entityMap.Range(func(key, value interface{}) bool {
@@ -107,27 +105,16 @@ func (ec *ResourceEntityCache) GetAllEntities() [][]byte {
 			Edges:      entity.Edges,
 		}
 		entity.mu.Unlock()
-
 		batch = append(batch, protoEntity)
-
-		if len(batch) >= batchSize {
-			serialized, err := proto.Marshal(&chqpb.ResourceEntityProtoList{Entities: batch})
-			if err == nil {
-				serializedEntities = append(serializedEntities, serialized)
-			}
-			batch = batch[:0]
-		}
 		return true
 	})
 
-	if len(batch) > 0 {
-		serialized, err := proto.Marshal(&chqpb.ResourceEntityProtoList{Entities: batch})
-		if err == nil {
-			serializedEntities = append(serializedEntities, serialized)
-		}
+	serialized, err := proto.Marshal(&chqpb.ResourceEntityProtoList{Entities: batch})
+	if err == nil {
+		slog.Error("Error marshaling entities", slog.String("error", err.Error()))
+		return serialized
 	}
-
-	return serializedEntities
+	return []byte{}
 }
 
 func (re *ResourceEntity) AddEdge(targetName, targetType, relationship string) {
