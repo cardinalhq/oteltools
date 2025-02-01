@@ -111,9 +111,9 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 
 	serialized, err := proto.Marshal(&chqpb.ResourceEntityProtoList{Entities: batch})
 	if err == nil {
-		slog.Error("Error marshaling entities", slog.String("error", err.Error()))
 		return serialized
 	}
+	slog.Error("Error marshaling entities", slog.String("error", err.Error()))
 	return []byte{}
 }
 
