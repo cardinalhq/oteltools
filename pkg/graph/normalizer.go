@@ -35,7 +35,7 @@ func toMessagingEntities(messagingAttributes pcommon.Map) map[string]*ResourceEn
 			consumerGroupEntity := &ResourceEntity{
 				AttributeName: consumerGroupKey,
 				Name:          messagingConsumerGroup.AsString(),
-				Type:          MessagingConsumer,
+				Type:          messagingSystem.AsString(),
 				Attributes:    map[string]string{},
 			}
 			if serverAddress != "" {
@@ -48,7 +48,7 @@ func toMessagingEntities(messagingAttributes pcommon.Map) map[string]*ResourceEn
 			destinationEntity := &ResourceEntity{
 				AttributeName: string(semconv.MessagingDestinationNameKey),
 				Name:          messagingDestination.AsString(),
-				Type:          MessagingProducer,
+				Type:          messagingSystem.AsString(),
 				Attributes:    map[string]string{},
 			}
 			if serverAddress != "" {
