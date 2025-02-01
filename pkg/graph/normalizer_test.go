@@ -138,7 +138,7 @@ func TestDatabaseEntityRelationships(t *testing.T) {
 	globalEntityMap := ec.ProvisionResourceAttributes(resourceAttributes)
 	ec.ProvisionRecordAttributes(globalEntityMap, dbAttributes)
 
-	entities := ec.GetAllEntities()
+	entities := ec._allEntities()
 
 	expectedEntities := map[string]string{
 		"orders-service": "service",
@@ -181,7 +181,7 @@ func TestMessagingEntityRelationships(t *testing.T) {
 	globalEntityMap := ec.ProvisionResourceAttributes(resourceAttributes)
 	ec.ProvisionRecordAttributes(globalEntityMap, messagingAttributes)
 
-	entities := ec.GetAllEntities()
+	entities := ec._allEntities()
 
 	expectedEntities := map[string]string{
 		"payment-service": "service",

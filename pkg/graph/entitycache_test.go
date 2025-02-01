@@ -38,7 +38,7 @@ func TestKubernetesEntityRelationships(t *testing.T) {
 
 	ec.ProvisionResourceAttributes(attributes)
 
-	entities := ec.GetAllEntities()
+	entities := ec._allEntities()
 
 	expectedEntities := map[string]string{
 		"cluster-1": "k8s.cluster",
@@ -78,7 +78,7 @@ func TestInterdependencyBetweenRelationshipMaps(t *testing.T) {
 
 	ec.ProvisionResourceAttributes(attributes)
 
-	entities := ec.GetAllEntities()
+	entities := ec._allEntities()
 
 	expectedEntities := map[string]string{
 		"cluster-1": "k8s.cluster",
@@ -137,7 +137,7 @@ func TestContainerRelationships(t *testing.T) {
 
 	ec.ProvisionResourceAttributes(attributes)
 
-	entities := ec.GetAllEntities()
+	entities := ec._allEntities()
 
 	expectedEntities := map[string]string{
 		"my-container": "container",
@@ -191,7 +191,7 @@ func TestCloudRelationships(t *testing.T) {
 
 	ec.ProvisionResourceAttributes(attributes)
 
-	entities := ec.GetAllEntities()
+	entities := ec._allEntities()
 
 	expectedEntities := map[string]string{
 		"aws":          "cloud.provider",

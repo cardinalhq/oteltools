@@ -82,6 +82,17 @@ func (ec *ResourceEntityCache) PutEntityObject(entity *ResourceEntity) {
 
 const batchSize = 100
 
+func (ec *ResourceEntityCache) _allEntities() map[string]*ResourceEntity {
+	entities := make(map[string]*ResourceEntity)
+
+	ec.entityMap.Range(func(key, value interface{}) bool {
+		entities[key.(string)] = value.(*ResourceEntity)
+		return true
+	})
+
+	return entities
+}
+
 func (ec *ResourceEntityCache) GetAllEntities() [][]byte {
 	var serializedEntities [][]byte
 	var batch []*chqpb.ResourceEntityProto
