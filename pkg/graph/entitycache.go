@@ -159,7 +159,7 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 	matches := make(map[*EntityInfo]*ResourceEntity)
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		entityValue := v.AsString()
-		if entityInfo, exists := EntityRelationships[k]; exists {
+		if entityInfo, exists := EntityRelationships[k]; exists && entityValue != "" {
 			entityAttrs := make(map[string]string)
 			entity := ec.PutEntity(k, entityValue, entityInfo.Type, entityAttrs)
 			matches[entityInfo] = entity
