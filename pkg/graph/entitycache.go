@@ -105,12 +105,11 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 			Attributes: entity.Attributes,
 			Edges:      entity.Edges,
 		}
-		entity.mu.Unlock()
 		serialized, err := proto.Marshal(protoEntity)
-		if err != nil {
-			return true
+		if err == nil {
+			batch = append(batch, serialized)
 		}
-		batch = append(batch, serialized)
+		entity.mu.Unlock()
 		return true
 	})
 
