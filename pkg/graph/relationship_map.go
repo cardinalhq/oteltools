@@ -17,6 +17,7 @@ package graph
 import semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 const (
+	IsAPodForService         = "is a pod for service"
 	BelongsToNamespace       = "belongs to namespace"
 	IsPartOfCluster          = "is part of cluster"
 	IsDeployedOnPod          = "is deployed on pod"
@@ -33,6 +34,7 @@ const (
 	ManagesJobs              = "manages jobs"
 	ManagesCronJobs          = "manages cron jobs"
 	BelongsToCluster         = "belongs to cluster"
+	ContainsService          = "contains service"
 	SchedulesPod             = "schedules pod"
 	RunsOnOperatingSystem    = "runs on operating system"
 	ContainsPod              = "contains pod"
@@ -50,6 +52,7 @@ const (
 	IsPartOfNamespace        = "is part of namespace"
 	IsDeployedOnNode         = "is deployed on node"
 	IsManagedByCluster       = "is managed by cluster"
+	IsDeployedOnContainer    = "is deployed on container"
 	ManagesReplicaset        = "manages replicaset"
 	UsesImage                = "uses image"
 	IsUsedByContainer        = "is used by container"
@@ -77,10 +80,9 @@ const (
 	UsesDatabase             = "uses database"
 	IsDatabaseHostedOn       = "is a database hosted on"
 	IsCollectionHostedOn     = "is a collection hosted on"
-	MessagingProducer        = "messaging.producer"
-	MessagingConsumer        = "messaging.consumer"
 	ConsumesFrom             = "consumes from"
 	ProducesTo               = "produces to"
+	IsSpawnedByService       = "is spawned by service"
 )
 
 const (
@@ -155,6 +157,7 @@ var EntityRelationships = RelationshipMap{
 	string(semconv.K8SClusterNameKey): {
 		Type: KubernetesCluster,
 		Relationships: map[string]string{
+			string(semconv.ServiceNameKey):        ContainsService,
 			string(semconv.K8SNodeNameKey):        HasNode,
 			string(semconv.K8SNamespaceNameKey):   HasNamespace,
 			string(semconv.K8SDeploymentNameKey):  ManagesDeployments,
@@ -172,6 +175,7 @@ var EntityRelationships = RelationshipMap{
 	string(semconv.K8SNodeNameKey): {
 		Type: Node,
 		Relationships: map[string]string{
+			string(semconv.ServiceNameKey):    ContainsService,
 			string(semconv.K8SClusterNameKey): BelongsToCluster,
 			string(semconv.K8SPodNameKey):     SchedulesPod,
 			string(semconv.OSNameKey):         RunsOnOperatingSystem,
@@ -185,6 +189,7 @@ var EntityRelationships = RelationshipMap{
 	string(semconv.K8SNamespaceNameKey): {
 		Type: KubernetesNamespace,
 		Relationships: map[string]string{
+			string(semconv.ServiceNameKey):        ContainsService,
 			string(semconv.K8SClusterNameKey):     BelongsToCluster,
 			string(semconv.K8SPodNameKey):         ContainsPod,
 			string(semconv.K8SDeploymentNameKey):  ContainsDeployment,
@@ -202,6 +207,7 @@ var EntityRelationships = RelationshipMap{
 	string(semconv.K8SPodNameKey): {
 		Type: KubernetesPod,
 		Relationships: map[string]string{
+			string(semconv.ServiceNameKey):        IsAPodForService,
 			string(semconv.K8SNamespaceNameKey):   BelongsToNamespace,
 			string(semconv.K8SNodeNameKey):        IsScheduledOnNode,
 			string(semconv.K8SClusterNameKey):     IsPartOfCluster,
@@ -304,6 +310,7 @@ var EntityRelationships = RelationshipMap{
 	string(semconv.ContainerNameKey): {
 		Type: Container,
 		Relationships: map[string]string{
+			string(semconv.ServiceNameKey):        IsDeployedOnContainer,
 			string(semconv.ContainerImageNameKey): UsesImage,
 		},
 		AttributeNames: []string{
@@ -342,8 +349,10 @@ var EntityRelationships = RelationshipMap{
 	},
 
 	string(semconv.ProcessCommandKey): {
-		Type:          Process,
-		Relationships: map[string]string{},
+		Type: Process,
+		Relationships: map[string]string{
+			string(semconv.ServiceNameKey): IsSpawnedByService,
+		},
 		AttributeNames: []string{
 			string(semconv.ProcessExecutableNameKey),
 			string(semconv.ProcessExecutablePathKey),
