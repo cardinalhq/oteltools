@@ -94,27 +94,23 @@ func (ec *ResourceEntityCache) _allEntities() map[string]*ResourceEntity {
 }
 
 func (ec *ResourceEntityCache) GetAllEntities() []byte {
-	var batch []*chqpb.ResourceEntityProto
+	var batch [][]byte
 
 	ec.entityMap.Range(func(key, value interface{}) bool {
 		entity := value.(*ResourceEntity)
 		entity.mu.Lock()
-		attributesCopy := make(map[string]string)
-		for k, v := range entity.Attributes {
-			attributesCopy[k] = v
-		}
-		edgesCopy := make(map[string]string)
-		for k, v := range entity.Edges {
-			edgesCopy[k] = v
-		}
 		protoEntity := &chqpb.ResourceEntityProto{
 			Name:       entity.Name,
 			Type:       entity.Type,
-			Attributes: attributesCopy,
-			Edges:      edgesCopy,
+			Attributes: entity.Attributes,
+			Edges:      entity.Edges,
 		}
 		entity.mu.Unlock()
-		batch = append(batch, protoEntity)
+		serialized, err := proto.Marshal(protoEntity)
+		if err != nil {
+			return true
+		}
+		batch = append(batch, serialized)
 		return true
 	})
 

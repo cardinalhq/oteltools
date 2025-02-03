@@ -12,5 +12,5 @@ message ResourceEntityProto {
 }
 
 message ResourceEntityProtoList {
-  repeated ResourceEntityProto entities = 1;
+  repeated bytes entities = 1;
 }
