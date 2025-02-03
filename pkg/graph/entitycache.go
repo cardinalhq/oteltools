@@ -69,10 +69,11 @@ func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType s
 
 	entity, _ := ec.entityMap.LoadOrStore(entityId, newEntity)
 	re := entity.(*ResourceEntity)
-
+	re.mu.Lock()
 	for key, value := range attributes {
-		re.Attributes[key] = value
+		re.PutAttribute(key, value)
 	}
+	re.mu.Unlock()
 	return re
 }
 
@@ -98,11 +99,19 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 	ec.entityMap.Range(func(key, value interface{}) bool {
 		entity := value.(*ResourceEntity)
 		entity.mu.Lock()
+		attributesCopy := make(map[string]string)
+		for k, v := range entity.Attributes {
+			attributesCopy[k] = v
+		}
+		edgesCopy := make(map[string]string)
+		for k, v := range entity.Edges {
+			edgesCopy[k] = v
+		}
 		protoEntity := &chqpb.ResourceEntityProto{
 			Name:       entity.Name,
 			Type:       entity.Type,
-			Attributes: entity.Attributes,
-			Edges:      entity.Edges,
+			Attributes: attributesCopy,
+			Edges:      edgesCopy,
 		}
 		entity.mu.Unlock()
 		batch = append(batch, protoEntity)
