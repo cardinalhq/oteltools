@@ -29,7 +29,6 @@ const (
 	HasNamespace             = "has a namespace"
 	HasCollection            = "has a collection"
 	ManagesDeployments       = "manages deployments"
-	ManagesDaemonSets        = "manages daemon sets"
 	ManagesStatefulSets      = "manages stateful sets"
 	ManagesJobs              = "manages jobs"
 	ManagesCronJobs          = "manages cron jobs"
@@ -40,13 +39,11 @@ const (
 	ContainsPod              = "contains pod"
 	ContainsDeployment       = "contains deployment"
 	ContainsStatefulSet      = "contains statefulset"
-	ContainsDaemonSet        = "contains daemonset"
 	ContainsReplicaSet       = "contains replicaset"
 	ContainsJob              = "contains job"
 	ContainsCronJob          = "contains cronjob"
 	IsPartOfDeployment       = "is part of deployment"
 	IsPartOfStatefulSet      = "is part of statefulset"
-	IsPartOfDaemonSet        = "is part of daemonset"
 	IsScheduledOnNode        = "is scheduled on node"
 	RunsInPod                = "runs in pod"
 	IsPartOfNamespace        = "is part of namespace"
@@ -95,7 +92,6 @@ const (
 	KubernetesReplicaSet  = "k8s.replicaset"
 	KubernetesDeployment  = "k8s.deployment"
 	KubernetesStatefulSet = "k8s.statefulset"
-	KubernetesDaemonSet   = "k8s.daemonset"
 	KubernetesJob         = "k8s.job"
 	KubernetesCronJob     = "k8s.cronjob"
 	Container             = "container"
@@ -161,7 +157,6 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SNodeNameKey):        HasNode,
 			string(semconv.K8SNamespaceNameKey):   HasNamespace,
 			string(semconv.K8SDeploymentNameKey):  ManagesDeployments,
-			string(semconv.K8SDaemonSetNameKey):   ManagesDaemonSets,
 			string(semconv.K8SStatefulSetNameKey): ManagesStatefulSets,
 			string(semconv.K8SJobNameKey):         ManagesJobs,
 			string(semconv.K8SCronJobNameKey):     ManagesCronJobs,
@@ -194,7 +189,6 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SPodNameKey):         ContainsPod,
 			string(semconv.K8SDeploymentNameKey):  ContainsDeployment,
 			string(semconv.K8SStatefulSetNameKey): ContainsStatefulSet,
-			string(semconv.K8SDaemonSetNameKey):   ContainsDaemonSet,
 			string(semconv.K8SReplicaSetNameKey):  ContainsReplicaSet,
 			string(semconv.K8SJobNameKey):         ContainsJob,
 			string(semconv.K8SCronJobNameKey):     ContainsCronJob,
@@ -214,7 +208,6 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SReplicaSetNameKey):  IsManagedByReplicaSet,
 			string(semconv.K8SDeploymentNameKey):  IsPartOfDeployment,
 			string(semconv.K8SStatefulSetNameKey): IsPartOfStatefulSet,
-			string(semconv.K8SDaemonSetNameKey):   IsPartOfDaemonSet,
 		},
 		AttributeNames: []string{
 			"k8s.pod.ip",
@@ -259,17 +252,6 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SReplicaSetNameKey): ManagesReplicaset,
 		},
 		AttributeNames:    []string{string(semconv.K8SDeploymentUIDKey)},
-		AttributePrefixes: []string{},
-	},
-
-	// DaemonSet
-	string(semconv.K8SDaemonSetNameKey): {
-		Type: KubernetesDaemonSet,
-		Relationships: map[string]string{
-			string(semconv.K8SNamespaceNameKey): BelongsToNamespace,
-			string(semconv.K8SClusterNameKey):   IsManagedByCluster,
-		},
-		AttributeNames:    []string{string(semconv.K8SDaemonSetUIDKey)},
 		AttributePrefixes: []string{},
 	},
 
