@@ -92,7 +92,7 @@ const (
 	KubernetesCluster     = "k8s.cluster"
 	Node                  = "k8s.node"
 	KubernetesNamespace   = "k8s.namespace"
-	KubernetesReplicaSet  = "k8s.cluster"
+	KubernetesReplicaSet  = "k8s.replicaset"
 	KubernetesDeployment  = "k8s.deployment"
 	KubernetesStatefulSet = "k8s.statefulset"
 	KubernetesDaemonSet   = "k8s.daemonset"

@@ -16,7 +16,9 @@ package graph
 
 import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -218,4 +220,43 @@ func TestCloudRelationships(t *testing.T) {
 	assert.Equal(t, ContainsAvailabilityZone, entities[toEntityId("us-west-1", "cloud.region")].Edges[toEntityId("us-west-1a", "cloud.availability_zone")])
 	assert.Equal(t, BelongsToAccount, entities[toEntityId("us-west-1", "cloud.region")].Edges[toEntityId("123456789012", "cloud.account")])
 	assert.Equal(t, BelongsToRegion, entities[toEntityId("us-west-1a", "cloud.availability_zone")].Edges[toEntityId("us-west-1", "cloud.region")])
+}
+
+func TestOverridesCase(t *testing.T) {
+	exemplarData, err := os.ReadFile("testdata/metricfile.json")
+	assert.NoError(t, err)
+	unmarshaller := pmetric.JSONUnmarshaler{}
+	metricData, err := unmarshaller.UnmarshalMetrics(exemplarData)
+	assert.NoError(t, err)
+	overrides := pcommon.NewMap()
+
+	for i := 0; i < metricData.ResourceMetrics().Len(); i++ {
+		rm := metricData.ResourceMetrics().At(i)
+
+		for j := 0; j < rm.ScopeMetrics().Len(); j++ {
+			sm := rm.ScopeMetrics().At(j)
+			for k := 0; k < sm.Metrics().Len(); k++ {
+				m := sm.Metrics().At(k)
+				for l := 0; l < m.Gauge().DataPoints().Len(); l++ {
+					dpAttr := m.Gauge().DataPoints().At(l).Attributes()
+					rAttr := rm.Resource().Attributes()
+					rAttr.CopyTo(overrides)
+
+					dpAttr.Range(func(k string, v pcommon.Value) bool {
+						ra, found := rAttr.Get(k)
+						if found && ra.Type() == pcommon.ValueTypeStr && ra.AsString() != v.AsString() {
+							overrides.PutStr(k, v.AsString())
+						}
+						return true
+					})
+				}
+			}
+		}
+	}
+	ec := NewResourceEntityCache()
+	ec.ProvisionResourceAttributes(overrides)
+	entities := ec._allEntities()
+	assert.NotEmptyf(t, entities, "Expected global entity map to be populated")
+
+	assert.Equal(t, IsAPodForService, entities[toEntityId("api-gateway-c786c6986-q8l96", "k8s.pod")].Edges[toEntityId("api-gateway", "service")])
 }
