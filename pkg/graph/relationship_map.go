@@ -514,3 +514,8 @@ var EntityRelationships = RelationshipMap{
 		AttributePrefixes: []string{},
 	},
 }
+
+var RestrictedServices = map[string]bool{
+	"kubernetes-nodes":          true,
+	"kubernetes-nodes-cadvisor": true,
+}

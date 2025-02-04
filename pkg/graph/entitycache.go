@@ -134,6 +134,10 @@ func (re *ResourceEntity) PutAttribute(k, v string) {
 
 func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Map) map[string]*ResourceEntity {
 	entityMap := make(map[string]*ResourceEntity)
+	serviceName, serviceNameFound := attributes.Get(string(semconv.ServiceNameKey))
+	if serviceNameFound && RestrictedServices[serviceName.AsString()] {
+		return entityMap
+	}
 	ec.provisionEntities(attributes, entityMap)
 	ec.provisionRelationships(entityMap)
 	return entityMap
