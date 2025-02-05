@@ -519,3 +519,7 @@ var RestrictedServices = map[string]bool{
 	"kubernetes-nodes":          true,
 	"kubernetes-nodes-cadvisor": true,
 }
+
+var RestrictedNamespaces = map[string]bool{
+	"datadog-agent": true,
+}

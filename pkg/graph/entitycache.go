@@ -138,6 +138,11 @@ func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Ma
 	if serviceNameFound && RestrictedServices[serviceName.AsString()] {
 		return entityMap
 	}
+	namespace, namespaceFound := attributes.Get(string(semconv.K8SNamespaceNameKey))
+	if namespaceFound && RestrictedNamespaces[namespace.AsString()] {
+		return entityMap
+	}
+
 	ec.provisionEntities(attributes, entityMap)
 	ec.provisionRelationships(entityMap)
 	return entityMap
