@@ -25,30 +25,24 @@ const (
 	IsManagedByDeployment    = "is managed by deployment"
 	IsManagedByStatefulSet   = "is managed by statefulset"
 	IsManagedByReplicaSet    = "is managed by replicaset"
+	IsManagedByCronJob       = "is managed by cronjob"
+	IsManagedByJob           = "is managed by job"
 	HasNode                  = "has a node"
 	HasNamespace             = "has a namespace"
 	HasCollection            = "has a collection"
-	ManagesDeployments       = "manages deployments"
-	ManagesStatefulSets      = "manages stateful sets"
-	ManagesJobs              = "manages jobs"
-	ManagesCronJobs          = "manages cron jobs"
 	BelongsToCluster         = "belongs to cluster"
+	ContainsNamespace        = "contains namespace"
 	ContainsService          = "contains service"
-	SchedulesPod             = "schedules pod"
+	HostedOnNode             = "hosted on node"
 	RunsOnOperatingSystem    = "runs on operating system"
 	ContainsPod              = "contains pod"
-	ContainsDeployment       = "contains deployment"
-	ContainsStatefulSet      = "contains statefulset"
-	ContainsReplicaSet       = "contains replicaset"
-	ContainsJob              = "contains job"
-	ContainsCronJob          = "contains cronjob"
-	IsPartOfDeployment       = "is part of deployment"
-	IsPartOfStatefulSet      = "is part of statefulset"
-	IsScheduledOnNode        = "is scheduled on node"
+	IsStatefulSetFor         = "is statefulset for"
+	IsAJobFor                = "is a job for"
+	IsACronJobFor            = "is a cronjob for"
+	IsAPodFor                = "is a pod for"
 	RunsInPod                = "runs in pod"
 	IsPartOfNamespace        = "is part of namespace"
 	IsDeployedOnNode         = "is deployed on node"
-	IsManagedByCluster       = "is managed by cluster"
 	IsDeployedOnContainer    = "is deployed on container"
 	ManagesReplicaset        = "manages replicaset"
 	UsesImage                = "uses image"
@@ -122,18 +116,51 @@ type EntityInfo struct {
 type RelationshipMap map[string]*EntityInfo
 
 var EntityRelationships = RelationshipMap{
+	// Cluster
+	string(semconv.K8SClusterNameKey): {
+		Type: KubernetesCluster,
+		Relationships: map[string]string{
+			string(semconv.K8SNodeNameKey): HasNode,
+		},
+		AttributeNames: []string{
+			string(semconv.K8SClusterUIDKey),
+		},
+	},
+
+	// Node
+	string(semconv.K8SNodeNameKey): {
+		Type: Node,
+		Relationships: map[string]string{
+			string(semconv.K8SNamespaceNameKey): ContainsNamespace,
+			string(semconv.K8SClusterNameKey):   BelongsToCluster,
+			string(semconv.OSNameKey):           RunsOnOperatingSystem,
+		},
+		AttributeNames: []string{
+			string(semconv.K8SNodeUIDKey),
+		},
+	},
+
+	// Namespace
+	string(semconv.K8SNamespaceNameKey): {
+		Type: KubernetesNamespace,
+		Relationships: map[string]string{
+			string(semconv.ServiceNameKey): ContainsService,
+			string(semconv.K8SNodeNameKey): HostedOnNode,
+		},
+		AttributeNames:    []string{},
+		AttributePrefixes: []string{},
+	},
+
 	// Service
 	string(semconv.ServiceNameKey): {
 		Type: Service,
 		Relationships: map[string]string{
-			string(semconv.K8SNamespaceNameKey):           BelongsToNamespace,
-			string(semconv.K8SClusterNameKey):             IsPartOfCluster,
-			string(semconv.K8SPodNameKey):                 IsDeployedOnPod,
-			string(semconv.K8SNodeNameKey):                IsRunningOnNode,
+			string(semconv.K8SDaemonSetNameKey):           IsManagedByDeployment,
 			string(semconv.K8SDeploymentNameKey):          IsManagedByDeployment,
 			string(semconv.K8SStatefulSetNameKey):         IsManagedByStatefulSet,
-			string(semconv.K8SDaemonSetNameKey):           IsManagedByDeployment,
-			string(semconv.K8SReplicaSetNameKey):          IsManagedByReplicaSet,
+			string(semconv.K8SCronJobNameKey):             IsManagedByCronJob,
+			string(semconv.K8SJobNameKey):                 IsManagedByJob,
+			string(semconv.K8SNamespaceNameKey):           BelongsToNamespace,
 			string(semconv.DBSystemKey):                   UsesDatabase,
 			string(semconv.MessagingConsumerGroupNameKey): ConsumesFrom,
 			string(semconv.MessagingDestinationNameKey):   ProducesTo,
@@ -149,51 +176,58 @@ var EntityRelationships = RelationshipMap{
 		AttributePrefixes: []string{},
 	},
 
-	// Cluster
-	string(semconv.K8SClusterNameKey): {
-		Type: KubernetesCluster,
+	// Deployment
+	string(semconv.K8SDeploymentNameKey): {
+		Type: KubernetesDeployment,
 		Relationships: map[string]string{
-			string(semconv.ServiceNameKey):        ContainsService,
-			string(semconv.K8SNodeNameKey):        HasNode,
-			string(semconv.K8SNamespaceNameKey):   HasNamespace,
-			string(semconv.K8SDeploymentNameKey):  ManagesDeployments,
-			string(semconv.K8SStatefulSetNameKey): ManagesStatefulSets,
-			string(semconv.K8SJobNameKey):         ManagesJobs,
-			string(semconv.K8SCronJobNameKey):     ManagesCronJobs,
+			string(semconv.K8SReplicaSetNameKey): ManagesReplicaset,
+			string(semconv.ServiceNameKey):       IsManagedByDeployment,
 		},
-		AttributeNames: []string{
-			string(semconv.K8SClusterUIDKey),
-		},
+		AttributeNames:    []string{string(semconv.K8SDeploymentUIDKey)},
+		AttributePrefixes: []string{},
 	},
 
-	// Node
-	string(semconv.K8SNodeNameKey): {
-		Type: Node,
+	// ReplicaSet
+	string(semconv.K8SReplicaSetNameKey): {
+		Type: KubernetesReplicaSet,
 		Relationships: map[string]string{
-			string(semconv.ServiceNameKey):    ContainsService,
-			string(semconv.K8SClusterNameKey): BelongsToCluster,
-			string(semconv.K8SPodNameKey):     SchedulesPod,
-			string(semconv.OSNameKey):         RunsOnOperatingSystem,
+			string(semconv.K8SPodNameKey):        ContainsPod,
+			string(semconv.K8SDeploymentNameKey): IsManagedByDeployment,
 		},
-		AttributeNames: []string{
-			string(semconv.K8SNodeUIDKey),
-		},
+		AttributeNames:    []string{string(semconv.K8SReplicaSetUIDKey)},
+		AttributePrefixes: []string{},
 	},
 
-	// Namespace
-	string(semconv.K8SNamespaceNameKey): {
-		Type: KubernetesNamespace,
+	// StatefulSet
+	string(semconv.K8SStatefulSetNameKey): {
+		Type: KubernetesStatefulSet,
 		Relationships: map[string]string{
-			string(semconv.ServiceNameKey):        ContainsService,
-			string(semconv.K8SClusterNameKey):     BelongsToCluster,
-			string(semconv.K8SPodNameKey):         ContainsPod,
-			string(semconv.K8SDeploymentNameKey):  ContainsDeployment,
-			string(semconv.K8SStatefulSetNameKey): ContainsStatefulSet,
-			string(semconv.K8SReplicaSetNameKey):  ContainsReplicaSet,
-			string(semconv.K8SJobNameKey):         ContainsJob,
-			string(semconv.K8SCronJobNameKey):     ContainsCronJob,
+			string(semconv.K8SPodNameKey):  ContainsPod,
+			string(semconv.ServiceNameKey): IsStatefulSetFor,
 		},
-		AttributeNames:    []string{},
+		AttributeNames:    []string{string(semconv.K8SStatefulSetUIDKey)},
+		AttributePrefixes: []string{},
+	},
+
+	// Job
+	string(semconv.K8SJobNameKey): {
+		Type: KubernetesJob,
+		Relationships: map[string]string{
+			string(semconv.K8SPodNameKey):  ContainsPod,
+			string(semconv.ServiceNameKey): IsAJobFor,
+		},
+		AttributeNames:    []string{string(semconv.K8SJobUIDKey)},
+		AttributePrefixes: []string{},
+	},
+
+	// CronJob
+	string(semconv.K8SCronJobNameKey): {
+		Type: KubernetesCronJob,
+		Relationships: map[string]string{
+			string(semconv.K8SPodNameKey):  ContainsPod,
+			string(semconv.ServiceNameKey): IsACronJobFor,
+		},
+		AttributeNames:    []string{string(semconv.K8SCronJobUIDKey)},
 		AttributePrefixes: []string{},
 	},
 
@@ -201,13 +235,11 @@ var EntityRelationships = RelationshipMap{
 	string(semconv.K8SPodNameKey): {
 		Type: KubernetesPod,
 		Relationships: map[string]string{
-			string(semconv.ServiceNameKey):        IsAPodForService,
-			string(semconv.K8SNamespaceNameKey):   BelongsToNamespace,
-			string(semconv.K8SNodeNameKey):        IsScheduledOnNode,
-			string(semconv.K8SClusterNameKey):     IsPartOfCluster,
-			string(semconv.K8SReplicaSetNameKey):  IsManagedByReplicaSet,
-			string(semconv.K8SDeploymentNameKey):  IsPartOfDeployment,
-			string(semconv.K8SStatefulSetNameKey): IsPartOfStatefulSet,
+			string(semconv.K8SContainerNameKey):   RunsInPod,
+			string(semconv.K8SCronJobNameKey):     IsAPodFor,
+			string(semconv.K8SJobNameKey):         IsAPodFor,
+			string(semconv.K8SStatefulSetNameKey): IsAPodFor,
+			string(semconv.K8SReplicaSetNameKey):  IsAPodFor,
 		},
 		AttributeNames: []string{
 			"k8s.pod.ip",
@@ -228,63 +260,6 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SContainerRestartCountKey),
 			string(semconv.K8SContainerStatusLastTerminatedReasonKey),
 		},
-		AttributePrefixes: []string{},
-	},
-
-	// ReplicaSet
-	string(semconv.K8SReplicaSetNameKey): {
-		Type: KubernetesReplicaSet,
-		Relationships: map[string]string{
-			string(semconv.K8SNamespaceNameKey):  BelongsToNamespace,
-			string(semconv.K8SDeploymentNameKey): IsManagedByDeployment,
-			string(semconv.K8SClusterNameKey):    IsPartOfCluster,
-		},
-		AttributeNames:    []string{string(semconv.K8SReplicaSetUIDKey)},
-		AttributePrefixes: []string{},
-	},
-
-	// Deployment
-	string(semconv.K8SDeploymentNameKey): {
-		Type: KubernetesDeployment,
-		Relationships: map[string]string{
-			string(semconv.K8SNamespaceNameKey):  BelongsToNamespace,
-			string(semconv.K8SClusterNameKey):    IsManagedByCluster,
-			string(semconv.K8SReplicaSetNameKey): ManagesReplicaset,
-		},
-		AttributeNames:    []string{string(semconv.K8SDeploymentUIDKey)},
-		AttributePrefixes: []string{},
-	},
-
-	// StatefulSet
-	string(semconv.K8SStatefulSetNameKey): {
-		Type: KubernetesStatefulSet,
-		Relationships: map[string]string{
-			string(semconv.K8SNamespaceNameKey): BelongsToNamespace,
-			string(semconv.K8SClusterNameKey):   IsManagedByCluster,
-		},
-		AttributeNames:    []string{string(semconv.K8SStatefulSetUIDKey)},
-		AttributePrefixes: []string{},
-	},
-
-	// Job
-	string(semconv.K8SJobNameKey): {
-		Type: KubernetesJob,
-		Relationships: map[string]string{
-			string(semconv.K8SNamespaceNameKey): BelongsToNamespace,
-			string(semconv.K8SClusterNameKey):   IsManagedByCluster,
-		},
-		AttributeNames:    []string{string(semconv.K8SJobUIDKey)},
-		AttributePrefixes: []string{},
-	},
-
-	// CronJob
-	string(semconv.K8SCronJobNameKey): {
-		Type: KubernetesCronJob,
-		Relationships: map[string]string{
-			string(semconv.K8SNamespaceNameKey): BelongsToNamespace,
-			string(semconv.K8SClusterNameKey):   IsManagedByCluster,
-		},
-		AttributeNames:    []string{string(semconv.K8SCronJobUIDKey)},
 		AttributePrefixes: []string{},
 	},
 

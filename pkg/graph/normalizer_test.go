@@ -185,8 +185,8 @@ func TestMessagingEntityRelationships(t *testing.T) {
 
 	expectedEntities := map[string]string{
 		"payment-service": "service",
-		"payments-topic":  "messaging.producer",
-		"payment-group":   "messaging.consumer",
+		"payments-topic":  "kafka",
+		"payment-group":   "kafka",
 	}
 
 	for name, entityType := range expectedEntities {
@@ -196,7 +196,7 @@ func TestMessagingEntityRelationships(t *testing.T) {
 		assert.Equal(t, entityType, entity.Type, "Incorrect type for entity %s", entityID)
 	}
 
-	assert.Equal(t, ProducesTo, entities[toEntityId("payment-service", "service")].Edges[toEntityId("payments-topic", "messaging.producer")])
-	assert.Equal(t, ConsumesFrom, entities[toEntityId("payment-service", "service")].Edges[toEntityId("payment-group", "messaging.consumer")])
+	assert.Equal(t, ProducesTo, entities[toEntityId("payment-service", "service")].Edges[toEntityId("payments-topic", "kafka")])
+	assert.Equal(t, ConsumesFrom, entities[toEntityId("payment-service", "service")].Edges[toEntityId("payment-group", "kafka")])
 
 }
