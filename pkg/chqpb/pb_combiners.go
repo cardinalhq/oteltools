@@ -16,16 +16,12 @@ package chqpb
 
 import (
 	"github.com/apache/datasketches-go/hll"
-	"sync"
-	"time"
 )
 
 type MetricStatsWrapper struct {
-	Stats       *MetricStats
-	Hll         hll.Union
-	lastUpdated time.Time
-	entryMutex  sync.Mutex
-	Dirty       bool
+	Stats *MetricStats
+	Hll   hll.Union
+	Dirty bool
 }
 
 func (m *MetricStatsWrapper) GetEstimate() (float64, error) {

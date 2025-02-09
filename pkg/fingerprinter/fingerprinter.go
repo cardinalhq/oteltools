@@ -151,15 +151,15 @@ func (fp *fingerprinterImpl) Fingerprint(input string) (fingerprint int64, token
 	xx := xxhash.New()
 	for i, item := range t.Items {
 		if i != 0 {
-			xx.WriteString(":")
+			_, _ = xx.WriteString(":")
 		}
-		xx.WriteString(item)
+		_, _ = xx.WriteString(item)
 	}
 
 	names := maputils.DeepKeys(js)
 	for _, name := range names {
-		xx.WriteString(":")
-		xx.WriteString(name)
+		_, _ = xx.WriteString(":")
+		_, _ = xx.WriteString(name)
 	}
 
 	return int64(xx.Sum64()), t, level, js, nil

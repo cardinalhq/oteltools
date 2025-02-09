@@ -56,8 +56,7 @@ func SplitQuotedStrings(input string) []StringPart {
 	var isEscaped bool
 	var previousCharWasNotLetter = true
 
-	runes := []rune(input)
-	for _, r := range runes {
+	for _, r := range input {
 		if isEscaped {
 			// Append the escaped character
 			current.WriteRune(r)

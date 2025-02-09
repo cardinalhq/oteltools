@@ -15,13 +15,14 @@
 package graph
 
 import (
+	"strings"
+	"sync"
+
 	"github.com/cardinalhq/oteltools/pkg/chqpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"golang.org/x/exp/slog"
 	"google.golang.org/protobuf/proto"
-	"strings"
-	"sync"
 )
 
 type ResourceEntity struct {
@@ -34,8 +35,7 @@ type ResourceEntity struct {
 }
 
 type ResourceEntityCache struct {
-	entityMap   sync.Map
-	entityLocks sync.Map
+	entityMap sync.Map
 }
 
 func NewResourceEntityCache() *ResourceEntityCache {
