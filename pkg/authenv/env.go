@@ -14,6 +14,8 @@
 
 package authenv
 
+import "context"
+
 const (
 	CardinalEnvCustomerID    = "CARDINALHQ_CUSTOMER_ID"
 	CardinalEnvCollectorID   = "CARDINALHQ_COLLECTOR_ID"
@@ -25,4 +27,11 @@ type Environment interface {
 	CollectorID() string
 	CollectorName() string
 	Tags() map[string]string
+}
+
+func GetEnvironment(ctx context.Context, fromAuth bool) Environment {
+	if fromAuth {
+		return EnvironmentFromAuth(ctx)
+	}
+	return EnvironmentFromEnv()
 }
