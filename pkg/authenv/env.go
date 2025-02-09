@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-syntax = "proto3";
+package authenv
 
-package chqpb;
+const (
+	CardinalEnvCustomerID    = "CARDINALHQ_CUSTOMER_ID"
+	CardinalEnvCollectorID   = "CARDINALHQ_COLLECTOR_ID"
+	CardinalEnvCollectorName = "CARDINALHQ_COLLECTOR_NAME"
+)
 
-option go_package = ".;chqpb";
-
-message ResourceEntityProto {
-  string name = 1;
-  string type = 2;
-  map<string, string> attributes = 3;
-  map<string, string> edges = 4;
-}
-
-message ResourceEntityProtoList {
-  repeated bytes entities = 1;
+type Environment interface {
+	CustomerID() string
+	CollectorID() string
+	CollectorName() string
+	Tags() map[string]string
 }

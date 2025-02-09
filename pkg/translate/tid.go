@@ -20,9 +20,11 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+
+	"github.com/cardinalhq/oteltools/pkg/authenv"
 )
 
-func CalculateTID(extra map[string]string, rattr, sattr, iattr pcommon.Map, prefix string, environment Environment) int64 {
+func CalculateTID(extra map[string]string, rattr, sattr, iattr pcommon.Map, prefix string, environment authenv.Environment) int64 {
 	tags := map[string]string{}
 	maps.Copy(tags, extra)
 	addKeys(rattr, "resource", tags)

@@ -12,26 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package translate
+package authenv
 
 import (
 	"os"
 	"strings"
 	"sync"
 )
-
-const (
-	CardinalEnvCustomerID    = "CARDINALHQ_CUSTOMER_ID"
-	CardinalEnvCollectorID   = "CARDINALHQ_COLLECTOR_ID"
-	CardinalEnvCollectorName = "CARDINALHQ_COLLECTOR_NAME"
-)
-
-type Environment interface {
-	CustomerID() string
-	CollectorID() string
-	CollectorName() string
-	Tags() map[string]string
-}
 
 type EnvironmentImpl struct {
 	tags map[string]string
