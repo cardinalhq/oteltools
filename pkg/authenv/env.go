@@ -29,8 +29,8 @@ type Environment interface {
 	Tags() map[string]string
 }
 
-func GetEnvironment(ctx context.Context, fromAuth bool) Environment {
-	if fromAuth {
+func GetEnvironment(ctx context.Context, source EnvironmentSource) Environment {
+	if source == EnvironmentSourceAuth {
 		return EnvironmentFromAuth(ctx)
 	}
 	return EnvironmentFromEnv()
