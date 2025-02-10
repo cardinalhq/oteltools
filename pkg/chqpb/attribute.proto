@@ -18,7 +18,6 @@ package chqpb;
 
 option go_package = ".;chqpb";
 
-
 message Attribute {
   int32 type = 1;
   bool isAttribute = 2;
