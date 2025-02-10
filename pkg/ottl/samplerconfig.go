@@ -20,14 +20,29 @@ package ottl
 // The config manager parses this as YAML.
 //
 
+//
+// NOTE!
+// Per-tenant configuration is used only for the SaaS side of things, and configuration for that specific SaaS instance
+// will be sent, so only the customer ID needs to be used as a key here.
+// When configuration is sent to a non-SaaS collector, there will only be one entry, and the key will be "default".
+// When SaaS, there will never be a "default" entry.
+// TODO: fetch this data using multiple smaller calls, or somehow stream it.
+//
+
 type ControlPlaneConfig struct {
+	TenantConfig
+
+	Configs map[string]TenantConfig `json:"configs,omitempty" yaml:"configs,omitempty"`
+
+	hash uint64
+}
+
+type TenantConfig struct {
 	// Processor targets
 	Pitbulls          map[string]*PitbullProcessorConfig        `json:"pitbulls,omitempty" yaml:"pitbulls,omitempty"`
 	Stats             map[string]*StatsProcessorConfig          `json:"stats,omitempty" yaml:"stats,omitempty"`
 	ExtractMetrics    map[string]*ExtractMetricsProcessorConfig `json:"extract_metrics,omitempty" yaml:"extract_metrics,omitempty"`
 	FingerprintConfig FingerprintConfig                         `json:"fingerprint_config,omitempty" yaml:"fingerprint_config,omitempty"`
-
-	hash uint64
 }
 
 type PitbullProcessorConfig struct {
