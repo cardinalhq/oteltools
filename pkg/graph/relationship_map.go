@@ -17,93 +17,96 @@ package graph
 import semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 const (
-	IsAPodForService         = "is a pod for service"
-	BelongsToNamespace       = "belongs to namespace"
-	IsPartOfCluster          = "is part of cluster"
-	IsDeployedOnPod          = "is deployed on pod"
-	IsRunningOnNode          = "is running on node"
-	IsManagedByDeployment    = "is managed by deployment"
-	IsManagedByStatefulSet   = "is managed by statefulset"
-	IsManagedByReplicaSet    = "is managed by replicaset"
-	IsManagedByCronJob       = "is managed by cronjob"
-	IsManagedByJob           = "is managed by job"
-	HasNode                  = "has a node"
-	HasNamespace             = "has a namespace"
-	HasCollection            = "has a collection"
+	BelongsToAccount         = "belongs to account"
 	BelongsToCluster         = "belongs to cluster"
-	ContainsNamespace        = "contains namespace"
-	ContainsService          = "contains service"
-	HostedOnNode             = "hosted on node"
-	RunsOnOperatingSystem    = "runs on operating system"
-	ContainsPod              = "contains pod"
-	IsStatefulSetFor         = "is statefulset for"
-	IsAJobFor                = "is a job for"
-	IsACronJobFor            = "is a cronjob for"
-	IsAPodFor                = "is a pod for"
-	RunsInPod                = "runs in pod"
-	IsPartOfNamespace        = "is part of namespace"
-	IsDeployedOnNode         = "is deployed on node"
-	IsDeployedOnContainer    = "is deployed on container"
-	ManagesReplicaset        = "manages replicaset"
-	UsesImage                = "uses image"
-	IsUsedByContainer        = "is used by container"
-	IsAssociatedWithTask     = "is associated with task"
-	IsAssociatedWithCluster  = "is associated with cluster"
-	IsAssociatedWithNode     = "is associated with node"
-	IsInstanceOfFunction     = "is instance of function"
-	HasInstance              = "has instance"
-	ContainsTask             = "contains task"
-	ManagesAccount           = "manages account"
-	ContainsRegion           = "contains region"
-	ContainsAvailabilityZone = "contains availability zone"
+	BelongsToNamespace       = "belongs to namespace"
 	BelongsToProvider        = "belongs to provider"
-	HasResourcesInRegion     = "has resources in region"
 	BelongsToRegion          = "belongs to region"
 	BelongsToZone            = "belongs to zone"
-	BelongsToAccount         = "belongs to account"
-	HostsService             = "hosts service"
-	HostsPod                 = "hosts pod"
-	HostsCluster             = "hosts cluster"
-	IsAssociatedWith         = "is associated with"
-	NetPeerName              = "net.peer.name"
+	ConsumesFrom             = "consumes from"
+	ContainsAvailabilityZone = "contains availability zone"
+	ContainsNamespace        = "contains namespace"
+	ContainsPod              = "contains pod"
+	ContainsRegion           = "contains region"
+	ContainsService          = "contains service"
+	ContainsTask             = "contains task"
 	DBQuerySummary           = "db.query.summary"
 	DBStatement              = "db.statement"
-	UsesDatabase             = "uses database"
-	IsDatabaseHostedOn       = "is a database hosted on"
+	HasCollection            = "has a collection"
+	HasInstance              = "has instance"
+	HasNamespace             = "has a namespace"
+	HasNode                  = "has a node"
+	HasResourcesInRegion     = "has resources in region"
+	HostedOnNode             = "hosted on node"
+	HostsCluster             = "hosts cluster"
+	HostsPod                 = "hosts pod"
+	HostsService             = "hosts service"
+	IsACronJobFor            = "is a cronjob for"
+	IsAJobFor                = "is a job for"
+	IsAPodFor                = "is a pod for"
+	IsAPodForService         = "is a pod for service"
+	IsAssociatedWith         = "is associated with"
+	IsAssociatedWithCluster  = "is associated with cluster"
+	IsAssociatedWithNode     = "is associated with node"
+	IsAssociatedWithTask     = "is associated with task"
 	IsCollectionHostedOn     = "is a collection hosted on"
-	ConsumesFrom             = "consumes from"
-	ProducesTo               = "produces to"
+	IsDaemonSetFor           = "is daemonset for"
+	IsDatabaseHostedOn       = "is a database hosted on"
+	IsDeployedOnContainer    = "is deployed on container"
+	IsDeployedOnNode         = "is deployed on node"
+	IsDeployedOnPod          = "is deployed on pod"
+	IsInstanceOfFunction     = "is instance of function"
+	IsManagedByCronJob       = "is managed by cronjob"
+	IsManagedByDaemonSet     = "is managed by daemonset"
+	IsManagedByDeployment    = "is managed by deployment"
+	IsManagedByJob           = "is managed by job"
+	IsManagedByReplicaSet    = "is managed by replicaset"
+	IsManagedByStatefulSet   = "is managed by statefulset"
+	IsPartOfCluster          = "is part of cluster"
+	IsPartOfNamespace        = "is part of namespace"
+	IsRunningOnNode          = "is running on node"
 	IsSpawnedByService       = "is spawned by service"
+	IsStatefulSetFor         = "is statefulset for"
+	IsUsedByContainer        = "is used by container"
+	ManagesAccount           = "manages account"
+	ManagesReplicaset        = "manages replicaset"
+	NetPeerName              = "net.peer.name"
+	ProducesTo               = "produces to"
+	RunsInPod                = "runs in pod"
+	RunsOnOperatingSystem    = "runs on operating system"
+	UsesDatabase             = "uses database"
+	UsesImage                = "uses image"
 )
 
 const (
-	Service               = "service"
-	KubernetesPod         = "k8s.pod"
-	KubernetesContainer   = "k8s.container"
-	KubernetesCluster     = "k8s.cluster"
-	Node                  = "k8s.node"
-	KubernetesNamespace   = "k8s.namespace"
-	KubernetesReplicaSet  = "k8s.replicaset"
-	KubernetesDeployment  = "k8s.deployment"
-	KubernetesStatefulSet = "k8s.statefulset"
-	KubernetesJob         = "k8s.job"
-	KubernetesCronJob     = "k8s.cronjob"
-	Container             = "container"
-	ContainerImage        = "container.image"
-	Os                    = "os"
-	Process               = "process"
+	AwsEcsCluster         = "aws.ecs.cluster"
 	AwsEcsContainer       = "aws.ecs.container"
 	AwsEcsTask            = "aws.ecs.task"
-	AwsEcsCluster         = "aws.ecs.cluster"
 	AwsEksCluster         = "aws.eks.cluster"
-	FaasInstance          = "faas.instance"
-	FaasFunction          = "faas.function"
-	CloudProvider         = "cloud.provider"
 	CloudAccount          = "cloud.account"
-	CloudRegion           = "cloud.region"
 	CloudAvailabilityZone = "cloud.availability_zone"
+	CloudProvider         = "cloud.provider"
+	CloudRegion           = "cloud.region"
 	CloudResourceId       = "cloud.resource_id"
+	Container             = "container"
+	ContainerImage        = "container.image"
+	FaasFunction          = "faas.function"
+	FaasInstance          = "faas.instance"
 	Host                  = "host"
+	KubernetesCluster     = "k8s.cluster"
+	KubernetesContainer   = "k8s.container"
+	KubernetesCronJob     = "k8s.cronjob"
+	KubernetesDaemonSet   = "k8s.daemonset"
+	KubernetesDeployment  = "k8s.deployment"
+	KubernetesJob         = "k8s.job"
+	KubernetesNamespace   = "k8s.namespace"
+	KubernetesPod         = "k8s.pod"
+	KubernetesReplicaSet  = "k8s.replicaset"
+	KubernetesStatefulSet = "k8s.statefulset"
+	Node                  = "k8s.node"
+	Os                    = "os"
+	Process               = "process"
+	Service               = "service"
 )
 
 type EntityInfo struct {
@@ -155,7 +158,7 @@ var EntityRelationships = RelationshipMap{
 	string(semconv.ServiceNameKey): {
 		Type: Service,
 		Relationships: map[string]string{
-			string(semconv.K8SDaemonSetNameKey):           IsManagedByDeployment,
+			string(semconv.K8SDaemonSetNameKey):           IsManagedByDaemonSet,
 			string(semconv.K8SDeploymentNameKey):          IsManagedByDeployment,
 			string(semconv.K8SStatefulSetNameKey):         IsManagedByStatefulSet,
 			string(semconv.K8SCronJobNameKey):             IsManagedByCronJob,
@@ -173,6 +176,17 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.TelemetrySDKLanguageKey),
 			string(semconv.TelemetrySDKVersionKey),
 		},
+		AttributePrefixes: []string{},
+	},
+
+	// DaemonSet
+	string(semconv.K8SDaemonSetNameKey): {
+		Type: KubernetesDaemonSet,
+		Relationships: map[string]string{
+			string(semconv.K8SPodNameKey):  ContainsPod,
+			string(semconv.ServiceNameKey): IsDaemonSetFor,
+		},
+		AttributeNames:    []string{string(semconv.K8SStatefulSetUIDKey)},
 		AttributePrefixes: []string{},
 	},
 
@@ -237,6 +251,7 @@ var EntityRelationships = RelationshipMap{
 		Relationships: map[string]string{
 			string(semconv.K8SContainerNameKey):   RunsInPod,
 			string(semconv.K8SCronJobNameKey):     IsAPodFor,
+			string(semconv.K8SDaemonSetNameKey):   IsAPodFor,
 			string(semconv.K8SJobNameKey):         IsAPodFor,
 			string(semconv.K8SStatefulSetNameKey): IsAPodFor,
 			string(semconv.K8SReplicaSetNameKey):  IsAPodFor,
@@ -472,6 +487,7 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey):     HostsCluster,
 			string(semconv.K8SPodNameKey):         HostsPod,
 			string(semconv.K8SStatefulSetNameKey): HostsPod,
+			string(semconv.K8SDaemonSetNameKey):   HostsPod,
 		},
 		AttributeNames: []string{
 			string(semconv.HostIDKey),
