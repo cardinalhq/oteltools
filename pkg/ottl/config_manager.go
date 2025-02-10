@@ -90,21 +90,14 @@ func (c *ConfigManagerImpl) UnregisterCallback(id int) {
 }
 
 func (c *ConfigManagerImpl) Run() {
-	first := true
-	interval := c.interval
-	ticker := time.NewTicker(time.Second * 10)
-	defer ticker.Stop()
 	c.logger.Info("Starting sampling config manager")
+	c.checkUpdates()
 	for {
 		select {
 		case <-c.done:
 			c.logger.Info("Stopping sampling config manager")
 			return
-		case <-ticker.C:
-			if first {
-				first = false
-				ticker.Reset(interval)
-			}
+		case <-time.Tick(c.interval):
 			c.checkUpdates()
 		case req := <-c.registerCallbackChan:
 			c.register(req)
