@@ -30,7 +30,7 @@ package ottl
 //
 
 type ControlPlaneConfig struct {
-	TenantConfig
+	TenantConfig `json:",squash" yaml:",inline"`
 
 	Configs map[string]TenantConfig `json:"configs,omitempty" yaml:"configs,omitempty"`
 
