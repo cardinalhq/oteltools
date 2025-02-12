@@ -77,6 +77,18 @@ func (s *SyncMap[K, V]) Store(key K, value V) {
 	s.m[key] = value
 }
 
+// Replace replaces the value for a key, and returns the previous value.
+func (s *SyncMap[K, V]) Replace(key K, value V) (previous V, ok bool) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.ensure()
+
+	previous, ok = s.m[key]
+	s.m[key] = value
+	return
+}
+
 // Delete deletes the value for a key.
 func (s *SyncMap[K, V]) Delete(key K) {
 	s.Lock()

@@ -122,3 +122,28 @@ func TestSyncMap_Values(t *testing.T) {
 		t.Errorf("expected values ['one', 'two'], got %v", values)
 	}
 }
+
+func TestSyncMap_Replace(t *testing.T) {
+	var m SyncMap[int, string]
+	m.Store(1, "one")
+
+	previous, ok := m.Replace(1, "uno")
+	if !ok || previous != "one" {
+		t.Errorf("expected to replace 'one' with 'uno', got previous value '%v'", previous)
+	}
+
+	value, ok := m.Load(1)
+	if !ok || value != "uno" {
+		t.Errorf("expected to load 'uno', got '%v'", value)
+	}
+
+	previous, ok = m.Replace(2, "dos")
+	if ok || previous != "" {
+		t.Errorf("expected to replace non-existent key, got previous value '%v'", previous)
+	}
+
+	value, ok = m.Load(2)
+	if !ok || value != "dos" {
+		t.Errorf("expected to load 'dos', got '%v'", value)
+	}
+}
