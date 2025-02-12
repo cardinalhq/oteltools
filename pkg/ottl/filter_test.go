@@ -20,6 +20,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottllog"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/zap"
 )
 
@@ -65,7 +66,7 @@ func TestFilterRule_ResourceConditionLog(t *testing.T) {
 	ll := createTestLogRecord()
 
 	transformCtx := ottllog.NewTransformContext(ll, sl.Scope(), rl.Resource(), sl, rl)
-	transformations.ExecuteLogTransforms(logger, nil, nil, nil, transformCtx)
+	transformations.ExecuteLogTransforms(logger, attribute.NewSet(), nil, nil, nil, transformCtx)
 
 	dropped, exists := ll.Attributes().Get("dropped")
 	require.True(t, exists)

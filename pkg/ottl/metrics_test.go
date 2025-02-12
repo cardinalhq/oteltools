@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/zap"
 )
 
@@ -161,8 +162,8 @@ func TestMatchAndAdd_AverageAfterDroppingDimension(t *testing.T) {
 	// Apply transformations to both data points
 	tc1 := ottldatapoint.NewTransformContext(dp1, metric, scopeMetrics.Metrics(), scopeMetrics.Scope(), rm.Resource(), scopeMetrics, rm)
 	tc2 := ottldatapoint.NewTransformContext(dp2, metric, scopeMetrics.Metrics(), scopeMetrics.Scope(), rm.Resource(), scopeMetrics, rm)
-	transformations.ExecuteDatapointTransforms(zap.NewNop(), nil, nil, nil, tc1)
-	transformations.ExecuteDatapointTransforms(zap.NewNop(), nil, nil, nil, tc2)
+	transformations.ExecuteDatapointTransforms(zap.NewNop(), attribute.NewSet(), nil, nil, nil, tc1)
+	transformations.ExecuteDatapointTransforms(zap.NewNop(), attribute.NewSet(), nil, nil, nil, tc2)
 
 	// At this point, both data points should have their "movieId" attribute dropped.
 
