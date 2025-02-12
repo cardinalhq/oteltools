@@ -105,7 +105,7 @@ func (s *SyncMap[K, V]) Delete(key K) {
 func (s *SyncMap[K, V]) Range(f func(key K, value V) bool) {
 	s.Lock()
 
-	if s.m == nil || len(s.m) == 0 {
+	if len(s.m) == 0 {
 		s.Unlock()
 		return
 	}
