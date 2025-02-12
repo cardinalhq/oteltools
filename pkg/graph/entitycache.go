@@ -152,13 +152,20 @@ func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[s
 	if serviceEntity, exists := resourceEntityMap[string(semconv.ServiceNameKey)]; exists {
 		entityMap := map[string]*ResourceEntity{string(semconv.ServiceNameKey): serviceEntity}
 
-		dbEntities := toDBEntities(recordAttributes)
+		// We will copy the record as we want to run in a non-mutable manner when possible.
+		// toDBEntities changes the content in some cases, so this will cause the otel collector
+		// to panic if we have the exporter marked as immutable.  Mutable will cause all
+		// data to be copied, so this is a good compromise.
+		attr := pcommon.NewMap()
+		recordAttributes.CopyTo(attr)
+
+		dbEntities := toDBEntities(attr)
 		for _, v := range dbEntities {
 			entityMap[v.AttributeName] = v
 			ec.PutEntityObject(v)
 		}
 
-		messagingEntities := toMessagingEntities(recordAttributes)
+		messagingEntities := toMessagingEntities(attr)
 		for _, v := range messagingEntities {
 			entityMap[v.AttributeName] = v
 			ec.PutEntityObject(v)
