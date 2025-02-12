@@ -138,12 +138,6 @@ func (c *ConfigManagerImpl) checkUpdates() {
 		return
 	}
 
-	// If the config list is empty, copy the old format one into "default"
-	if len(conf.Configs) == 0 {
-		conf.Configs = make(map[string]TenantConfig)
-		conf.Configs["default"] = conf.TenantConfig
-	}
-
 	newhash := xxhash.Sum64(b)
 	if c.lastconf != nil && c.lastconf.hash == newhash {
 		c.logger.Debug("No change in sampler config", zap.Uint64("hash", newhash))
