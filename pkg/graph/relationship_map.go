@@ -150,7 +150,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.ServiceNameKey): ContainsService,
 			string(semconv.K8SNodeNameKey): HostedOnNode,
 		},
-		AttributeNames:    []string{},
+		AttributeNames: []string{
+			string(semconv.K8SNodeNameKey),
+			string(semconv.K8SClusterNameKey),
+		},
 		AttributePrefixes: []string{},
 	},
 
@@ -197,7 +200,13 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SReplicaSetNameKey): ManagesReplicaset,
 			string(semconv.ServiceNameKey):       IsManagedByDeployment,
 		},
-		AttributeNames:    []string{string(semconv.K8SDeploymentUIDKey)},
+		AttributeNames: []string{
+			string(semconv.K8SDeploymentUIDKey),
+			string(semconv.K8SNamespaceNameKey),
+			string(semconv.K8SNodeNameKey),
+			string(semconv.ServiceNameKey),
+			string(semconv.K8SClusterNameKey),
+		},
 		AttributePrefixes: []string{},
 	},
 
@@ -208,7 +217,14 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SPodNameKey):        ContainsPod,
 			string(semconv.K8SDeploymentNameKey): IsManagedByDeployment,
 		},
-		AttributeNames:    []string{string(semconv.K8SReplicaSetUIDKey)},
+		AttributeNames: []string{
+			string(semconv.K8SReplicaSetUIDKey),
+			string(semconv.K8SDeploymentNameKey),
+			string(semconv.K8SNamespaceNameKey),
+			string(semconv.ServiceNameKey),
+			string(semconv.K8SNodeNameKey),
+			string(semconv.K8SClusterNameKey),
+		},
 		AttributePrefixes: []string{},
 	},
 
@@ -219,7 +235,13 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SPodNameKey):  ContainsPod,
 			string(semconv.ServiceNameKey): IsStatefulSetFor,
 		},
-		AttributeNames:    []string{string(semconv.K8SStatefulSetUIDKey)},
+		AttributeNames: []string{
+			string(semconv.K8SStatefulSetUIDKey),
+			string(semconv.K8SNamespaceNameKey),
+			string(semconv.K8SNodeNameKey),
+			string(semconv.ServiceNameKey),
+			string(semconv.K8SClusterNameKey),
+		},
 		AttributePrefixes: []string{},
 	},
 
@@ -230,7 +252,13 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SPodNameKey):  ContainsPod,
 			string(semconv.ServiceNameKey): IsAJobFor,
 		},
-		AttributeNames:    []string{string(semconv.K8SJobUIDKey)},
+		AttributeNames: []string{
+			string(semconv.K8SJobUIDKey),
+			string(semconv.K8SNamespaceNameKey),
+			string(semconv.K8SNodeNameKey),
+			string(semconv.ServiceNameKey),
+			string(semconv.K8SClusterNameKey),
+		},
 		AttributePrefixes: []string{},
 	},
 
@@ -241,7 +269,13 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SPodNameKey):  ContainsPod,
 			string(semconv.ServiceNameKey): IsACronJobFor,
 		},
-		AttributeNames:    []string{string(semconv.K8SCronJobUIDKey)},
+		AttributeNames: []string{
+			string(semconv.K8SCronJobUIDKey),
+			string(semconv.K8SNamespaceNameKey),
+			string(semconv.K8SNodeNameKey),
+			string(semconv.ServiceNameKey),
+			string(semconv.K8SClusterNameKey),
+		},
 		AttributePrefixes: []string{},
 	},
 
@@ -258,6 +292,10 @@ var EntityRelationships = RelationshipMap{
 		},
 		AttributeNames: []string{
 			"k8s.pod.ip",
+			string(semconv.K8SNamespaceNameKey),
+			string(semconv.K8SNodeNameKey),
+			string(semconv.ServiceNameKey),
+			string(semconv.K8SClusterNameKey),
 			string(semconv.K8SPodUIDKey),
 		},
 		AttributePrefixes: []string{"k8s.pod.label.", "k8s.pod.annotation."},
@@ -274,6 +312,10 @@ var EntityRelationships = RelationshipMap{
 		AttributeNames: []string{
 			string(semconv.K8SContainerRestartCountKey),
 			string(semconv.K8SContainerStatusLastTerminatedReasonKey),
+			string(semconv.K8SNamespaceNameKey),
+			string(semconv.K8SNodeNameKey),
+			string(semconv.ServiceNameKey),
+			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
 	},
