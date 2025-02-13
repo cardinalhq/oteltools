@@ -15,6 +15,7 @@
 package graph
 
 import (
+	"sort"
 	"strings"
 	"sync"
 
@@ -235,14 +236,20 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 		}
 	}
 
+	keys := make([]string, 0, len(globalEntityMap))
+	for key := range globalEntityMap {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
 	for _, entity := range unlinkedEntities {
 		entity.mu.Lock()
-		for _, otherEntity := range globalEntityMap {
+		for _, key := range keys {
+			otherEntity := globalEntityMap[key]
 			if entity == otherEntity {
 				continue
 			}
 			entity.AddEdge(otherEntity.Name, otherEntity.Type, IsAssociatedWith)
-			break
 		}
 		entity.mu.Unlock()
 	}
