@@ -148,3 +148,22 @@ func (s *SyncMap[K, V]) Values() []V {
 	}
 	return values
 }
+
+// Touch calls a function for a specific key.  The syncmap is
+// locked while calling the function, so it should not block.
+// This allows a safe way to update a value in the map without
+// needing to lock the object itself.
+// If the key does not exist, the funciton is not called
+// and the map is not modified.
+func (s *SyncMap[K, V]) Touch(key K, f func(value V) V) (found bool) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.ensure()
+
+	if value, ok := s.m[key]; ok {
+		s.m[key] = f(value)
+		return true
+	}
+	return false
+}
