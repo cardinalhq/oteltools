@@ -16,6 +16,8 @@ package syncmap
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSyncMap_SetSize(t *testing.T) {
@@ -146,4 +148,23 @@ func TestSyncMap_Replace(t *testing.T) {
 	if !ok || value != "dos" {
 		t.Errorf("expected to load 'dos', got '%v'", value)
 	}
+}
+
+func TestSyncMap_Touch(t *testing.T) {
+	var m SyncMap[int, string]
+	m.Store(1, "one")
+
+	ok := m.Touch(1, func(v string) string {
+		return v + "!"
+	})
+	require.True(t, ok)
+
+	value, ok := m.Load(1)
+	require.True(t, ok)
+	require.Equal(t, "one!", value)
+
+	ok = m.Touch(2, func(v string) string {
+		return v + "!"
+	})
+	require.False(t, ok)
 }
