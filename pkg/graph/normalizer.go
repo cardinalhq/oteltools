@@ -78,7 +78,6 @@ func toDBEntities(dbAttributes pcommon.Map) map[string]*ResourceEntity {
 		instanceEntityId := ""
 		if dbInstance != "" {
 			instanceEntityId = toEntityId(dbInstance, dbSystemValue)
-			dbAttributes.PutStr(string(semconv.NetworkPeerAddressKey), dbInstance)
 			entities[instanceEntityId] = &ResourceEntity{
 				AttributeName: string(semconv.DBSystemKey),
 				Name:          dbInstance,
@@ -110,7 +109,6 @@ func toDBEntities(dbAttributes pcommon.Map) map[string]*ResourceEntity {
 
 		dbCollection := getValue(dbAttributes, string(semconv.DBCollectionNameKey), string(semconv.AWSDynamoDBTableNamesKey))
 		if dbCollection != "" {
-			dbAttributes.PutStr(string(semconv.DBCollectionNameKey), dbCollection)
 			collectionEntityId := toEntityId(dbCollection, string(semconv.DBCollectionNameKey))
 			entities[collectionEntityId] = &ResourceEntity{
 				AttributeName: string(semconv.DBCollectionNameKey),
