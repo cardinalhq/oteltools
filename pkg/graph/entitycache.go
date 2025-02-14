@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cardinalhq/oteltools/pkg/chqpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -26,12 +27,22 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type EdgeInfo struct {
+	Relationship string
+	LastSeen     int64
+}
+
+const (
+	defaultExpiry = 300000
+)
+
 type ResourceEntity struct {
-	AttributeName string            `json:"-"`
-	Name          string            `json:"name"`
-	Type          string            `json:"type"`
-	Attributes    map[string]string `json:"attributes"`
-	Edges         map[string]string `json:"edges"`
+	AttributeName string               `json:"-"`
+	Name          string               `json:"name"`
+	Type          string               `json:"type"`
+	Attributes    map[string]string    `json:"attributes"`
+	Edges         map[string]*EdgeInfo `json:"edges"`
+	lastSeen      int64
 	mu            sync.Mutex
 }
 
@@ -53,6 +64,7 @@ func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType s
 	if entity, exists := ec.entityMap.Load(entityId); exists {
 		re := entity.(*ResourceEntity)
 		re.mu.Lock()
+		re.lastSeen = now()
 		for key, value := range attributes {
 			re.PutAttribute(key, value)
 		}
@@ -65,7 +77,8 @@ func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType s
 		Name:          entityName,
 		Type:          entityType,
 		Attributes:    make(map[string]string),
-		Edges:         make(map[string]string),
+		Edges:         make(map[string]*EdgeInfo),
+		lastSeen:      now(),
 	}
 
 	entity, _ := ec.entityMap.LoadOrStore(entityId, newEntity)
@@ -97,14 +110,28 @@ func (ec *ResourceEntityCache) _allEntities() map[string]*ResourceEntity {
 func (ec *ResourceEntityCache) GetAllEntities() []byte {
 	var batch [][]byte
 
+	currentTime := now()
 	ec.entityMap.Range(func(key, value interface{}) bool {
 		entity := value.(*ResourceEntity)
 		entity.mu.Lock()
+		edges := make(map[string]string)
+		for k, v := range entity.Edges {
+			if currentTime-v.LastSeen > defaultExpiry {
+				delete(entity.Edges, k)
+				continue
+			}
+			edges[k] = v.Relationship
+		}
+		if currentTime-entity.lastSeen > defaultExpiry {
+			entity.mu.Unlock()
+			ec.entityMap.Delete(key)
+			return true
+		}
 		protoEntity := &chqpb.ResourceEntityProto{
 			Name:       entity.Name,
 			Type:       entity.Type,
 			Attributes: entity.Attributes,
-			Edges:      entity.Edges,
+			Edges:      edges,
 		}
 		serialized, err := proto.Marshal(protoEntity)
 		if err == nil {
@@ -124,9 +151,20 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 
 func (re *ResourceEntity) AddEdge(targetName, targetType, relationship string) {
 	if re.Edges == nil {
-		re.Edges = make(map[string]string)
+		re.Edges = make(map[string]*EdgeInfo)
 	}
-	re.Edges[toEntityId(targetName, targetType)] = relationship
+	if edgeInfo, exists := re.Edges[toEntityId(targetName, targetType)]; exists {
+		edgeInfo.LastSeen = now()
+	} else {
+		re.Edges[toEntityId(targetName, targetType)] = &EdgeInfo{
+			Relationship: relationship,
+			LastSeen:     now(),
+		}
+	}
+}
+
+func now() int64 {
+	return time.Now().UnixMilli()
 }
 
 func (re *ResourceEntity) PutAttribute(k, v string) {
@@ -153,20 +191,13 @@ func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[s
 	if serviceEntity, exists := resourceEntityMap[string(semconv.ServiceNameKey)]; exists {
 		entityMap := map[string]*ResourceEntity{string(semconv.ServiceNameKey): serviceEntity}
 
-		// We will copy the record as we want to run in a non-mutable manner when possible.
-		// toDBEntities changes the content in some cases, so this will cause the otel collector
-		// to panic if we have the exporter marked as immutable.  Mutable will cause all
-		// data to be copied, so this is a good compromise.
-		attr := pcommon.NewMap()
-		recordAttributes.CopyTo(attr)
-
-		dbEntities := toDBEntities(attr)
+		dbEntities := toDBEntities(recordAttributes)
 		for _, v := range dbEntities {
 			entityMap[v.AttributeName] = v
 			ec.PutEntityObject(v)
 		}
 
-		messagingEntities := toMessagingEntities(attr)
+		messagingEntities := toMessagingEntities(recordAttributes)
 		for _, v := range messagingEntities {
 			entityMap[v.AttributeName] = v
 			ec.PutEntityObject(v)

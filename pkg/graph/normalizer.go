@@ -17,7 +17,6 @@ package graph
 import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
-	"regexp"
 )
 
 func toMessagingEntities(messagingAttributes pcommon.Map) map[string]*ResourceEntity {
@@ -124,23 +123,9 @@ func toDBEntities(dbAttributes pcommon.Map) map[string]*ResourceEntity {
 			}
 		}
 
-		dbQuery := getValue(dbAttributes, string(semconv.DBQueryTextKey), DBStatement, DBQuerySummary)
-		if dbQuery != "" {
-			dbAttributes.PutStr(string(semconv.DBQueryTextKey), normalizeSQL(dbQuery))
-		}
 		return entities
 	}
 	return nil
-}
-
-func normalizeSQL(query string) string {
-	// Regex to match:
-	// - Numbers (\b\d+\b)
-	// - Single-quoted strings ('[^']*')
-	// - Double-quoted strings ("[^"]*")
-	pattern := `\b\d+\.\d+\b|\b\d+\b|'[^']*'|"[^"]*"`
-	re := regexp.MustCompile(pattern)
-	return re.ReplaceAllString(query, "?")
 }
 
 func getValue(attributes pcommon.Map, fallbackChain ...string) string {

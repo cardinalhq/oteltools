@@ -28,14 +28,8 @@ func TestToDBEntities(t *testing.T) {
 	attributes.PutStr(NetPeerName, "ams-aiops-poc.cp534rias9ed.us-east-1.rds.amazonaws.com")
 	attributes.PutStr(string(semconv.DBNamespaceKey), "ams_aiops_ams")
 	attributes.PutStr(string(semconv.DBCollectionNameKey), "alerts")
-	attributes.PutStr(string(semconv.DBQueryTextKey), "SELECT `alerts`.* FROM `alerts` WHERE `alerts`.`account_id` = 11 AND `alerts`.`incident_id` = 590858 LIMIT 1")
 
 	entities := toDBEntities(attributes)
-
-	expectedNormalizedQuery := "SELECT `alerts`.* FROM `alerts` WHERE `alerts`.`account_id` = ? AND `alerts`.`incident_id` = ? LIMIT ?"
-	actualQuery, _ := attributes.Get(string(semconv.DBQueryTextKey))
-
-	assert.Equal(t, expectedNormalizedQuery, actualQuery.AsString(), "SQL query normalization failed")
 
 	expectedEntities := map[string]*ResourceEntity{
 		toEntityId("ams-aiops-poc.cp534rias9ed.us-east-1.rds.amazonaws.com", "mysql"): {
@@ -61,63 +55,6 @@ func TestToDBEntities(t *testing.T) {
 		assert.Equal(t, expectedEntity.AttributeName, actualEntity.AttributeName, "Mismatch in entity attribute name for %s", entityId)
 		assert.Equal(t, expectedEntity.Name, actualEntity.Name, "Mismatch in entity name for %s", entityId)
 		assert.Equal(t, expectedEntity.Type, actualEntity.Type, "Mismatch in entity type for %s", entityId)
-	}
-}
-
-func TestNormalizeSQL(t *testing.T) {
-	testCases := []struct {
-		input    string
-		expected string
-	}{
-		{
-			input:    `SELECT * FROM users WHERE name = "John Doe" AND age = 30;`,
-			expected: `SELECT * FROM users WHERE name = ? AND age = ?;`,
-		},
-		{
-			input:    `INSERT INTO products (id, name, price) VALUES (42, 'Laptop', 999.99);`,
-			expected: `INSERT INTO products (id, name, price) VALUES (?, ?, ?);`,
-		},
-		{
-			input:    `UPDATE logs SET message = 'Error occurred at 12:34:56' WHERE id = 1234;`,
-			expected: `UPDATE logs SET message = ? WHERE id = ?;`,
-		},
-		{
-			input:    `DELETE FROM orders WHERE order_id = 'ORD-5678' AND customer_id = 789;`,
-			expected: `DELETE FROM orders WHERE order_id = ? AND customer_id = ?;`,
-		},
-		{
-			input: `SELECT c.customer_id, c.name, o.order_id, o.total_amount 
-					FROM customers c 
-					JOIN orders o ON c.customer_id = o.customer_id 
-					WHERE c.region = 'US' 
-					AND o.order_date >= '2024-01-01' 
-					AND o.total_amount > 500;`,
-			expected: `SELECT c.customer_id, c.name, o.order_id, o.total_amount 
-					FROM customers c 
-					JOIN orders o ON c.customer_id = o.customer_id 
-					WHERE c.region = ? 
-					AND o.order_date >= ? 
-					AND o.total_amount > ?;`,
-		},
-		{
-			input: `SELECT p.product_name, p.price, 
-					(SELECT COUNT(*) FROM reviews r WHERE r.product_id = p.product_id AND r.rating >= 4) AS positive_reviews 
-					FROM products p 
-					WHERE p.category = 'Electronics' 
-					AND p.stock > 10 
-					AND p.price BETWEEN 100 AND 1000;`,
-			expected: `SELECT p.product_name, p.price, 
-					(SELECT COUNT(*) FROM reviews r WHERE r.product_id = p.product_id AND r.rating >= ?) AS positive_reviews 
-					FROM products p 
-					WHERE p.category = ? 
-					AND p.stock > ? 
-					AND p.price BETWEEN ? AND ?;`,
-		},
-	}
-
-	for _, tc := range testCases {
-		normalized := normalizeSQL(tc.input)
-		assert.Equal(t, tc.expected, normalized, "Failed to normalize SQL query: %s", tc.input)
 	}
 }
 
@@ -154,13 +91,9 @@ func TestDatabaseEntityRelationships(t *testing.T) {
 		assert.Equal(t, entityType, entity.Type, "Incorrect type for entity %s", entityID)
 	}
 
-	assert.Equal(t, UsesDatabase, entities[toEntityId("orders-service", "service")].Edges[toEntityId("db-instance-1", "mysql")])
-	assert.Equal(t, HasNamespace, entities[toEntityId("db-instance-1", "mysql")].Edges[toEntityId("orders-db", "db.namespace")])
-	assert.Equal(t, IsCollectionHostedOn, entities[toEntityId("transactions", "db.collection.name")].Edges[toEntityId("orders-db", "db.namespace")])
-
-	normalizedQuery, found := dbAttributes.Get(string(semconv.DBQueryTextKey))
-	assert.True(t, found, "Normalized query not found in attributes")
-	assert.Equal(t, "SELECT * FROM transactions WHERE amount > ?;", normalizedQuery.AsString())
+	assert.Equal(t, UsesDatabase, entities[toEntityId("orders-service", "service")].Edges[toEntityId("db-instance-1", "mysql")].Relationship)
+	assert.Equal(t, HasNamespace, entities[toEntityId("db-instance-1", "mysql")].Edges[toEntityId("orders-db", "db.namespace")].Relationship)
+	assert.Equal(t, IsCollectionHostedOn, entities[toEntityId("transactions", "db.collection.name")].Edges[toEntityId("orders-db", "db.namespace")].Relationship)
 }
 
 func TestMessagingEntityRelationships(t *testing.T) {
@@ -196,7 +129,7 @@ func TestMessagingEntityRelationships(t *testing.T) {
 		assert.Equal(t, entityType, entity.Type, "Incorrect type for entity %s", entityID)
 	}
 
-	assert.Equal(t, ProducesTo, entities[toEntityId("payment-service", "service")].Edges[toEntityId("payments-topic", "kafka")])
-	assert.Equal(t, ConsumesFrom, entities[toEntityId("payment-service", "service")].Edges[toEntityId("payment-group", "kafka")])
+	assert.Equal(t, ProducesTo, entities[toEntityId("payment-service", "service")].Edges[toEntityId("payments-topic", "kafka")].Relationship)
+	assert.Equal(t, ConsumesFrom, entities[toEntityId("payment-service", "service")].Edges[toEntityId("payment-group", "kafka")].Relationship)
 
 }

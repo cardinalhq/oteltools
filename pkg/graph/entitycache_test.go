@@ -65,13 +65,13 @@ func TestKubernetesEntityRelationships(t *testing.T) {
 	assert.Equal(t, "127.0.0.1", entities[toEntityId("pod-1", "k8s.pod")].Attributes["k8s.pod.ip"])
 	assert.Equal(t, "cardinal", entities[toEntityId("pod-1", "k8s.pod")].Attributes["k8s.pod.label.company-name"])
 
-	assert.Equal(t, HasNode, entities[toEntityId("cluster-1", "k8s.cluster")].Edges["node-1:k8s.node"])
-	assert.Equal(t, BelongsToCluster, entities[toEntityId("node-1", "k8s.node")].Edges["cluster-1:k8s.cluster"])
-	assert.Equal(t, ContainsService, entities[toEntityId("default", "k8s.namespace")].Edges["service-1:service"])
-	assert.Equal(t, BelongsToNamespace, entities[toEntityId("service-1", "service")].Edges["default:k8s.namespace"])
-	assert.Equal(t, IsManagedByDeployment, entities[toEntityId("service-1", "service")].Edges["deployment-1:k8s.deployment"])
-	assert.Equal(t, ManagesReplicaset, entities[toEntityId("deployment-1", "k8s.deployment")].Edges["replicaset-1:k8s.replicaset"])
-	assert.Equal(t, ContainsPod, entities[toEntityId("replicaset-1", "k8s.replicaset")].Edges["pod-1:k8s.pod"])
+	assert.Equal(t, HasNode, entities[toEntityId("cluster-1", "k8s.cluster")].Edges["node-1:k8s.node"].Relationship)
+	assert.Equal(t, BelongsToCluster, entities[toEntityId("node-1", "k8s.node")].Edges["cluster-1:k8s.cluster"].Relationship)
+	assert.Equal(t, ContainsService, entities[toEntityId("default", "k8s.namespace")].Edges["service-1:service"].Relationship)
+	assert.Equal(t, BelongsToNamespace, entities[toEntityId("service-1", "service")].Edges["default:k8s.namespace"].Relationship)
+	assert.Equal(t, IsManagedByDeployment, entities[toEntityId("service-1", "service")].Edges["deployment-1:k8s.deployment"].Relationship)
+	assert.Equal(t, ManagesReplicaset, entities[toEntityId("deployment-1", "k8s.deployment")].Edges["replicaset-1:k8s.replicaset"].Relationship)
+	assert.Equal(t, ContainsPod, entities[toEntityId("replicaset-1", "k8s.replicaset")].Edges["pod-1:k8s.pod"].Relationship)
 }
 
 func TestInterdependencyBetweenRelationshipMaps(t *testing.T) {
@@ -105,11 +105,11 @@ func TestInterdependencyBetweenRelationshipMaps(t *testing.T) {
 		assert.Equal(t, entityType, entity.Type, "Incorrect type for entity %s", entityId)
 	}
 
-	assert.Equal(t, HasNode, entities[toEntityId("cluster-1", "k8s.cluster")].Edges[toEntityId("node-1", "k8s.node")])
-	assert.Equal(t, BelongsToCluster, entities[toEntityId("node-1", "k8s.node")].Edges[toEntityId("cluster-1", "k8s.cluster")])
-	assert.Equal(t, ContainsService, entities[toEntityId("default", "k8s.namespace")].Edges[toEntityId("service1", "service")])
-	assert.Equal(t, BelongsToNamespace, entities[toEntityId("service1", "service")].Edges[toEntityId("default", "k8s.namespace")])
-	assert.Equal(t, RunsOnOperatingSystem, entities[toEntityId("node-1", "k8s.node")].Edges[toEntityId("linux", "os")])
+	assert.Equal(t, HasNode, entities[toEntityId("cluster-1", "k8s.cluster")].Edges[toEntityId("node-1", "k8s.node")].Relationship)
+	assert.Equal(t, BelongsToCluster, entities[toEntityId("node-1", "k8s.node")].Edges[toEntityId("cluster-1", "k8s.cluster")].Relationship)
+	assert.Equal(t, ContainsService, entities[toEntityId("default", "k8s.namespace")].Edges[toEntityId("service1", "service")].Relationship)
+	assert.Equal(t, BelongsToNamespace, entities[toEntityId("service1", "service")].Edges[toEntityId("default", "k8s.namespace")].Relationship)
+	assert.Equal(t, RunsOnOperatingSystem, entities[toEntityId("node-1", "k8s.node")].Edges[toEntityId("linux", "os")].Relationship)
 }
 
 func TestContainerRelationships(t *testing.T) {
@@ -182,10 +182,10 @@ func TestContainerRelationships(t *testing.T) {
 	assert.Equal(t, "1000", entities[toEntityId("java", "process")].Attributes[string(semconv.ProcessParentPIDKey)])
 	assert.Equal(t, "2000", entities[toEntityId("java", "process")].Attributes[string(semconv.ProcessPIDKey)])
 
-	assert.Equal(t, UsesImage, entities[toEntityId("my-container", "container")].Edges[toEntityId("nginx", "container.image")])
-	assert.Equal(t, IsUsedByContainer, entities[toEntityId("nginx", "container.image")].Edges[toEntityId("my-container", "container")])
+	assert.Equal(t, UsesImage, entities[toEntityId("my-container", "container")].Edges[toEntityId("nginx", "container.image")].Relationship)
+	assert.Equal(t, IsUsedByContainer, entities[toEntityId("nginx", "container.image")].Edges[toEntityId("my-container", "container")].Relationship)
 
-	assert.Equal(t, IsAssociatedWith, entities[toEntityId("java", "process")].Edges[toEntityId("my-container", "container")])
+	assert.Equal(t, IsAssociatedWith, entities[toEntityId("java", "process")].Edges[toEntityId("my-container", "container")].Relationship)
 }
 
 func TestCloudRelationships(t *testing.T) {
@@ -217,13 +217,13 @@ func TestCloudRelationships(t *testing.T) {
 	}
 
 	// Validate relationships
-	assert.Equal(t, ManagesAccount, entities[toEntityId("aws", "cloud.provider")].Edges[toEntityId("123456789012", "cloud.account")])
-	assert.Equal(t, ContainsRegion, entities[toEntityId("aws", "cloud.provider")].Edges[toEntityId("us-west-1", "cloud.region")])
-	assert.Equal(t, ContainsAvailabilityZone, entities[toEntityId("aws", "cloud.provider")].Edges[toEntityId("us-west-1a", "cloud.availability_zone")])
-	assert.Equal(t, BelongsToProvider, entities[toEntityId("123456789012", "cloud.account")].Edges[toEntityId("aws", "cloud.provider")])
-	assert.Equal(t, HasResourcesInRegion, entities[toEntityId("123456789012", "cloud.account")].Edges[toEntityId("us-west-1", "cloud.region")])
-	assert.Equal(t, BelongsToProvider, entities[toEntityId("us-west-1", "cloud.region")].Edges[toEntityId("aws", "cloud.provider")])
-	assert.Equal(t, ContainsAvailabilityZone, entities[toEntityId("us-west-1", "cloud.region")].Edges[toEntityId("us-west-1a", "cloud.availability_zone")])
-	assert.Equal(t, BelongsToAccount, entities[toEntityId("us-west-1", "cloud.region")].Edges[toEntityId("123456789012", "cloud.account")])
-	assert.Equal(t, BelongsToRegion, entities[toEntityId("us-west-1a", "cloud.availability_zone")].Edges[toEntityId("us-west-1", "cloud.region")])
+	assert.Equal(t, ManagesAccount, entities[toEntityId("aws", "cloud.provider")].Edges[toEntityId("123456789012", "cloud.account")].Relationship)
+	assert.Equal(t, ContainsRegion, entities[toEntityId("aws", "cloud.provider")].Edges[toEntityId("us-west-1", "cloud.region")].Relationship)
+	assert.Equal(t, ContainsAvailabilityZone, entities[toEntityId("aws", "cloud.provider")].Edges[toEntityId("us-west-1a", "cloud.availability_zone")].Relationship)
+	assert.Equal(t, BelongsToProvider, entities[toEntityId("123456789012", "cloud.account")].Edges[toEntityId("aws", "cloud.provider")].Relationship)
+	assert.Equal(t, HasResourcesInRegion, entities[toEntityId("123456789012", "cloud.account")].Edges[toEntityId("us-west-1", "cloud.region")].Relationship)
+	assert.Equal(t, BelongsToProvider, entities[toEntityId("us-west-1", "cloud.region")].Edges[toEntityId("aws", "cloud.provider")].Relationship)
+	assert.Equal(t, ContainsAvailabilityZone, entities[toEntityId("us-west-1", "cloud.region")].Edges[toEntityId("us-west-1a", "cloud.availability_zone")].Relationship)
+	assert.Equal(t, BelongsToAccount, entities[toEntityId("us-west-1", "cloud.region")].Edges[toEntityId("123456789012", "cloud.account")].Relationship)
+	assert.Equal(t, BelongsToRegion, entities[toEntityId("us-west-1a", "cloud.availability_zone")].Edges[toEntityId("us-west-1", "cloud.region")].Relationship)
 }
