@@ -33,7 +33,7 @@ type EdgeInfo struct {
 }
 
 const (
-	defaultExpiry = 300000
+	defaultExpiry = 600000 // 10 minutes
 )
 
 type ResourceEntity struct {
