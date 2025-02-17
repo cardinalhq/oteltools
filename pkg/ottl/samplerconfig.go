@@ -41,7 +41,7 @@ type TenantConfig struct {
 	Stats             map[string]*StatsProcessorConfig          `json:"stats,omitempty" yaml:"stats,omitempty"`
 	ExtractMetrics    map[string]*ExtractMetricsProcessorConfig `json:"extract_metrics,omitempty" yaml:"extract_metrics,omitempty"`
 	FingerprintConfig FingerprintConfig                         `json:"fingerprint_config,omitempty" yaml:"fingerprint_config,omitempty"`
-	MissingDataConfig MissingDataConfig                         `json:"missing_data_config,omitempty" yaml:"missing_data_config,omitempty"`
+	MissingDataConfig map[string]*MissingDataConfig             `json:"missing_data_config,omitempty" yaml:"missing_data_config,omitempty"`
 }
 
 type PitbullProcessorConfig struct {
