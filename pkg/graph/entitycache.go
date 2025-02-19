@@ -187,26 +187,6 @@ func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Ma
 	return entityMap
 }
 
-func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
-	if serviceEntity, exists := resourceEntityMap[string(semconv.ServiceNameKey)]; exists {
-		entityMap := map[string]*ResourceEntity{string(semconv.ServiceNameKey): serviceEntity}
-
-		dbEntities := toDBEntities(recordAttributes)
-		for _, v := range dbEntities {
-			entityMap[v.AttributeName] = v
-			ec.PutEntityObject(v)
-		}
-
-		messagingEntities := toMessagingEntities(recordAttributes)
-		for _, v := range messagingEntities {
-			entityMap[v.AttributeName] = v
-			ec.PutEntityObject(v)
-		}
-
-		ec.provisionRelationships(entityMap)
-	}
-}
-
 func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityMap map[string]*ResourceEntity) {
 	matches := make(map[*EntityInfo]*ResourceEntity)
 	attributes.Range(func(k string, v pcommon.Value) bool {
