@@ -64,10 +64,12 @@ const (
 	IsManagedByStatefulSet   = "is managed by statefulset"
 	IsPartOfCluster          = "is part of cluster"
 	IsPartOfNamespace        = "is part of namespace"
+	IsPartOfDatabase         = "is part of database"
 	IsRunningOnNode          = "is running on node"
 	IsSpawnedByService       = "is spawned by service"
 	IsStatefulSetFor         = "is statefulset for"
 	IsUsedByContainer        = "is used by container"
+	IsUsedByService          = "is used by service"
 	ManagesAccount           = "manages account"
 	ManagesReplicaset        = "manages replicaset"
 	NetPeerName              = "net.peer.name"
@@ -75,7 +77,9 @@ const (
 	RunsInPod                = "runs in pod"
 	RunsOnOperatingSystem    = "runs on operating system"
 	UsesDatabase             = "uses database"
+	UsesDatabaseCollection   = "uses database collection"
 	UsesImage                = "uses image"
+	UsesMessagingDestination = "uses messaging destination"
 )
 
 const (
@@ -107,6 +111,9 @@ const (
 	Os                    = "os"
 	Process               = "process"
 	Service               = "service"
+	Database              = "database"
+	DatabaseCollection    = "database.collection"
+	MessagingDestination  = "messaging.destination"
 )
 
 type EntityInfo struct {
@@ -161,15 +168,15 @@ var EntityRelationships = RelationshipMap{
 	string(semconv.ServiceNameKey): {
 		Type: Service,
 		Relationships: map[string]string{
-			string(semconv.K8SDaemonSetNameKey):           IsManagedByDaemonSet,
-			string(semconv.K8SDeploymentNameKey):          IsManagedByDeployment,
-			string(semconv.K8SStatefulSetNameKey):         IsManagedByStatefulSet,
-			string(semconv.K8SCronJobNameKey):             IsManagedByCronJob,
-			string(semconv.K8SJobNameKey):                 IsManagedByJob,
-			string(semconv.K8SNamespaceNameKey):           BelongsToNamespace,
-			string(semconv.DBSystemKey):                   UsesDatabase,
-			string(semconv.MessagingConsumerGroupNameKey): ConsumesFrom,
-			string(semconv.MessagingDestinationNameKey):   ProducesTo,
+			string(semconv.K8SDaemonSetNameKey):         IsManagedByDaemonSet,
+			string(semconv.K8SDeploymentNameKey):        IsManagedByDeployment,
+			string(semconv.K8SStatefulSetNameKey):       IsManagedByStatefulSet,
+			string(semconv.K8SCronJobNameKey):           IsManagedByCronJob,
+			string(semconv.K8SJobNameKey):               IsManagedByJob,
+			string(semconv.K8SNamespaceNameKey):         BelongsToNamespace,
+			string(semconv.DBNamespaceKey):              UsesDatabase,
+			string(semconv.DBCollectionNameKey):         UsesDatabaseCollection,
+			string(semconv.MessagingDestinationNameKey): UsesMessagingDestination,
 		},
 		AttributeNames: []string{
 			string(semconv.ServiceInstanceIDKey),
@@ -379,6 +386,44 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.ProcessGroupLeaderPIDKey),
 			string(semconv.ProcessParentPIDKey),
 			string(semconv.ProcessPIDKey),
+		},
+		AttributePrefixes: []string{},
+	},
+
+	// Database (e.g. Mongo, Postgres, Redis)
+	string(semconv.DBNamespaceKey): {
+		Type: Database,
+		Relationships: map[string]string{
+			string(semconv.ServiceNameKey):      IsUsedByService,
+			string(semconv.DBCollectionNameKey): HasCollection,
+		},
+		AttributeNames: []string{
+			string(semconv.DBSystemKey),
+		},
+		AttributePrefixes: []string{},
+	},
+
+	// Database Collection (e.g. Mongo Collection, Postgres Table)
+	string(semconv.DBCollectionNameKey): {
+		Type: DatabaseCollection,
+		Relationships: map[string]string{
+			string(semconv.ServiceNameKey): IsUsedByService,
+			string(semconv.DBNamespaceKey): IsPartOfDatabase,
+		},
+		AttributeNames: []string{
+			string(semconv.DBSystemKey),
+		},
+		AttributePrefixes: []string{},
+	},
+
+	// Messaging System Destination (e.g. Kafka Topic, RabbitMQ Queue)
+	string(semconv.MessagingDestinationNameKey): {
+		Type: MessagingDestination,
+		Relationships: map[string]string{
+			string(semconv.ServiceNameKey): IsUsedByService,
+		},
+		AttributeNames: []string{
+			string(semconv.MessagingSystemKey),
 		},
 		AttributePrefixes: []string{},
 	},
