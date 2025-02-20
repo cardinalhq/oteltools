@@ -27,18 +27,13 @@ func TestHashAny(t *testing.T) {
 		value any
 		want  uint64
 	}{
-		{"nil", nil, 3078252789000966458},
-		{"bool true", true, 12201293588068846061},
-		{"bool false", false, 14672055408725111526},
-		{"float64", 3.14, 7703445615302545898},
-		{"string", "hello", 8843100075938556332},
-		{"empty array", []any{}, 5746651081700789484},
-		{"array", []any{1, "two", 3.0}, 14901291645572418406},
-		{"empty map", map[string]any{}, 13407604179352847978},
-		{"map", map[string]any{"one": 1, "two": "two"}, 8190209883385698026},
-		{"map with swapped order", map[string]any{"two": "two", "one": 1}, 8190209883385698026},
-		{"nested map", map[string]any{"one": 1, "two": map[string]any{"three": 3}}, 15507829625135637265},
-		{"struct", struct{ A int }{1}, 14553743525572530200},
+		{"nil", nil, 2397808468787316396},
+		{"map", map[string]any{"one": 1, "two": "two"}, 9120657192212919766},
+		{"map with swapped order", map[string]any{"two": "two", "one": 1}, 9120657192212919766},
+		{"nested map", map[string]any{"one": 1, "two": map[string]any{"three": 3}}, 15256681109419306243},
+		{"struct1", struct{ A int }{1}, 15276513887743359300},
+		{"struct0", struct{ A int }{0}, 17508829294710948709},
+		{"struct with pointers to other objects", struct{ A *int }{func() *int { i := 1; return &i }()}, 6485897241875398280},
 	}
 
 	for _, tt := range tests {

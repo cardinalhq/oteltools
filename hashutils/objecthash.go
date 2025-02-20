@@ -18,15 +18,15 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"hash"
 	"math"
+	"reflect"
 	"sort"
 )
 
 // Hasher is an interface that wraps a Sum64 method.  Any hash implementation that
 // implements Sum64 can be used with HashAny.
 type Hasher interface {
-	hash.Hash
+	Write(p []byte) (n int, err error)
 	Sum64() uint64
 }
 
@@ -43,59 +43,77 @@ func HashJSON(input []byte, hasher Hasher) (uint64, error) {
 // HashAny hashes an arbitrary Go value (the result of json.Unmarshal) in a
 // canonical way using the provided hasher. It returns a 64-bit non-cryptographic hash.
 func HashAny(value any, hasher Hasher) uint64 {
-	hashValue(hasher, value)
+	writeHash(hasher, value)
 	return hasher.Sum64()
 }
 
-// hashValue writes a stable representation of 'value' into the hasher.
-func hashValue(h hash.Hash, value any) {
-	switch v := value.(type) {
-	case nil:
-		h.Write([]byte("null:"))
-	case bool:
-		if v {
-			h.Write([]byte("bool:true:"))
+// writeHash serializes and writes values into the hasher
+func writeHash(h Hasher, value any) {
+	if value == nil {
+		h.Write([]byte("nil"))
+		return
+	}
+
+	v := reflect.ValueOf(value)
+
+	switch v.Kind() {
+	case reflect.Bool:
+		if v.Bool() {
+			h.Write([]byte("bool:true"))
 		} else {
-			h.Write([]byte("bool:false:"))
+			h.Write([]byte("bool:false"))
 		}
-
-	case float64:
-		h.Write([]byte("num:"))
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		buf := make([]byte, 8)
-		binary.LittleEndian.PutUint64(buf, math.Float64bits(v))
+		binary.LittleEndian.PutUint64(buf, uint64(v.Int()))
 		h.Write(buf)
-		h.Write([]byte(":"))
-
-	case string:
-		h.Write([]byte("str:"))
-		h.Write([]byte(v))
-		h.Write([]byte(":"))
-
-	case []any:
-		h.Write([]byte("arr["))
-		for _, elem := range v {
-			hashValue(h, elem)
-			h.Write([]byte(","))
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		buf := make([]byte, 8)
+		binary.LittleEndian.PutUint64(buf, v.Uint())
+		h.Write(buf)
+	case reflect.Float32, reflect.Float64:
+		buf := make([]byte, 8)
+		binary.LittleEndian.PutUint64(buf, math.Float64bits(v.Float()))
+		h.Write(buf)
+	case reflect.Complex64, reflect.Complex128:
+		c := v.Complex()
+		buf := make([]byte, 16)
+		binary.LittleEndian.PutUint64(buf, math.Float64bits(real(c)))
+		binary.LittleEndian.PutUint64(buf[8:], math.Float64bits(imag(c)))
+		h.Write(buf)
+	case reflect.String:
+		h.Write([]byte(v.String()))
+	case reflect.Slice, reflect.Array:
+		h.Write([]byte("slice:"))
+		for i := 0; i < v.Len(); i++ {
+			writeHash(h, v.Index(i).Interface())
 		}
-		h.Write([]byte("]"))
-
-	case map[string]any:
-		h.Write([]byte("obj{"))
-		keys := make([]string, 0, len(v))
-		for key := range v {
-			keys = append(keys, key)
+	case reflect.Map:
+		h.Write([]byte("map:"))
+		keys := make([]string, 0, v.Len())
+		for _, key := range v.MapKeys() {
+			keys = append(keys, fmt.Sprintf("%v", key.Interface()))
 		}
-		sort.Strings(keys)
+		sort.Strings(keys) // Ensure stable ordering
 		for _, key := range keys {
 			h.Write([]byte("key:"))
 			h.Write([]byte(key))
-			h.Write([]byte("="))
-			hashValue(h, v[key])
-			h.Write([]byte(","))
+			h.Write([]byte("value:"))
+			writeHash(h, v.MapIndex(reflect.ValueOf(key)).Interface())
 		}
-		h.Write([]byte("}"))
-
+	case reflect.Struct:
+		h.Write([]byte("struct:"))
+		t := v.Type()
+		for i := 0; i < v.NumField(); i++ {
+			h.Write([]byte(t.Field(i).Name + ":"))
+			writeHash(h, v.Field(i).Interface())
+		}
+	case reflect.Ptr:
+		h.Write([]byte("ptr:"))
+		if !v.IsNil() {
+			writeHash(h, v.Elem().Interface()) // Dereference pointer
+		}
 	default:
-		h.Write([]byte(fmt.Sprintf("unknown:%T", v)))
+		h.Write([]byte(fmt.Sprintf("unknown:%T", value)))
 	}
 }
