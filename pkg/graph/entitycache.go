@@ -183,8 +183,12 @@ func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Ma
 	}
 
 	ec.provisionEntities(attributes, entityMap)
-	ec.provisionRelationships(entityMap)
 	return entityMap
+}
+
+func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
+	ec.provisionEntities(recordAttributes, resourceEntityMap)
+	ec.provisionRelationships(resourceEntityMap)
 }
 
 func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityMap map[string]*ResourceEntity) {

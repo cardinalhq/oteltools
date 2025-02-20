@@ -15,9 +15,10 @@
 package graph
 
 import (
+	"testing"
+
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -39,7 +40,8 @@ func TestKubernetesEntityRelationships(t *testing.T) {
 	attributes.PutStr(string(semconv.K8SDeploymentNameKey), "deployment-1")
 	attributes.PutStr(string(semconv.K8SReplicaSetNameKey), "replicaset-1")
 
-	ec.ProvisionResourceAttributes(attributes)
+	entityMap := ec.ProvisionResourceAttributes(attributes)
+	ec.ProvisionRecordAttributes(entityMap, attributes)
 
 	entities := ec._allEntities()
 
@@ -85,7 +87,8 @@ func TestInterdependencyBetweenRelationshipMaps(t *testing.T) {
 	attributes.PutStr(string(semconv.K8SPodNameKey), "pod-1")
 	attributes.PutStr(string(semconv.ServiceNameKey), "service1")
 
-	ec.ProvisionResourceAttributes(attributes)
+	entityMap := ec.ProvisionResourceAttributes(attributes)
+	ec.ProvisionRecordAttributes(entityMap, attributes)
 
 	entities := ec._allEntities()
 
@@ -143,7 +146,8 @@ func TestContainerRelationships(t *testing.T) {
 	attributes.PutStr(string(semconv.ProcessParentPIDKey), "1000")
 	attributes.PutStr(string(semconv.ProcessPIDKey), "2000")
 
-	ec.ProvisionResourceAttributes(attributes)
+	entityMap := ec.ProvisionResourceAttributes(attributes)
+	ec.ProvisionRecordAttributes(entityMap, attributes)
 
 	entities := ec._allEntities()
 
@@ -197,7 +201,8 @@ func TestCloudRelationships(t *testing.T) {
 	attributes.PutStr(string(semconv.CloudRegionKey), "us-west-1")
 	attributes.PutStr(string(semconv.CloudAvailabilityZoneKey), "us-west-1a")
 
-	ec.ProvisionResourceAttributes(attributes)
+	entityMap := ec.ProvisionResourceAttributes(attributes)
+	ec.ProvisionRecordAttributes(entityMap, attributes)
 
 	entities := ec._allEntities()
 
