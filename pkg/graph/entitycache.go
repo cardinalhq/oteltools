@@ -58,7 +58,7 @@ func toEntityId(name, entityType string) string {
 	return name + ":" + entityType
 }
 
-func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType string, attributes map[string]string) *ResourceEntity {
+func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType string, attributes map[string]string) (*ResourceEntity, bool) {
 	entityId := toEntityId(entityName, entityType)
 
 	if entity, exists := ec.entityMap.Load(entityId); exists {
@@ -69,7 +69,7 @@ func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType s
 			re.PutAttribute(key, value)
 		}
 		re.mu.Unlock()
-		return re
+		return re, false
 	}
 
 	newEntity := &ResourceEntity{
@@ -81,14 +81,14 @@ func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType s
 		lastSeen:      now(),
 	}
 
-	entity, _ := ec.entityMap.LoadOrStore(entityId, newEntity)
+	entity, loaded := ec.entityMap.LoadOrStore(entityId, newEntity)
 	re := entity.(*ResourceEntity)
 	re.mu.Lock()
 	for key, value := range attributes {
 		re.PutAttribute(key, value)
 	}
 	re.mu.Unlock()
-	return re
+	return re, !loaded
 }
 
 func (ec *ResourceEntityCache) PutEntityObject(entity *ResourceEntity) {
@@ -183,21 +183,31 @@ func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Ma
 	}
 
 	ec.provisionEntities(attributes, entityMap)
+	ec.provisionRelationships(entityMap)
 	return entityMap
 }
 
 func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
-	ec.provisionEntities(recordAttributes, resourceEntityMap)
-	ec.provisionRelationships(resourceEntityMap)
+	newEntityMap := ec.provisionEntities(recordAttributes, resourceEntityMap)
+	if serviceEntity, exists := resourceEntityMap[string(semconv.ServiceNameKey)]; exists {
+		newEntityMap[string(semconv.ServiceNameKey)] = serviceEntity
+	}
+	if len(newEntityMap) > 0 {
+		ec.provisionRelationships(newEntityMap)
+	}
 }
 
-func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityMap map[string]*ResourceEntity) {
+func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityMap map[string]*ResourceEntity) map[string]*ResourceEntity {
 	matches := make(map[*EntityInfo]*ResourceEntity)
+	newEntities := make(map[string]*ResourceEntity)
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		entityValue := v.AsString()
 		if entityInfo, exists := EntityRelationships[k]; exists && entityValue != "" {
 			entityAttrs := make(map[string]string)
-			entity := ec.PutEntity(k, entityValue, entityInfo.Type, entityAttrs)
+			entity, isNewEntity := ec.PutEntity(k, entityValue, entityInfo.Type, entityAttrs)
+			if isNewEntity {
+				newEntities[k] = entity
+			}
 			matches[entityInfo] = entity
 			entityMap[k] = entity
 		}
@@ -227,6 +237,7 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 			})
 		}
 	}
+	return newEntities
 }
 
 func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string]*ResourceEntity) {

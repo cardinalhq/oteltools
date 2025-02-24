@@ -40,8 +40,7 @@ func TestKubernetesEntityRelationships(t *testing.T) {
 	attributes.PutStr(string(semconv.K8SDeploymentNameKey), "deployment-1")
 	attributes.PutStr(string(semconv.K8SReplicaSetNameKey), "replicaset-1")
 
-	entityMap := ec.ProvisionResourceAttributes(attributes)
-	ec.ProvisionRecordAttributes(entityMap, attributes)
+	ec.ProvisionResourceAttributes(attributes)
 
 	entities := ec._allEntities()
 
@@ -87,8 +86,7 @@ func TestInterdependencyBetweenRelationshipMaps(t *testing.T) {
 	attributes.PutStr(string(semconv.K8SPodNameKey), "pod-1")
 	attributes.PutStr(string(semconv.ServiceNameKey), "service1")
 
-	entityMap := ec.ProvisionResourceAttributes(attributes)
-	ec.ProvisionRecordAttributes(entityMap, attributes)
+	ec.ProvisionResourceAttributes(attributes)
 
 	entities := ec._allEntities()
 
@@ -146,8 +144,7 @@ func TestContainerRelationships(t *testing.T) {
 	attributes.PutStr(string(semconv.ProcessParentPIDKey), "1000")
 	attributes.PutStr(string(semconv.ProcessPIDKey), "2000")
 
-	entityMap := ec.ProvisionResourceAttributes(attributes)
-	ec.ProvisionRecordAttributes(entityMap, attributes)
+	ec.ProvisionResourceAttributes(attributes)
 
 	entities := ec._allEntities()
 
@@ -201,8 +198,7 @@ func TestCloudRelationships(t *testing.T) {
 	attributes.PutStr(string(semconv.CloudRegionKey), "us-west-1")
 	attributes.PutStr(string(semconv.CloudAvailabilityZoneKey), "us-west-1a")
 
-	entityMap := ec.ProvisionResourceAttributes(attributes)
-	ec.ProvisionRecordAttributes(entityMap, attributes)
+	ec.ProvisionResourceAttributes(attributes)
 
 	entities := ec._allEntities()
 
