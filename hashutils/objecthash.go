@@ -50,7 +50,7 @@ func HashAny(value any, hasher Hasher) uint64 {
 // writeHash serializes and writes values into the hasher
 func writeHash(h Hasher, value any) {
 	if value == nil {
-		h.Write([]byte("nil"))
+		_, _ = h.Write([]byte("nil"))
 		return
 	}
 
@@ -59,61 +59,61 @@ func writeHash(h Hasher, value any) {
 	switch v.Kind() {
 	case reflect.Bool:
 		if v.Bool() {
-			h.Write([]byte("bool:true"))
+			_, _ = h.Write([]byte("bool:true"))
 		} else {
-			h.Write([]byte("bool:false"))
+			_, _ = h.Write([]byte("bool:false"))
 		}
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		buf := make([]byte, 8)
 		binary.LittleEndian.PutUint64(buf, uint64(v.Int()))
-		h.Write(buf)
+		_, _ = h.Write(buf)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		buf := make([]byte, 8)
 		binary.LittleEndian.PutUint64(buf, v.Uint())
-		h.Write(buf)
+		_, _ = h.Write(buf)
 	case reflect.Float32, reflect.Float64:
 		buf := make([]byte, 8)
 		binary.LittleEndian.PutUint64(buf, math.Float64bits(v.Float()))
-		h.Write(buf)
+		_, _ = h.Write(buf)
 	case reflect.Complex64, reflect.Complex128:
 		c := v.Complex()
 		buf := make([]byte, 16)
 		binary.LittleEndian.PutUint64(buf, math.Float64bits(real(c)))
 		binary.LittleEndian.PutUint64(buf[8:], math.Float64bits(imag(c)))
-		h.Write(buf)
+		_, _ = h.Write(buf)
 	case reflect.String:
-		h.Write([]byte(v.String()))
+		_, _ = h.Write([]byte(v.String()))
 	case reflect.Slice, reflect.Array:
-		h.Write([]byte("slice:"))
+		_, _ = h.Write([]byte("slice:"))
 		for i := 0; i < v.Len(); i++ {
 			writeHash(h, v.Index(i).Interface())
 		}
 	case reflect.Map:
-		h.Write([]byte("map:"))
+		_, _ = h.Write([]byte("map:"))
 		keys := make([]string, 0, v.Len())
 		for _, key := range v.MapKeys() {
 			keys = append(keys, fmt.Sprintf("%v", key.Interface()))
 		}
 		sort.Strings(keys) // Ensure stable ordering
 		for _, key := range keys {
-			h.Write([]byte("key:"))
-			h.Write([]byte(key))
-			h.Write([]byte("value:"))
+			_, _ = h.Write([]byte("key:"))
+			_, _ = h.Write([]byte(key))
+			_, _ = h.Write([]byte("value:"))
 			writeHash(h, v.MapIndex(reflect.ValueOf(key)).Interface())
 		}
 	case reflect.Struct:
-		h.Write([]byte("struct:"))
+		_, _ = h.Write([]byte("struct:"))
 		t := v.Type()
 		for i := 0; i < v.NumField(); i++ {
-			h.Write([]byte(t.Field(i).Name + ":"))
+			_, _ = h.Write([]byte(t.Field(i).Name + ":"))
 			writeHash(h, v.Field(i).Interface())
 		}
 	case reflect.Ptr:
-		h.Write([]byte("ptr:"))
+		_, _ = h.Write([]byte("ptr:"))
 		if !v.IsNil() {
 			writeHash(h, v.Elem().Interface()) // Dereference pointer
 		}
 	default:
-		h.Write([]byte(fmt.Sprintf("unknown:%T", value)))
+		_, _ = h.Write([]byte(fmt.Sprintf("unknown:%T", value)))
 	}
 }

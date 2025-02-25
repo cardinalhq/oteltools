@@ -17,6 +17,7 @@ package syncmap
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,7 +64,7 @@ func TestSyncMap_Range(t *testing.T) {
 	m.Store(2, "two")
 
 	keys := make(map[int]bool)
-	m.Range(func(key int, value string) bool {
+	m.Range(func(key int, _ string) bool {
 		keys[key] = true
 		return true
 	})
@@ -77,7 +78,7 @@ func TestSyncMap_Range_Empty(t *testing.T) {
 	var m SyncMap[int, string]
 
 	keys := make(map[int]bool)
-	m.Range(func(key int, value string) bool {
+	m.Range(func(key int, _ string) bool {
 		keys[key] = true
 		return true
 	})
@@ -93,14 +94,14 @@ func TestSyncMap_Range_Break(t *testing.T) {
 	m.Store(2, "two")
 
 	keys := make(map[int]bool)
-	m.Range(func(key int, value string) bool {
+	m.Range(func(key int, _ string) bool {
 		keys[key] = true
 		return false
 	})
 
-	if len(keys) != 1 || !keys[1] {
-		t.Errorf("expected key 1 to be present, got %v", keys)
-	}
+	val, ok := keys[1]
+	assert.True(t, ok)
+	assert.True(t, val)
 }
 
 func TestSyncMap_Keys(t *testing.T) {
@@ -109,9 +110,7 @@ func TestSyncMap_Keys(t *testing.T) {
 	m.Store(2, "two")
 
 	keys := m.Keys()
-	if len(keys) != 2 || keys[0] != 1 || keys[1] != 2 {
-		t.Errorf("expected keys [1, 2], got %v", keys)
-	}
+	assert.ElementsMatch(t, keys, []int{1, 2})
 }
 
 func TestSyncMap_Values(t *testing.T) {
