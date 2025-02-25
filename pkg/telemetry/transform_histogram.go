@@ -26,6 +26,9 @@ type DeferrableInt64Histogram struct {
 }
 
 func (d DeferrableInt64Histogram) record(delta int64, options ...metric.RecordOption) {
+	if d.histogram == nil {
+		return
+	}
 	d.histogram.Record(context.Background(), delta, append(d.recordOptions, options...)...)
 }
 
