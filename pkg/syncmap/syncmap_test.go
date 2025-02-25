@@ -69,9 +69,9 @@ func TestSyncMap_Range(t *testing.T) {
 		return true
 	})
 
-	if len(keys) != 2 || !keys[1] || !keys[2] {
-		t.Errorf("expected keys 1 and 2 to be present, got %v", keys)
-	}
+	assert.Equal(t, 2, len(keys))
+	assert.True(t, keys[1])
+	assert.True(t, keys[2])
 }
 
 func TestSyncMap_Range_Empty(t *testing.T) {
@@ -119,9 +119,7 @@ func TestSyncMap_Values(t *testing.T) {
 	m.Store(2, "two")
 
 	values := m.Values()
-	if len(values) != 2 || values[0] != "one" || values[1] != "two" {
-		t.Errorf("expected values ['one', 'two'], got %v", values)
-	}
+	assert.ElementsMatch(t, values, []string{"one", "two"})
 }
 
 func TestSyncMap_Replace(t *testing.T) {
