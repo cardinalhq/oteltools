@@ -23,7 +23,7 @@ type SyncMap[K comparable, V any] struct {
 	m map[K]V
 }
 
-// Set the size of the map.  This is a hint to the map to pre-allocate memory,
+// SetSize ets the size of the map.  This is a hint to the map to pre-allocate memory,
 // and must be called before any write operations.
 func (s *SyncMap[K, V]) SetSize(size int) {
 	s.Lock()
