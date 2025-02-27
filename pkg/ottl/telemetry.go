@@ -22,26 +22,26 @@ import (
 // Telemetry is a struct that holds all the telemetry metrics for the OTTL processor.
 type Telemetry struct {
 	// ConditionsErrorCounter is a counter for the number of times condition evaluation errored.
-	ConditionsErrorCounter telemetry.DeferrableCounter
+	ConditionsErrorCounter telemetry.DeferrableCounter[int64]
 
 	// ConditionsEvaluatedCounter is a counter for the number of times conditions were evaluated.
-	ConditionsEvaluatedCounter telemetry.DeferrableCounter
+	ConditionsEvaluatedCounter telemetry.DeferrableCounter[int64]
 
 	// ConditionsEvaluatedHistogram is a histogram for the timing of conditions evaluated.
-	ConditionsEvaluatedHistogram telemetry.DeferrableHistogram
+	ConditionsEvaluatedHistogram telemetry.DeferrableHistogram[int64]
 
 	// RateLimitedCounter is a counter for the number of times conditions passed, but the
 	// statements were not executed due to rate limiting.
-	RateLimitedCounter telemetry.DeferrableCounter
+	RateLimitedCounter telemetry.DeferrableCounter[int64]
 
 	// StatementsErrorCounter is a counter for the number of times statement processing errored.
-	StatementsErrorCounter telemetry.DeferrableCounter
+	StatementsErrorCounter telemetry.DeferrableCounter[int64]
 
 	// StatementsExecutedHistogram is a histogram for the number of times statements were executed.
-	StatementsExecutedHistogram telemetry.DeferrableHistogram
+	StatementsExecutedHistogram telemetry.DeferrableHistogram[int64]
 
 	// StatementsExecutedCounter is a counter for the timing of statements executed.
-	StatementsExecutedCounter telemetry.DeferrableCounter
+	StatementsExecutedCounter telemetry.DeferrableCounter[int64]
 }
 
 func NewTelemetry(meter metric.Meter) *Telemetry {

@@ -25,7 +25,7 @@ type DeferrableInt64Counter struct {
 	addOptions []metric.AddOption
 }
 
-var _ DeferrableCounter = (*DeferrableInt64Counter)(nil)
+var _ DeferrableCounter[int64] = (*DeferrableInt64Counter)(nil)
 
 func (tc *DeferrableInt64Counter) add(delta int64, options ...metric.AddOption) {
 	if tc.counter == nil {
@@ -34,7 +34,7 @@ func (tc *DeferrableInt64Counter) add(delta int64, options ...metric.AddOption) 
 	tc.counter.Add(context.Background(), delta, append(tc.addOptions, options...)...)
 }
 
-func NewDeferrableInt64Counter(meter metric.Meter, name string, counterOptions []metric.Int64CounterOption, addOptions []metric.AddOption) (*DeferrableInt64Counter, error) {
+func NewDeferrableInt64Counter(meter metric.Meter, name string, counterOptions []metric.Int64CounterOption, addOptions []metric.AddOption) (DeferrableCounter[int64], error) {
 	counter, err := meter.Int64Counter(name, counterOptions...)
 	if err != nil {
 		return nil, err

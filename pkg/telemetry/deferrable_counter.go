@@ -16,11 +16,11 @@ package telemetry
 
 import "go.opentelemetry.io/otel/metric"
 
-type DeferrableCounter interface {
-	add(delta int64, options ...metric.AddOption)
+type DeferrableCounter[T int64] interface {
+	add(delta T, options ...metric.AddOption)
 }
 
-func CounterAdd(counter DeferrableCounter, delta int64, options ...metric.AddOption) {
+func CounterAdd[T int64](counter DeferrableCounter[T], delta T, options ...metric.AddOption) {
 	if counter == nil {
 		return
 	}

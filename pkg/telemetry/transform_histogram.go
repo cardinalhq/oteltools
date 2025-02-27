@@ -32,9 +32,9 @@ func (d DeferrableInt64Histogram) record(delta int64, options ...metric.RecordOp
 	d.histogram.Record(context.Background(), delta, append(d.recordOptions, options...)...)
 }
 
-var _ DeferrableHistogram = (*DeferrableInt64Histogram)(nil)
+var _ DeferrableHistogram[int64] = (*DeferrableInt64Histogram)(nil)
 
-func NewDeferrableHistogram(meter metric.Meter, name string, histogramOptions []metric.Int64HistogramOption, recordOptions []metric.RecordOption) (*DeferrableInt64Histogram, error) {
+func NewDeferrableHistogram(meter metric.Meter, name string, histogramOptions []metric.Int64HistogramOption, recordOptions []metric.RecordOption) (DeferrableHistogram[int64], error) {
 	histogram, err := meter.Int64Histogram(name, histogramOptions...)
 	if err != nil {
 		return nil, err

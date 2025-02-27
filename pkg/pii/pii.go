@@ -68,8 +68,8 @@ func (t PIIType) String() string {
 type DetectorImpl struct {
 	piiTypes            []PIIType
 	redactedReplacement string
-	detectionStats      telemetry.DeferrableCounter
-	redactionStats      telemetry.DeferrableCounter
+	detectionStats      telemetry.DeferrableCounter[int64]
+	redactionStats      telemetry.DeferrableCounter[int64]
 }
 
 var _ Detector = (*DetectorImpl)(nil)
@@ -110,13 +110,13 @@ func WithRedactedReplacement(replacement string) Option {
 	}
 }
 
-func WithRedactionStats(stats telemetry.DeferrableCounter) Option {
+func WithRedactionStats(stats telemetry.DeferrableCounter[int64]) Option {
 	return func(fp *DetectorImpl) {
 		fp.redactionStats = stats
 	}
 }
 
-func WithDetectionStats(stats telemetry.DeferrableCounter) Option {
+func WithDetectionStats(stats telemetry.DeferrableCounter[int64]) Option {
 	return func(fp *DetectorImpl) {
 		fp.detectionStats = stats
 	}
