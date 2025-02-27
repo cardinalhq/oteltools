@@ -16,7 +16,6 @@ package ottl
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottllog"
@@ -106,15 +105,13 @@ func parseLogExtractorConfig(extractorConfig MetricExtractorConfig, parser ottl.
 	}
 	dimensions := make(map[string]*ottl.Statement[ottllog.TransformContext])
 	for key, value := range extractorConfig.Dimensions {
-		statementStr := fmt.Sprintf("value(%s)", value)
-		statement, statementParseError := parser.ParseStatement(statementStr)
+		statement, statementParseError := parser.ParseStatement(valueStatement(value))
 		if statementParseError != nil {
 			return nil, statementParseError
 		}
 		dimensions[key] = statement
 	}
-	metricValueStatementStr := fmt.Sprintf("value(%s)", extractorConfig.MetricValue)
-	metricValue, _ := parser.ParseStatement(metricValueStatementStr)
+	metricValue, _ := parser.ParseStatement(valueStatement(extractorConfig.MetricValue))
 
 	return &LogExtractor{
 		RuleID:      extractorConfig.RuleId,
@@ -134,15 +131,13 @@ func parseSpanExtractorConfig(extractorConfig MetricExtractorConfig, parser ottl
 	}
 	dimensions := make(map[string]*ottl.Statement[ottlspan.TransformContext])
 	for key, value := range extractorConfig.Dimensions {
-		statementStr := fmt.Sprintf("value(%s)", value)
-		statement, statementParseError := parser.ParseStatement(statementStr)
+		statement, statementParseError := parser.ParseStatement(valueStatement(value))
 		if statementParseError != nil {
 			return nil, statementParseError
 		}
 		dimensions[key] = statement
 	}
-	metricValueStatementStr := fmt.Sprintf("value(%s)", extractorConfig.MetricValue)
-	metricValue, _ := parser.ParseStatement(metricValueStatementStr)
+	metricValue, _ := parser.ParseStatement(valueStatement(extractorConfig.MetricValue))
 
 	return &SpanExtractor{
 		RuleID:      extractorConfig.RuleId,
@@ -181,4 +176,9 @@ func ParseSpanExtractorConfigs(extractorConfigs []MetricExtractorConfig, logger 
 		spanExtractors = append(spanExtractors, spanExtractor)
 	}
 	return spanExtractors, nil
+}
+
+// This is roughly 5x faster than using fmt.Sprintf()
+func valueStatement(value string) string {
+	return "value(" + value + ")"
 }
