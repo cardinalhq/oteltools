@@ -8,18 +8,18 @@ import (
 	"strings"
 )
 
-type SqlScrubArguments[K any] struct {
+type DBQueryScrubArguments[K any] struct {
 	Query ottl.StringGetter[K]
 }
 
 func NewDbQueryScrubFactory[K any]() ottl.Factory[K] {
-	return ottl.NewFactory("SqlQueryScrub", &SqlScrubArguments[K]{}, createDbQueryScrubFunction[K])
+	return ottl.NewFactory("DBQueryScrub", &DBQueryScrubArguments[K]{}, createDbQueryScrubFunction[K])
 }
 
 func createDbQueryScrubFunction[K any](_ ottl.FunctionContext, oArgs ottl.Arguments) (ottl.ExprFunc[K], error) {
-	args, ok := oArgs.(*SqlScrubArguments[K])
+	args, ok := oArgs.(*DBQueryScrubArguments[K])
 	if !ok {
-		return nil, fmt.Errorf("SqlQueryScrub args must be of type *SqlScrubArguments[K]")
+		return nil, fmt.Errorf("DBQueryScrub args must be of type *DBQueryScrubArguments[K]")
 	}
 	return dbQueryScrub(args.Query), nil
 }
