@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"sort"
+	"strings"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 )
@@ -41,35 +43,90 @@ func createUrlScrubFunction[K any](_ ottl.FunctionContext, oArgs ottl.Arguments)
 
 func urlScrub[K any](urlGetter ottl.StringGetter[K]) ottl.ExprFunc[K] {
 	return func(ctx context.Context, tCtx K) (any, error) {
-		url, err := urlGetter.Get(ctx, tCtx)
+		urlValue, err := urlGetter.Get(ctx, tCtx)
 		if err != nil {
 			return false, fmt.Errorf("failed to get url: %v", err)
 		}
 
-		scrubbedUrl := scrubQueryString(url)
-		scrubbedUrl = scrubNumbersInPath(scrubbedUrl)
-		return scrubbedUrl, nil
+		parsedURL, err := url.Parse(urlValue)
+		if err != nil {
+			return urlValue, nil
+		}
+
+		parsedURL.RawQuery = scrubQueryString(parsedURL.RawQuery)
+		parsedURL.Path = scrubPath(parsedURL.Path)
+
+		unescaped, err := url.PathUnescape(parsedURL.String())
+		if err != nil {
+			return urlValue, nil
+		}
+		return unescaped, nil
 	}
 }
 
-func scrubQueryString(inputURL string) string {
-	parsedURL, err := url.Parse(inputURL)
-	if err != nil {
-		return inputURL
+func scrubQueryString(queryString string) string {
+	if queryString == "" {
+		return queryString
 	}
 
-	query := parsedURL.Query()
-	for key := range query {
-		query.Set(key, "_")
+	paramMap := make(map[string]string)
+	var keys []string
+
+	params := strings.Split(queryString, "&")
+	for _, param := range params {
+		parts := strings.SplitN(param, "=", 2)
+		key := parts[0]
+		paramMap[key] = "_"
+		keys = append(keys, key)
 	}
 
-	parsedURL.RawQuery = query.Encode()
-	return parsedURL.String()
+	sort.Strings(keys)
+
+	var sortedParams []string
+	for _, key := range keys {
+		sortedParams = append(sortedParams, key+"="+paramMap[key])
+	}
+
+	return strings.Join(sortedParams, "&")
 }
 
-func scrubNumbersInPath(inputURL string) string {
-	re := regexp.MustCompile(`/\d+`)
-	return re.ReplaceAllStringFunc(inputURL, func(match string) string {
-		return re.ReplaceAllString(match, "/<number>")
-	})
+func scrubPath(path string) string {
+	if path == "/" {
+		return path
+	}
+
+	segments := strings.Split(path, "/")
+
+	for i, segment := range segments {
+		if isVersion(segment) {
+			continue
+		} else if containsAlphaAndNumeric(segment) {
+			segments[i] = "<value>"
+		} else if isNumber(segment) {
+			segments[i] = "<number>"
+		}
+	}
+
+	return strings.Join(segments, "/")
+}
+
+var (
+	letterRegex         = regexp.MustCompile(`[a-zA-Z]`)
+	numberRegex         = regexp.MustCompile(`\d`)
+	multipleNumberRegex = regexp.MustCompile(`\d+$`)
+	versionRegex        = regexp.MustCompile(`^v\d+$`)
+)
+
+func isNumber(segment string) bool {
+	return multipleNumberRegex.MatchString(segment)
+}
+
+func isVersion(segment string) bool {
+	return versionRegex.MatchString(segment)
+}
+
+func containsAlphaAndNumeric(segment string) bool {
+	hasLetter := letterRegex.MatchString(segment)
+	hasNumber := numberRegex.MatchString(segment)
+	return hasLetter && hasNumber
 }

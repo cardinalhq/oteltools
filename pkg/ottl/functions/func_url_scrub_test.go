@@ -39,6 +39,21 @@ func Test_UrlScrub(t *testing.T) {
 			expected: "/tickets/<number>/conversations",
 		},
 		{
+			name:     "Don't scrub camel case path segments",
+			input:    "/api/v1/playMovie",
+			expected: "/api/v1/playMovie",
+		},
+		{
+			name:     "Scrub alphanumerics in path segments",
+			input:    "/api/v1/playMovie/8UT64X",
+			expected: "/api/v1/playMovie/<value>",
+		},
+		{
+			name:     "Scrub uuids in path segments",
+			input:    "/api/v1/playMovie/5960ff07-578a-4e49-a543-db92e8432860",
+			expected: "/api/v1/playMovie/<value>",
+		},
+		{
 			name:     "Don't scrub path parts that are not just numbers",
 			input:    "/api/v1/graph",
 			expected: "/api/v1/graph",
