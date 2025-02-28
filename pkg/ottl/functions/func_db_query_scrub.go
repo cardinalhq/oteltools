@@ -12,7 +12,7 @@ type SqlScrubArguments[K any] struct {
 	Query ottl.StringGetter[K]
 }
 
-func NewDbQueryScrub[K any]() ottl.Factory[K] {
+func NewDbQueryScrubFactory[K any]() ottl.Factory[K] {
 	return ottl.NewFactory("SqlQueryScrub", &SqlScrubArguments[K]{}, createDbQueryScrubFunction[K])
 }
 
