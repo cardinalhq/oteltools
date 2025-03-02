@@ -286,17 +286,33 @@ func (ec *ResourceEntityCache) ProvisionStatefulSet(statefulSet *K8SStatefulSetO
 	for resourceName, resourceValue := range statefulSet.Attributes {
 		entityAttrs[resourceName] = resourceValue
 	}
-	ec.PutEntity(string(semconv.K8SStatefulSetNameKey), statefulSet.Name, KubernetesStatefulSet, entityAttrs)
+
+	serviceEntity, _ := ec.PutEntity(string(semconv.ServiceNameKey), statefulSet.Name, Service, make(map[string]string))
+	statefulSetEntity, _ := ec.PutEntity(string(semconv.K8SStatefulSetNameKey), statefulSet.Name, KubernetesStatefulSet, entityAttrs)
+	if serviceEntity != nil && statefulSetEntity != nil {
+		serviceEntity.mu.Lock()
+		serviceEntity.AddEdge(statefulSet.Name, KubernetesStatefulSet, IsManagedByStatefulSet)
+		serviceEntity.mu.Unlock()
+	}
 }
 
 func (ec *ResourceEntityCache) ProvisionDeployment(deployment *K8SDeploymentObject) {
-	entityAttrs := make(map[string]string)
-	entityAttrs["replicasAvailable"] = string(rune(deployment.ReplicasAvailable))
-	entityAttrs["replicasDesired"] = string(rune(deployment.ReplicasDesired))
-	entityAttrs["replicasUpdated"] = string(rune(deployment.ReplicasUpdated))
-	entityAttrs["deploymentStatus"] = deployment.DeploymentStatus
-	entityAttrs["progressMessage"] = deployment.ProgressMessage
-	ec.PutEntity(string(semconv.K8SDeploymentNameKey), deployment.Name, KubernetesDeployment, entityAttrs)
+	if deployment.Name != "" {
+		entityAttrs := make(map[string]string)
+		entityAttrs["replicasAvailable"] = string(rune(deployment.ReplicasAvailable))
+		entityAttrs["replicasDesired"] = string(rune(deployment.ReplicasDesired))
+		entityAttrs["replicasUpdated"] = string(rune(deployment.ReplicasUpdated))
+		entityAttrs["deploymentStatus"] = deployment.DeploymentStatus
+		entityAttrs["progressMessage"] = deployment.ProgressMessage
+
+		serviceEntity, _ := ec.PutEntity(string(semconv.ServiceNameKey), deployment.Name, Service, make(map[string]string))
+		deploymentEntity, _ := ec.PutEntity(string(semconv.K8SDeploymentNameKey), deployment.Name, KubernetesDeployment, entityAttrs)
+		if serviceEntity != nil && deploymentEntity != nil {
+			serviceEntity.mu.Lock()
+			serviceEntity.AddEdge(deployment.Name, KubernetesDeployment, IsManagedByDeployment)
+			serviceEntity.mu.Unlock()
+		}
+	}
 }
 
 func (ec *ResourceEntityCache) ProvisionPod(podObject *K8SPodObject) {
@@ -334,6 +350,8 @@ func (ec *ResourceEntityCache) ProvisionPod(podObject *K8SPodObject) {
 
 	if parentAttributeName != "" {
 		parentEntity, _ := ec.PutEntity(parentAttributeName, podObject.OwnerRefName, parentEntityType, make(map[string]string))
+		parentEntity.mu.Lock()
 		podEntity.AddEdge(parentEntity.Name, parentEntity.Type, IsAPodFor)
+		parentEntity.mu.Unlock()
 	}
 }
