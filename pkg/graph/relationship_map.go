@@ -114,6 +114,10 @@ const (
 	Database              = "database"
 	DatabaseCollection    = "database.collection"
 	MessagingDestination  = "messaging.destination"
+	K8SPodIp              = "k8s.pod.ip"
+	HostIp                = "host.ip"
+	PodPhase              = "pod.phase"
+	PendingReason         = "pending.reason"
 )
 
 type EntityInfo struct {
@@ -298,7 +302,7 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SReplicaSetNameKey):  IsAPodFor,
 		},
 		AttributeNames: []string{
-			"k8s.pod.ip",
+			K8SPodIp,
 			string(semconv.K8SNamespaceNameKey),
 			string(semconv.K8SNodeNameKey),
 			string(semconv.ServiceNameKey),
