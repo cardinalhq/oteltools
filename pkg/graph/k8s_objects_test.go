@@ -40,7 +40,7 @@ func TestExtractPodObject(t *testing.T) {
 	err = logRecord.Body().SetEmptyMap().FromRaw(body)
 	assert.NoError(t, err, "Failed to set log record body")
 
-	podObject := extractPodObject(logRecord)
+	podObject := ExtractPodObject(logRecord)
 	assert.NotNil(t, podObject, "K8SPodObject should not be nil")
 
 	expectedPod := &K8SPodObject{
@@ -94,7 +94,7 @@ func TestExtractPodObject_CrashLoopBackOff(t *testing.T) {
 	err = logRecord.Body().SetEmptyMap().FromRaw(body)
 	assert.NoError(t, err, "Failed to set log record body")
 
-	podObject := extractPodObject(logRecord)
+	podObject := ExtractPodObject(logRecord)
 	assert.NotNil(t, podObject, "K8SPodObject should not be nil")
 
 	expectedPod := &K8SPodObject{
@@ -150,7 +150,7 @@ func TestExtractPodObject_ImagePullBackOff(t *testing.T) {
 	err = logRecord.Body().SetEmptyMap().FromRaw(body)
 	assert.NoError(t, err, "Failed to set log record body")
 
-	podObject := extractPodObject(logRecord)
+	podObject := ExtractPodObject(logRecord)
 	assert.NotNil(t, podObject, "K8SPodObject should not be nil")
 
 	expectedPod := &K8SPodObject{
@@ -209,7 +209,7 @@ func TestExtractPodObject_PendingPod(t *testing.T) {
 	err = logRecord.Body().SetEmptyMap().FromRaw(body)
 	assert.NoError(t, err, "Failed to set log record body")
 
-	podObject := extractPodObject(logRecord)
+	podObject := ExtractPodObject(logRecord)
 	assert.NotNil(t, podObject, "K8SPodObject should not be nil")
 
 	// Expected pod object values
@@ -261,7 +261,7 @@ func TestExtractDeploymentObject(t *testing.T) {
 	err = logRecord.Body().SetEmptyMap().FromRaw(body)
 	assert.NoError(t, err, "Failed to set log record body")
 
-	deploymentObject := extractDeploymentObject(logRecord)
+	deploymentObject := ExtractDeploymentObject(logRecord)
 	assert.NotNil(t, deploymentObject, "K8SDeploymentObject should not be nil")
 
 	expectedDeployment := &K8SDeploymentObject{
@@ -300,7 +300,7 @@ func TestExtractStatefulSetObject(t *testing.T) {
 	err = logRecord.Body().SetEmptyMap().FromRaw(body)
 	assert.NoError(t, err, "Failed to set log record body")
 
-	statefulSetObject := extractStatefulSetObject(logRecord)
+	statefulSetObject := ExtractStatefulSetObject(logRecord)
 
 	assert.NotNil(t, statefulSetObject, "K8SStatefulSetObject should not be nil")
 

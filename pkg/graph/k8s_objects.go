@@ -35,7 +35,7 @@ type K8SPodObject struct {
 	ImageID            string
 }
 
-func extractPodObject(lr plog.LogRecord) *K8SPodObject {
+func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 	rawValue := lr.Body().AsRaw()
 	if _, ok := rawValue.(map[string]interface{}); !ok {
 		return nil
@@ -178,7 +178,7 @@ type K8SDeploymentObject struct {
 	ProgressMessage   string
 }
 
-func extractDeploymentObject(lr plog.LogRecord) *K8SDeploymentObject {
+func ExtractDeploymentObject(lr plog.LogRecord) *K8SDeploymentObject {
 	rawValue := lr.Body().AsRaw()
 	if bodyMap, ok := rawValue.(map[string]interface{}); ok {
 		if kind, exists := bodyMap["kind"].(string); !exists || kind != "Deployment" {
@@ -262,7 +262,7 @@ func getStringFromMap(m map[string]interface{}, key string) string {
 	return ""
 }
 
-func extractStatefulSetObject(lr plog.LogRecord) *K8SStatefulSetObject {
+func ExtractStatefulSetObject(lr plog.LogRecord) *K8SStatefulSetObject {
 	rawValue := lr.Body().AsRaw()
 	bodyMap, ok := rawValue.(map[string]interface{})
 	if !ok {
