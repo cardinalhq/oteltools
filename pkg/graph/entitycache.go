@@ -280,3 +280,60 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 		entity.mu.Unlock()
 	}
 }
+
+func (ec *ResourceEntityCache) ProvisionStatefulSet(statefulSet *K8SStatefulSetObject) {
+	entityAttrs := make(map[string]string)
+	for resourceName, resourceValue := range statefulSet.Attributes {
+		entityAttrs[resourceName] = resourceValue
+	}
+	ec.PutEntity(string(semconv.K8SStatefulSetNameKey), statefulSet.Name, KubernetesStatefulSet, entityAttrs)
+}
+
+func (ec *ResourceEntityCache) ProvisionDeployment(deployment *K8SDeploymentObject) {
+	entityAttrs := make(map[string]string)
+	entityAttrs["replicasAvailable"] = string(rune(deployment.ReplicasAvailable))
+	entityAttrs["replicasDesired"] = string(rune(deployment.ReplicasDesired))
+	entityAttrs["replicasUpdated"] = string(rune(deployment.ReplicasUpdated))
+	entityAttrs["deploymentStatus"] = deployment.DeploymentStatus
+	entityAttrs["progressMessage"] = deployment.ProgressMessage
+	ec.PutEntity(string(semconv.K8SDeploymentNameKey), deployment.Name, KubernetesDeployment, entityAttrs)
+}
+
+func (ec *ResourceEntityCache) ProvisionPod(podObject *K8SPodObject) {
+	entityAttrs := make(map[string]string)
+	for labelName, labelValue := range podObject.Labels {
+		entityAttrs[labelName] = labelValue
+	}
+	for resourceName, resourceValue := range podObject.Resources {
+		entityAttrs[resourceName] = resourceValue
+	}
+	entityAttrs[ContainerImage] = podObject.ImageID
+	entityAttrs[K8SPodIp] = podObject.PodIP
+	entityAttrs[HostIp] = podObject.HostIP
+	entityAttrs[PodPhase] = podObject.Phase
+	if podObject.PendingReason != "" {
+		entityAttrs[PendingReason] = podObject.PendingReason
+	}
+	podEntity, _ := ec.PutEntity(string(semconv.K8SPodNameKey), podObject.Name, KubernetesPod, entityAttrs)
+
+	var parentAttributeName, parentEntityType string
+	switch podObject.OwnerRefKind {
+	case "ReplicaSet":
+		parentAttributeName = string(semconv.K8SReplicaSetNameKey)
+		parentEntityType = KubernetesReplicaSet
+
+	case "StatefulSet":
+		parentAttributeName = string(semconv.K8SStatefulSetNameKey)
+		parentEntityType = KubernetesStatefulSet
+
+	case "DaemonSet":
+		parentAttributeName = string(semconv.K8SDaemonSetNameKey)
+		parentEntityType = KubernetesDaemonSet
+	default:
+	}
+
+	if parentAttributeName != "" {
+		parentEntity, _ := ec.PutEntity(parentAttributeName, podObject.OwnerRefName, parentEntityType, make(map[string]string))
+		podEntity.AddEdge(parentEntity.Name, parentEntity.Type, IsAPodFor)
+	}
+}

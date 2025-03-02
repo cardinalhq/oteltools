@@ -1,0 +1,56 @@
+{
+  "object": {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "name": "pending-pod-12345",
+      "namespace": "default",
+      "labels": {
+        "app": "test-app",
+        "environment": "staging"
+      },
+      "ownerReferences": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "ReplicaSet",
+          "name": "pending-pod-replicaset",
+          "uid": "abcd1234-5678-90ef-ghij-klmnopqrstuv"
+        }
+      ],
+      "creationTimestamp": "2025-03-02T10:15:00Z"
+    },
+    "spec": {
+      "containers": [
+        {
+          "name": "test-container",
+          "image": "some.registry/test-image:latest",
+          "resources": {
+            "requests": {
+              "cpu": "500m",
+              "memory": "512Mi"
+            },
+            "limits": {
+              "cpu": "1000m",
+              "memory": "1024Mi"
+            }
+          }
+        }
+      ]
+    },
+    "status": {
+      "phase": "Pending",
+      "conditions": [
+        {
+          "type": "PodScheduled",
+          "status": "False",
+          "reason": "Unschedulable",
+          "message": "0/3 nodes are available: insufficient memory."
+        }
+      ],
+      "hostIP": "",
+      "podIP": "",
+      "startTime": "2025-03-02T10:15:00Z"
+    }
+  },
+  "type": "MODIFIED"
+}
