@@ -20,19 +20,19 @@ import (
 )
 
 type K8SPodObject struct {
-	Name               string
-	Labels             map[string]string
-	OwnerRefKind       string
-	OwnerRefName       string
-	Resources          map[string]string
-	Phase              string
-	StartedAt          string
-	PendingReason      string
-	IsImagePullBackOff bool
-	IsCrashLoopBackOff bool
-	PodIP              string
-	HostIP             string
-	ImageID            string
+	Name               string            `json:"name"`
+	Labels             map[string]string `json:"labels"`
+	OwnerRefKind       string            `json:"ownerRefKind"`
+	OwnerRefName       string            `json:"ownerRefName"`
+	Resources          map[string]string `json:"resources"`
+	Phase              string            `json:"phase"`
+	StartedAt          string            `json:"startedAt"`
+	PendingReason      string            `json:"pendingReason"`
+	IsImagePullBackOff bool              `json:"isImagePullBackOff"`
+	IsCrashLoopBackOff bool              `json:"isCrashLoopBackOff"`
+	PodIP              string            `json:"podIP"`
+	HostIP             string            `json:"hostIP"`
+	ImageID            string            `json:"imageID"`
 }
 
 func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
