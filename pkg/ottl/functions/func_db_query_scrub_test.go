@@ -37,12 +37,12 @@ func Test_SqlQueryScrub(t *testing.T) {
 		{
 			name:     "Scrub numeric table name ",
 			input:    `ALTER TABLE orders_23412312234234234 ADD COLUMN foo VARCHAR;`,
-			expected: `ALTER TABLE ? ADD COLUMN foo VARCHAR;`,
+			expected: `ALTER TABLE orders_ ADD COLUMN foo VARCHAR;`,
 		},
 		{
 			name:     "Scrub uuid table name",
 			input:    `ALTER TABLE tbl_5960ff07_578a_4e49_a543_db92e8432860 ADD COLUMN foo VARCHAR;`,
-			expected: `ALTER TABLE ? ADD COLUMN foo VARCHAR;`,
+			expected: `ALTER TABLE tbl_ ADD COLUMN foo VARCHAR;`,
 		},
 		{
 			name:     "Scrub complex query with multiple replacements",

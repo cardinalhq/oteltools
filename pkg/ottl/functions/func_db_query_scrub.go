@@ -38,14 +38,38 @@ func dbQueryScrub[K any](queryGetter ottl.StringGetter[K]) ottl.ExprFunc[K] {
 
 var sqlScrubRegex = regexp.MustCompile(`\b\d+\.\d+\b|\b\d+\b|'[^']*'|"[^"]*"`)
 
+var specialChars = map[uint8]bool{
+	'*': true,
+	'?': true,
+	'=': true,
+	';': true,
+	'.': true,
+	',': true,
+	'(': true,
+	')': true,
+	'_': true,
+	'>': true,
+	'<': true,
+}
+
+func ScrubWord(word string) string {
+	var tokenList []uint8
+	for j, r := range strings.ToLower(word) {
+		if r >= 'a' && r <= 'z' || specialChars[uint8(r)] {
+			tokenList = append(tokenList, word[j])
+		} else {
+			break
+		}
+	}
+	return string(tokenList)
+}
+
 func normalizeQuery(query string) string {
 	query = sqlScrubRegex.ReplaceAllString(query, "?")
 
 	tokens := strings.Fields(query)
 	for i, token := range tokens {
-		if containsAlphaAndNumeric(token) {
-			tokens[i] = "?"
-		}
+		tokens[i] = ScrubWord(token)
 	}
 
 	return strings.Join(tokens, " ")
