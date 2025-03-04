@@ -30,6 +30,7 @@ type K8SPodObject struct {
 	PendingReason      string            `json:"pendingReason"`
 	IsImagePullBackOff bool              `json:"isImagePullBackOff"`
 	IsCrashLoopBackOff bool              `json:"isCrashLoopBackOff"`
+	IsOOMKilled        bool              `json:"isOOMKilled"`
 	PodIP              string            `json:"podIP"`
 	HostIP             string            `json:"hostIP"`
 	ImageID            string            `json:"imageID"`
@@ -109,7 +110,7 @@ func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 	}
 
 	phase, podIP, hostIP, imageID, startedAt := "", "", "", "", ""
-	pendingReason, isImagePullBackOff, isCrashLoopBackOff := "", false, false
+	pendingReason, isImagePullBackOff, isCrashLoopBackOff, isOOMKilled := "", false, false, false
 
 	if status, exists := objectMap["status"].(map[string]interface{}); exists {
 		phase, _ = status["phase"].(string)
@@ -128,6 +129,8 @@ func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 					}
 				}
 			}
+		} else {
+			pendingReason = "N/A"
 		}
 
 		if containerStatuses, exists := status["containerStatuses"].([]interface{}); exists {
@@ -143,6 +146,15 @@ func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 								} else if reason == "CrashLoopBackOff" {
 									isCrashLoopBackOff = true
 								}
+							}
+						}
+					}
+
+					// Check last terminated state for OOMKilled
+					if lastState, exists := containerMap["lastState"].(map[string]interface{}); exists {
+						if terminated, exists := lastState["terminated"].(map[string]interface{}); exists {
+							if reason, exists := terminated["reason"].(string); exists && reason == "OOMKilled" {
+								isOOMKilled = true
 							}
 						}
 					}
@@ -162,6 +174,7 @@ func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 		PendingReason:      pendingReason,
 		IsImagePullBackOff: isImagePullBackOff,
 		IsCrashLoopBackOff: isCrashLoopBackOff,
+		IsOOMKilled:        isOOMKilled,
 		PodIP:              podIP,
 		HostIP:             hostIP,
 		ImageID:            imageID,
