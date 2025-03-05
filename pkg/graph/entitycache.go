@@ -183,7 +183,7 @@ func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Ma
 	}
 
 	ec.provisionEntities(attributes, entityMap)
-	ec.provisionRelationships(entityMap)
+	ec.provisionRelationships(entityMap, attributes)
 	return entityMap
 }
 
@@ -193,7 +193,7 @@ func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[s
 		newEntityMap[string(semconv.ServiceNameKey)] = serviceEntity
 	}
 	if len(newEntityMap) > 0 {
-		ec.provisionRelationships(newEntityMap)
+		ec.provisionRelationships(newEntityMap, recordAttributes)
 	}
 }
 
@@ -243,7 +243,7 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 	return newEntities
 }
 
-func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string]*ResourceEntity) {
+func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
 	var unlinkedEntities []*ResourceEntity
 
 	for _, parentEntity := range globalEntityMap {
@@ -255,6 +255,17 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 				if childEntity, childExists := globalEntityMap[childKey]; childExists {
 					parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
 					foundLinkage = true
+				}
+			}
+
+			if entityInfo.DeriveRelationshipCallbacks != nil {
+				for childKey := range entityInfo.DeriveRelationshipCallbacks {
+					deriveRelationshipCallback := entityInfo.DeriveRelationshipCallbacks[childKey]
+					if childEntity, childExists := globalEntityMap[childKey]; childExists {
+						relationship := deriveRelationshipCallback(recordAttributes)
+						parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
+						foundLinkage = true
+					}
 				}
 			}
 			parentEntity.mu.Unlock()

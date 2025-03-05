@@ -16,6 +16,7 @@ package graph
 
 import (
 	"github.com/cardinalhq/oteltools/pkg/ottl/functions"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
@@ -73,6 +74,7 @@ const (
 	IsStatefulSetFor         = "is statefulset for"
 	IsUsedByContainer        = "is used by container"
 	IsUsedByService          = "is used by service"
+	IsConsumedFromByService  = "is consumed from by service"
 	ManagesAccount           = "manages account"
 	ManagesReplicaset        = "manages replicaset"
 	NetPeerName              = "net.peer.name"
@@ -86,49 +88,51 @@ const (
 )
 
 const (
-	AwsEcsCluster         = "aws.ecs.cluster"
-	AwsEcsContainer       = "aws.ecs.container"
-	AwsEcsTask            = "aws.ecs.task"
-	AwsEksCluster         = "aws.eks.cluster"
-	CloudAccount          = "cloud.account"
-	CloudAvailabilityZone = "cloud.availability_zone"
-	CloudProvider         = "cloud.provider"
-	CloudRegion           = "cloud.region"
-	CloudResourceId       = "cloud.resource_id"
-	Container             = "container"
-	ContainerImage        = "container.image"
-	FaasFunction          = "faas.function"
-	FaasInstance          = "faas.instance"
-	Host                  = "host"
-	KubernetesCluster     = "k8s.cluster"
-	KubernetesContainer   = "k8s.container"
-	KubernetesCronJob     = "k8s.cronjob"
-	KubernetesDaemonSet   = "k8s.daemonset"
-	KubernetesDeployment  = "k8s.deployment"
-	KubernetesJob         = "k8s.job"
-	KubernetesNamespace   = "k8s.namespace"
-	KubernetesPod         = "k8s.pod"
-	KubernetesReplicaSet  = "k8s.replicaset"
-	KubernetesStatefulSet = "k8s.statefulset"
-	Node                  = "k8s.node"
-	Os                    = "os"
-	Process               = "process"
-	Service               = "service"
-	Database              = "database"
-	DatabaseCollection    = "database.collection"
-	MessagingDestination  = "messaging.destination"
-	K8SPodIp              = "k8s.pod.ip"
-	HostIp                = "host.ip"
-	PodPhase              = "pod.phase"
-	PendingReason         = "pending.reason"
+	AwsEcsCluster          = "aws.ecs.cluster"
+	AwsEcsContainer        = "aws.ecs.container"
+	AwsEcsTask             = "aws.ecs.task"
+	AwsEksCluster          = "aws.eks.cluster"
+	CloudAccount           = "cloud.account"
+	CloudAvailabilityZone  = "cloud.availability_zone"
+	CloudProvider          = "cloud.provider"
+	CloudRegion            = "cloud.region"
+	CloudResourceId        = "cloud.resource_id"
+	Container              = "container"
+	ContainerImage         = "container.image"
+	FaasFunction           = "faas.function"
+	FaasInstance           = "faas.instance"
+	Host                   = "host"
+	KubernetesCluster      = "k8s.cluster"
+	KubernetesContainer    = "k8s.container"
+	KubernetesCronJob      = "k8s.cronjob"
+	KubernetesDaemonSet    = "k8s.daemonset"
+	KubernetesDeployment   = "k8s.deployment"
+	KubernetesJob          = "k8s.job"
+	KubernetesNamespace    = "k8s.namespace"
+	KubernetesPod          = "k8s.pod"
+	KubernetesReplicaSet   = "k8s.replicaset"
+	KubernetesStatefulSet  = "k8s.statefulset"
+	Node                   = "k8s.node"
+	Os                     = "os"
+	Process                = "process"
+	Service                = "service"
+	Database               = "database"
+	DatabaseCollection     = "database.collection"
+	MessagingDestination   = "messaging.destination"
+	MessagingConsumerGroup = "messaging.consumer.group"
+	K8SPodIp               = "k8s.pod.ip"
+	HostIp                 = "host.ip"
+	PodPhase               = "pod.phase"
+	PendingReason          = "pending.reason"
 )
 
 type EntityInfo struct {
-	Type              string
-	Relationships     map[string]string
-	AttributeNames    []string
-	AttributePrefixes []string
-	NameTransformer   func(string) string
+	Type                        string
+	Relationships               map[string]string
+	AttributeNames              []string
+	AttributePrefixes           []string
+	NameTransformer             func(string) string
+	DeriveRelationshipCallbacks map[string]func(pcommon.Map) string
 }
 
 type RelationshipMap map[string]*EntityInfo
@@ -176,15 +180,15 @@ var EntityRelationships = RelationshipMap{
 	string(semconv.ServiceNameKey): {
 		Type: Service,
 		Relationships: map[string]string{
-			string(semconv.K8SDaemonSetNameKey):         IsManagedByDaemonSet,
-			string(semconv.K8SDeploymentNameKey):        IsManagedByDeployment,
-			string(semconv.K8SStatefulSetNameKey):       IsManagedByStatefulSet,
-			string(semconv.K8SCronJobNameKey):           IsManagedByCronJob,
-			string(semconv.K8SJobNameKey):               IsManagedByJob,
-			string(semconv.K8SNamespaceNameKey):         BelongsToNamespace,
-			string(semconv.DBNamespaceKey):              UsesDatabase,
-			string(semconv.DBCollectionNameKey):         UsesDatabaseCollection,
-			string(semconv.MessagingDestinationNameKey): UsesMessagingDestination,
+			string(semconv.K8SDaemonSetNameKey):           IsManagedByDaemonSet,
+			string(semconv.K8SDeploymentNameKey):          IsManagedByDeployment,
+			string(semconv.K8SStatefulSetNameKey):         IsManagedByStatefulSet,
+			string(semconv.K8SCronJobNameKey):             IsManagedByCronJob,
+			string(semconv.K8SJobNameKey):                 IsManagedByJob,
+			string(semconv.K8SNamespaceNameKey):           BelongsToNamespace,
+			string(semconv.DBNamespaceKey):                UsesDatabase,
+			string(semconv.DBCollectionNameKey):           UsesDatabaseCollection,
+			string(semconv.MessagingConsumerGroupNameKey): ConsumesFrom,
 		},
 		AttributeNames: []string{
 			string(semconv.ServiceInstanceIDKey),
@@ -195,6 +199,26 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.TelemetrySDKVersionKey),
 		},
 		AttributePrefixes: []string{},
+		DeriveRelationshipCallbacks: map[string]func(m pcommon.Map) string{
+			string(semconv.MessagingDestinationNameKey): func(m pcommon.Map) string {
+				_, mcgVFound := m.Get(string(semconv.MessagingConsumerGroupNameKey))
+				if mcgVFound {
+					return ConsumesFrom
+				}
+
+				monV, monVFound := m.Get(string(semconv.MessagingOperationNameKey))
+				if monVFound {
+					operation := monV.AsString()
+					if operation == "publish" {
+						return ProducesTo
+					}
+					if operation == "process" {
+						return ConsumesFrom
+					}
+				}
+				return UsesMessagingDestination
+			},
+		},
 	},
 
 	// DaemonSet
@@ -435,6 +459,19 @@ var EntityRelationships = RelationshipMap{
 		},
 		AttributeNames: []string{
 			string(semconv.MessagingSystemKey),
+		},
+		AttributePrefixes: []string{},
+	},
+
+	// Messaging Consumer Group (for Kafka)
+	string(semconv.MessagingConsumerGroupNameKey): {
+		Type: MessagingConsumerGroup,
+		Relationships: map[string]string{
+			string(semconv.ServiceNameKey): IsConsumedFromByService,
+		},
+		AttributeNames: []string{
+			string(semconv.MessagingSystemKey),
+			string(semconv.MessagingDestinationNameKey),
 		},
 		AttributePrefixes: []string{},
 	},
