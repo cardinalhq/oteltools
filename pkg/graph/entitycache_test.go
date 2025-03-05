@@ -189,6 +189,24 @@ func TestContainerRelationships(t *testing.T) {
 	assert.Equal(t, IsAssociatedWith, entities[toEntityId("java", "process")].Edges[toEntityId("my-container", "container")].Relationship)
 }
 
+func TestDBRelationships(t *testing.T) {
+	ec := NewResourceEntityCache()
+	attributes := pcommon.NewMap()
+	attributes.PutStr(string(semconv.ServiceNameKey), "service-1")
+	globalEntityMap := ec.ProvisionResourceAttributes(attributes)
+
+	recordAttributes := pcommon.NewMap()
+	recordAttributes.PutStr(string(semconv.DBSystemKey), "mysql")
+	recordAttributes.PutStr(string(semconv.DBCollectionNameKey), "glacier.tbl_17665234232")
+	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
+	dbCollectionEntityId := toEntityId("glacier.tbl_", "database.collection")
+
+	entities := ec._allEntities()
+	_, exists := entities[dbCollectionEntityId]
+	assert.True(t, exists, "Expected entity %s not found", dbCollectionEntityId)
+	assert.Equal(t, UsesDatabaseCollection, entities[toEntityId("service-1", "service")].Edges[toEntityId("glacier.tbl_", "database.collection")].Relationship)
+}
+
 func TestCloudRelationships(t *testing.T) {
 	ec := NewResourceEntityCache()
 

@@ -14,7 +14,10 @@
 
 package graph
 
-import semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+import (
+	"github.com/cardinalhq/oteltools/pkg/ottl/functions"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+)
 
 const (
 	BelongsToAccount         = "belongs to account"
@@ -125,6 +128,7 @@ type EntityInfo struct {
 	Relationships     map[string]string
 	AttributeNames    []string
 	AttributePrefixes []string
+	NameTransformer   func(string) string
 }
 
 type RelationshipMap map[string]*EntityInfo
@@ -418,6 +422,9 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.DBSystemKey),
 		},
 		AttributePrefixes: []string{},
+		NameTransformer: func(s string) string {
+			return functions.ScrubWord(s)
+		},
 	},
 
 	// Messaging System Destination (e.g. Kafka Topic, RabbitMQ Queue)
