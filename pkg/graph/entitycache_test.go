@@ -15,10 +15,10 @@
 package graph
 
 import (
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"testing"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -205,6 +205,56 @@ func TestDBRelationships(t *testing.T) {
 	_, exists := entities[dbCollectionEntityId]
 	assert.True(t, exists, "Expected entity %s not found", dbCollectionEntityId)
 	assert.Equal(t, UsesDatabaseCollection, entities[toEntityId("service-1", "service")].Edges[toEntityId("glacier.tbl_", "database.collection")].Relationship)
+}
+
+func TestMessagingConsumesFromRelationship(t *testing.T) {
+	ec := NewResourceEntityCache()
+	attributes := pcommon.NewMap()
+	attributes.PutStr(string(semconv.ServiceNameKey), "service-1")
+	globalEntityMap := ec.ProvisionResourceAttributes(attributes)
+
+	recordAttributes := pcommon.NewMap()
+	recordAttributes.PutStr(string(semconv.MessagingSystemKey), "kafka")
+	recordAttributes.PutStr(string(semconv.MessagingDestinationNameKey), "topic-1")
+	recordAttributes.PutStr(string(semconv.MessagingOperationNameKey), "process")
+	recordAttributes.PutStr(string(semconv.MessagingConsumerGroupNameKey), "consumer-group-1")
+
+	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
+	entities := ec._allEntities()
+	messagingDestinationEntityId := toEntityId("topic-1", MessagingDestination)
+	messagingConsumerGroupEntityId := toEntityId("consumer-group-1", MessagingConsumerGroup)
+
+	_, messagingDestinationExists := entities[messagingDestinationEntityId]
+	assert.True(t, messagingDestinationExists, "Expected entity %s not found", messagingDestinationEntityId)
+
+	_, messagingConsumerGroupEntityExists := entities[messagingConsumerGroupEntityId]
+	assert.True(t, messagingConsumerGroupEntityExists, "Expected entity %s not found", messagingConsumerGroupEntityId)
+
+	// assert edge between service and messaging destination, and assert the edge relationship
+	assert.Equal(t, ConsumesFrom, entities[toEntityId("service-1", "service")].Edges[messagingDestinationEntityId].Relationship)
+	assert.Equal(t, ConsumesFrom, entities[toEntityId("service-1", "service")].Edges[messagingConsumerGroupEntityId].Relationship)
+}
+
+func TestMessagingProducesToRelationship(t *testing.T) {
+	ec := NewResourceEntityCache()
+	attributes := pcommon.NewMap()
+	attributes.PutStr(string(semconv.ServiceNameKey), "service-1")
+	globalEntityMap := ec.ProvisionResourceAttributes(attributes)
+
+	recordAttributes := pcommon.NewMap()
+	recordAttributes.PutStr(string(semconv.MessagingSystemKey), "kafka")
+	recordAttributes.PutStr(string(semconv.MessagingDestinationNameKey), "topic-1")
+	recordAttributes.PutStr(string(semconv.MessagingOperationNameKey), "publish")
+
+	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
+	entities := ec._allEntities()
+	messagingDestinationEntityId := toEntityId("topic-1", MessagingDestination)
+
+	_, messagingDestinationExists := entities[messagingDestinationEntityId]
+	assert.True(t, messagingDestinationExists, "Expected entity %s not found", messagingDestinationEntityId)
+
+	// assert edge between service and messaging destination, and assert the edge relationship
+	assert.Equal(t, ProducesTo, entities[toEntityId("service-1", "service")].Edges[messagingDestinationEntityId].Relationship)
 }
 
 func TestCloudRelationships(t *testing.T) {
