@@ -38,17 +38,8 @@ type K8SPodObject struct {
 
 func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 	rawValue := lr.Body().AsRaw()
-	if _, ok := rawValue.(map[string]interface{}); !ok {
-		return nil
-	}
 
-	bodyMap := lr.Body().Map().AsRaw()
-	object, objectPresent := bodyMap["object"]
-	if !objectPresent {
-		return nil
-	}
-
-	objectMap, ok := object.(map[string]interface{})
+	objectMap, ok := rawValue.(map[string]interface{})
 	if !ok {
 		return nil
 	}

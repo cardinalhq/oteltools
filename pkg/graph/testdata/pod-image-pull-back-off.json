@@ -1,70 +1,67 @@
 {
-  "object": {
-    "apiVersion": "v1",
-    "kind": "Pod",
-    "metadata": {
-      "name": "aws-test-us-east-2-cl-polling-57d97bbf5f-gj9qx",
-      "namespace": "collector",
-      "labels": {
-        "app.kubernetes.io/component": "collector",
-        "app.kubernetes.io/instance": "aws-test-us-east-2-cl-polling",
-        "app.kubernetes.io/managed-by": "cardinalhq-operator",
-        "app.kubernetes.io/name": "cardinalhq-otel-collector",
-        "pod-template-hash": "57d97bbf5f"
-      },
-      "ownerReferences": [
-        {
-          "kind": "ReplicaSet",
-          "name": "aws-test-us-east-2-cl-polling-57d97bbf5f"
-        }
-      ],
-      "creationTimestamp": "2025-03-01T19:55:00Z"
+  "apiVersion": "v1",
+  "kind": "Pod",
+  "metadata": {
+    "name": "aws-test-us-east-2-cl-polling-57d97bbf5f-gj9qx",
+    "namespace": "collector",
+    "labels": {
+      "app.kubernetes.io/component": "collector",
+      "app.kubernetes.io/instance": "aws-test-us-east-2-cl-polling",
+      "app.kubernetes.io/managed-by": "cardinalhq-operator",
+      "app.kubernetes.io/name": "cardinalhq-otel-collector",
+      "pod-template-hash": "57d97bbf5f"
     },
-    "spec": {
-      "containers": [
-        {
-          "name": "collector",
-          "image": "public.ecr.aws/cardinalhq.io/non-existent-image:latest",
-          "resources": {
-            "limits": {
-              "cpu": "2",
-              "memory": "2Gi"
-            },
-            "requests": {
-              "cpu": "2",
-              "memory": "2Gi"
-            }
+    "ownerReferences": [
+      {
+        "kind": "ReplicaSet",
+        "name": "aws-test-us-east-2-cl-polling-57d97bbf5f"
+      }
+    ],
+    "creationTimestamp": "2025-03-01T19:55:00Z"
+  },
+  "spec": {
+    "containers": [
+      {
+        "name": "collector",
+        "image": "public.ecr.aws/cardinalhq.io/non-existent-image:latest",
+        "resources": {
+          "limits": {
+            "cpu": "2",
+            "memory": "2Gi"
+          },
+          "requests": {
+            "cpu": "2",
+            "memory": "2Gi"
           }
         }
-      ]
-    },
-    "status": {
-      "phase": "Pending",
-      "conditions": [
-        {
-          "type": "PodScheduled",
-          "status": "True",
-          "lastTransitionTime": "2025-03-01T19:55:02Z"
-        }
-      ],
-      "containerStatuses": [
-        {
-          "name": "collector",
-          "state": {
-            "waiting": {
-              "reason": "ImagePullBackOff",
-              "message": "Back-off pulling image \"public.ecr.aws/cardinalhq.io/non-existent-image:latest\""
-            }
-          },
-          "restartCount": 0,
-          "image": "public.ecr.aws/cardinalhq.io/non-existent-image:latest",
-          "imageID": ""
-        }
-      ],
-      "hostIP": "10.181.4.236",
-      "podIP": "",
-      "startTime": "2025-03-01T19:55:02Z"
-    }
+      }
+    ]
   },
-  "type": "MODIFIED"
+  "status": {
+    "phase": "Pending",
+    "conditions": [
+      {
+        "type": "PodScheduled",
+        "status": "True",
+        "lastTransitionTime": "2025-03-01T19:55:02Z"
+      }
+    ],
+    "containerStatuses": [
+      {
+        "name": "collector",
+        "state": {
+          "waiting": {
+            "reason": "ImagePullBackOff",
+            "message": "Back-off pulling image \"public.ecr.aws/cardinalhq.io/non-existent-image:latest\""
+          }
+        },
+        "restartCount": 0,
+        "image": "public.ecr.aws/cardinalhq.io/non-existent-image:latest",
+        "imageID": ""
+      }
+    ],
+    "hostIP": "10.181.4.236",
+    "podIP": "",
+    "startTime": "2025-03-01T19:55:02Z"
+  }
 }

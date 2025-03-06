@@ -77,6 +77,56 @@ func TestExtractPodObject(t *testing.T) {
 	assert.Equal(t, expectedPod.ImageID, podObject.ImageID, "ImageID mismatch")
 }
 
+func TestExtractPodObjectTraefik(t *testing.T) {
+	filePath := "testdata/pod-normal-2.json" // Path to your new test data file
+	data, err := os.ReadFile(filePath)
+	assert.NoError(t, err, "Failed to read test data file")
+
+	var body map[string]interface{}
+	err = json.Unmarshal(data, &body)
+	assert.NoError(t, err, "Failed to unmarshal JSON")
+
+	logs := plog.NewLogs()
+	resourceLogs := logs.ResourceLogs().AppendEmpty()
+	scopeLogs := resourceLogs.ScopeLogs().AppendEmpty()
+	logRecord := scopeLogs.LogRecords().AppendEmpty()
+
+	err = logRecord.Body().SetEmptyMap().FromRaw(body)
+	assert.NoError(t, err, "Failed to set log record body")
+
+	podObject := ExtractPodObject(logRecord)
+	assert.NotNil(t, podObject, "K8SPodObject should not be nil")
+
+	expectedPod := &K8SPodObject{
+		Name: "traefik-668c8db657-r6gz7",
+		Labels: map[string]string{
+			"app.kubernetes.io/instance":   "traefik-traefik",
+			"app.kubernetes.io/managed-by": "Helm",
+			"app.kubernetes.io/name":       "traefik",
+			"helm.sh/chart":                "traefik-28.2.0",
+			"pod-template-hash":            "668c8db657",
+		},
+		OwnerRefKind: "ReplicaSet",
+		OwnerRefName: "traefik-668c8db657",
+		Resources:    map[string]string{}, // Assuming empty resources
+		Phase:        "Running",
+		PodIP:        "10.181.1.203",
+		HostIP:       "10.181.1.80",
+		ImageID:      "033263751764.dkr.ecr.us-east-2.amazonaws.com/docker.io/library/traefik@sha256:9ad110e745f68e15c09a4d6ccc0dc3cd674ab21466c0884b8e7823a445ac4d25",
+	}
+
+	// Validate the pod object with expected values
+	assert.Equal(t, expectedPod.Name, podObject.Name, "Pod name mismatch")
+	assert.Equal(t, expectedPod.Labels, podObject.Labels, "Pod labels mismatch")
+	assert.Equal(t, expectedPod.OwnerRefKind, podObject.OwnerRefKind, "OwnerRefKind mismatch")
+	assert.Equal(t, expectedPod.OwnerRefName, podObject.OwnerRefName, "OwnerRefName mismatch")
+	assert.Equal(t, expectedPod.Resources, podObject.Resources, "Resources mismatch")
+	assert.Equal(t, expectedPod.Phase, podObject.Phase, "Phase mismatch")
+	assert.Equal(t, expectedPod.PodIP, podObject.PodIP, "PodIP mismatch")
+	assert.Equal(t, expectedPod.HostIP, podObject.HostIP, "HostIP mismatch")
+	assert.Equal(t, expectedPod.ImageID, podObject.ImageID, "ImageID mismatch")
+}
+
 func TestExtractPodObject_CrashLoopBackOff(t *testing.T) {
 	filePath := "testdata/pod-crashloop.json"
 	data, err := os.ReadFile(filePath)

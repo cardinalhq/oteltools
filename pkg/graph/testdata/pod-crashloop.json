@@ -1,89 +1,86 @@
 {
-  "object": {
-    "apiVersion": "v1",
-    "kind": "Pod",
-    "metadata": {
-      "annotations": {
-        "collector.cardinalhq.io/config-version": "8cd8edfb0ed60e35"
-      },
-      "creationTimestamp": "2025-03-01T19:55:00Z",
-      "generateName": "aws-test-us-east-2-cl-polling-57d97bbf5f-",
-      "labels": {
-        "app.kubernetes.io/component": "collector",
-        "app.kubernetes.io/instance": "aws-test-us-east-2-cl-polling",
-        "app.kubernetes.io/managed-by": "cardinalhq-operator",
-        "app.kubernetes.io/name": "cardinalhq-otel-collector",
-        "pod-template-hash": "57d97bbf5f"
-      },
-      "name": "aws-test-us-east-2-cl-polling-57d97bbf5f-gj9qx",
-      "namespace": "collector",
-      "ownerReferences": [
-        {
-          "apiVersion": "apps/v1",
-          "blockOwnerDeletion": true,
-          "controller": true,
-          "kind": "ReplicaSet",
-          "name": "aws-test-us-east-2-cl-polling-57d97bbf5f",
-          "uid": "3f8c4d1c-dd03-4d69-8c1d-704c9bb3ef4e"
-        }
-      ],
-      "resourceVersion": "79955889",
-      "uid": "122353a4-5bd3-4012-b8af-263dea1e6bac"
+  "apiVersion": "v1",
+  "kind": "Pod",
+  "metadata": {
+    "annotations": {
+      "collector.cardinalhq.io/config-version": "8cd8edfb0ed60e35"
     },
-    "spec": {
-      "containers": [
-        {
-          "name": "collector",
-          "image": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector:latest-dev",
-          "resources": {
-            "limits": {
-              "cpu": "2",
-              "memory": "2Gi"
-            },
-            "requests": {
-              "cpu": "2",
-              "memory": "2Gi"
-            }
+    "creationTimestamp": "2025-03-01T19:55:00Z",
+    "generateName": "aws-test-us-east-2-cl-polling-57d97bbf5f-",
+    "labels": {
+      "app.kubernetes.io/component": "collector",
+      "app.kubernetes.io/instance": "aws-test-us-east-2-cl-polling",
+      "app.kubernetes.io/managed-by": "cardinalhq-operator",
+      "app.kubernetes.io/name": "cardinalhq-otel-collector",
+      "pod-template-hash": "57d97bbf5f"
+    },
+    "name": "aws-test-us-east-2-cl-polling-57d97bbf5f-gj9qx",
+    "namespace": "collector",
+    "ownerReferences": [
+      {
+        "apiVersion": "apps/v1",
+        "blockOwnerDeletion": true,
+        "controller": true,
+        "kind": "ReplicaSet",
+        "name": "aws-test-us-east-2-cl-polling-57d97bbf5f",
+        "uid": "3f8c4d1c-dd03-4d69-8c1d-704c9bb3ef4e"
+      }
+    ],
+    "resourceVersion": "79955889",
+    "uid": "122353a4-5bd3-4012-b8af-263dea1e6bac"
+  },
+  "spec": {
+    "containers": [
+      {
+        "name": "collector",
+        "image": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector:latest-dev",
+        "resources": {
+          "limits": {
+            "cpu": "2",
+            "memory": "2Gi"
+          },
+          "requests": {
+            "cpu": "2",
+            "memory": "2Gi"
           }
         }
-      ],
-      "restartPolicy": "Always"
-    },
-    "status": {
-      "phase": "Running",
-      "conditions": [
-        {
-          "type": "Ready",
-          "status": "False",
-          "lastTransitionTime": "2025-03-01T19:55:15Z"
-        }
-      ],
-      "containerStatuses": [
-        {
-          "name": "collector",
-          "restartCount": 5,
-          "state": {
-            "waiting": {
-              "reason": "CrashLoopBackOff",
-              "message": "Back-off 5m0s restarting failed container collector in pod aws-test-us-east-2-cl-polling-57d97bbf5f-gj9qx"
-            }
-          },
-          "lastState": {
-            "terminated": {
-              "exitCode": 1,
-              "reason": "Error",
-              "message": "Process exited with status 1"
-            }
-          },
-          "ready": false,
-          "image": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector:latest-dev",
-          "imageID": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector@sha256:c969517e8e5dfffd51fdd20168e71d8dcdcd47b187ffd5b26436cdf4df65a8c9"
-        }
-      ],
-      "podIP": "10.181.7.227",
-      "hostIP": "10.181.4.236",
-      "startTime": "2025-03-01T19:55:02Z"
-    }
+      }
+    ],
+    "restartPolicy": "Always"
   },
-  "type": "MODIFIED"
+  "status": {
+    "phase": "Running",
+    "conditions": [
+      {
+        "type": "Ready",
+        "status": "False",
+        "lastTransitionTime": "2025-03-01T19:55:15Z"
+      }
+    ],
+    "containerStatuses": [
+      {
+        "name": "collector",
+        "restartCount": 5,
+        "state": {
+          "waiting": {
+            "reason": "CrashLoopBackOff",
+            "message": "Back-off 5m0s restarting failed container collector in pod aws-test-us-east-2-cl-polling-57d97bbf5f-gj9qx"
+          }
+        },
+        "lastState": {
+          "terminated": {
+            "exitCode": 1,
+            "reason": "Error",
+            "message": "Process exited with status 1"
+          }
+        },
+        "ready": false,
+        "image": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector:latest-dev",
+        "imageID": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector@sha256:c969517e8e5dfffd51fdd20168e71d8dcdcd47b187ffd5b26436cdf4df65a8c9"
+      }
+    ],
+    "podIP": "10.181.7.227",
+    "hostIP": "10.181.4.236",
+    "startTime": "2025-03-01T19:55:02Z"
+  }
 }

@@ -1,742 +1,739 @@
 {
-  "object": {
-    "apiVersion": "v1",
-    "kind": "Pod",
-    "metadata": {
-      "annotations": {
-        "collector.cardinalhq.io/config-version": "8cd8edfb0ed60e35"
-      },
-      "creationTimestamp": "2025-03-01T19:55:00Z",
-      "generateName": "aws-test-us-east-2-cl-polling-57d97bbf5f-",
-      "labels": {
-        "app.kubernetes.io/component": "collector",
-        "app.kubernetes.io/instance": "aws-test-us-east-2-cl-polling",
-        "app.kubernetes.io/managed-by": "cardinalhq-operator",
-        "app.kubernetes.io/name": "cardinalhq-otel-collector",
-        "pod-template-hash": "57d97bbf5f"
-      },
-      "managedFields": [
-        {
-          "apiVersion": "v1",
-          "fieldsType": "FieldsV1",
-          "fieldsV1": {
-            "f:metadata": {
-              "f:annotations": {
-                ".": {},
-                "f:collector.cardinalhq.io/config-version": {}
-              },
-              "f:generateName": {},
-              "f:labels": {
-                ".": {},
-                "f:app.kubernetes.io/component": {},
-                "f:app.kubernetes.io/instance": {},
-                "f:app.kubernetes.io/managed-by": {},
-                "f:app.kubernetes.io/name": {},
-                "f:pod-template-hash": {}
-              },
-              "f:ownerReferences": {
-                ".": {},
-                "k:{\"uid\":\"3f8c4d1c-dd03-4d69-8c1d-704c9bb3ef4e\"}": {}
-              }
-            },
-            "f:spec": {
-              "f:affinity": {
-                ".": {},
-                "f:podAntiAffinity": {
-                  ".": {},
-                  "f:preferredDuringSchedulingIgnoredDuringExecution": {}
-                }
-              },
-              "f:containers": {
-                "k:{\"name\":\"collector\"}": {
-                  ".": {},
-                  "f:command": {},
-                  "f:env": {
-                    ".": {},
-                    "k:{\"name\":\"CARDINALHQ_API_KEY\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:valueFrom": {
-                        ".": {},
-                        "f:secretKeyRef": {}
-                      }
-                    },
-                    "k:{\"name\":\"CARDINALHQ_COLLECTOR_APP_COMPONENT\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    },
-                    "k:{\"name\":\"CARDINALHQ_COLLECTOR_APP_INSTANCE\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    },
-                    "k:{\"name\":\"CARDINALHQ_COLLECTOR_APP_MANAGED_BY\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    },
-                    "k:{\"name\":\"CARDINALHQ_COLLECTOR_APP_NAME\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    },
-                    "k:{\"name\":\"CARDINALHQ_COLLECTOR_IMAGE_DIGEST\"}": {
-                      ".": {},
-                      "f:name": {}
-                    },
-                    "k:{\"name\":\"CARDINALHQ_COLLECTOR_IMAGE_FULL\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    },
-                    "k:{\"name\":\"CARDINALHQ_COLLECTOR_IMAGE_REGISTRY\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    },
-                    "k:{\"name\":\"CARDINALHQ_COLLECTOR_IMAGE_REPOSITORY\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    },
-                    "k:{\"name\":\"CARDINALHQ_COLLECTOR_IMAGE_TAG\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    },
-                    "k:{\"name\":\"CARDINALHQ_PROVIDER\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    },
-                    "k:{\"name\":\"CARDINALHQ_REGION\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    },
-                    "k:{\"name\":\"GOMEMLIMIT\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    },
-                    "k:{\"name\":\"HOST_IP\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:valueFrom": {
-                        ".": {},
-                        "f:fieldRef": {}
-                      }
-                    },
-                    "k:{\"name\":\"K8S_NODE_NAME\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:valueFrom": {
-                        ".": {},
-                        "f:fieldRef": {}
-                      }
-                    },
-                    "k:{\"name\":\"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    },
-                    "k:{\"name\":\"POD_IP\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:valueFrom": {
-                        ".": {},
-                        "f:fieldRef": {}
-                      }
-                    },
-                    "k:{\"name\":\"POD_NAME\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:valueFrom": {
-                        ".": {},
-                        "f:fieldRef": {}
-                      }
-                    },
-                    "k:{\"name\":\"POD_NAMESPACE\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:valueFrom": {
-                        ".": {},
-                        "f:fieldRef": {}
-                      }
-                    },
-                    "k:{\"name\":\"UPSTREAM_OTLP_URL\"}": {
-                      ".": {},
-                      "f:name": {},
-                      "f:value": {}
-                    }
-                  },
-                  "f:image": {},
-                  "f:imagePullPolicy": {},
-                  "f:name": {},
-                  "f:ports": {
-                    ".": {},
-                    "k:{\"containerPort\":13133,\"protocol\":\"TCP\"}": {
-                      ".": {},
-                      "f:containerPort": {},
-                      "f:name": {},
-                      "f:protocol": {}
-                    },
-                    "k:{\"containerPort\":6060,\"protocol\":\"TCP\"}": {
-                      ".": {},
-                      "f:containerPort": {},
-                      "f:name": {},
-                      "f:protocol": {}
-                    },
-                    "k:{\"containerPort\":6061,\"protocol\":\"TCP\"}": {
-                      ".": {},
-                      "f:containerPort": {},
-                      "f:name": {},
-                      "f:protocol": {}
-                    }
-                  },
-                  "f:readinessProbe": {
-                    ".": {},
-                    "f:failureThreshold": {},
-                    "f:httpGet": {
-                      ".": {},
-                      "f:path": {},
-                      "f:port": {},
-                      "f:scheme": {}
-                    },
-                    "f:initialDelaySeconds": {},
-                    "f:periodSeconds": {},
-                    "f:successThreshold": {},
-                    "f:timeoutSeconds": {}
-                  },
-                  "f:resources": {
-                    ".": {},
-                    "f:limits": {
-                      ".": {},
-                      "f:cpu": {},
-                      "f:memory": {}
-                    },
-                    "f:requests": {
-                      ".": {},
-                      "f:cpu": {},
-                      "f:memory": {}
-                    }
-                  },
-                  "f:securityContext": {
-                    ".": {},
-                    "f:allowPrivilegeEscalation": {},
-                    "f:capabilities": {
-                      ".": {},
-                      "f:drop": {}
-                    },
-                    "f:runAsNonRoot": {},
-                    "f:seccompProfile": {
-                      ".": {},
-                      "f:type": {}
-                    }
-                  },
-                  "f:terminationMessagePath": {},
-                  "f:terminationMessagePolicy": {},
-                  "f:volumeMounts": {
-                    ".": {},
-                    "k:{\"mountPath\":\"/app/config\"}": {
-                      ".": {},
-                      "f:mountPath": {},
-                      "f:name": {}
-                    }
-                  }
-                }
-              },
-              "f:dnsPolicy": {},
-              "f:enableServiceLinks": {},
-              "f:restartPolicy": {},
-              "f:schedulerName": {},
-              "f:securityContext": {
-                ".": {},
-                "f:fsGroup": {},
-                "f:runAsGroup": {},
-                "f:runAsNonRoot": {},
-                "f:runAsUser": {}
-              },
-              "f:serviceAccount": {},
-              "f:serviceAccountName": {},
-              "f:terminationGracePeriodSeconds": {},
-              "f:volumes": {
-                ".": {},
-                "k:{\"name\":\"config\"}": {
-                  ".": {},
-                  "f:name": {},
-                  "f:secret": {
-                    ".": {},
-                    "f:defaultMode": {},
-                    "f:secretName": {}
-                  }
-                }
-              }
-            }
-          },
-          "manager": "kube-controller-manager",
-          "operation": "Update",
-          "time": "2025-03-01T19:55:00Z"
-        },
-        {
-          "apiVersion": "v1",
-          "fieldsType": "FieldsV1",
-          "fieldsV1": {
-            "f:status": {
-              "f:conditions": {
-                ".": {},
-                "k:{\"type\":\"PodScheduled\"}": {
-                  ".": {},
-                  "f:lastProbeTime": {},
-                  "f:lastTransitionTime": {},
-                  "f:message": {},
-                  "f:reason": {},
-                  "f:status": {},
-                  "f:type": {}
-                }
-              }
-            }
-          },
-          "manager": "kube-scheduler",
-          "operation": "Update",
-          "subresource": "status",
-          "time": "2025-03-01T19:55:00Z"
-        },
-        {
-          "apiVersion": "v1",
-          "fieldsType": "FieldsV1",
-          "fieldsV1": {
-            "f:status": {
-              "f:conditions": {
-                "k:{\"type\":\"ContainersReady\"}": {
-                  ".": {},
-                  "f:lastProbeTime": {},
-                  "f:lastTransitionTime": {},
-                  "f:status": {},
-                  "f:type": {}
-                },
-                "k:{\"type\":\"Initialized\"}": {
-                  ".": {},
-                  "f:lastProbeTime": {},
-                  "f:lastTransitionTime": {},
-                  "f:status": {},
-                  "f:type": {}
-                },
-                "k:{\"type\":\"PodReadyToStartContainers\"}": {
-                  ".": {},
-                  "f:lastProbeTime": {},
-                  "f:lastTransitionTime": {},
-                  "f:status": {},
-                  "f:type": {}
-                },
-                "k:{\"type\":\"Ready\"}": {
-                  ".": {},
-                  "f:lastProbeTime": {},
-                  "f:lastTransitionTime": {},
-                  "f:status": {},
-                  "f:type": {}
-                }
-              },
-              "f:containerStatuses": {},
-              "f:hostIP": {},
-              "f:hostIPs": {},
-              "f:phase": {},
-              "f:podIP": {},
-              "f:podIPs": {
-                ".": {},
-                "k:{\"ip\":\"10.181.7.227\"}": {
-                  ".": {},
-                  "f:ip": {}
-                }
-              },
-              "f:startTime": {}
-            }
-          },
-          "manager": "kubelet",
-          "operation": "Update",
-          "subresource": "status",
-          "time": "2025-03-01T19:55:15Z"
-        }
-      ],
-      "name": "aws-test-us-east-2-cl-polling-57d97bbf5f-gj9qx",
-      "namespace": "collector",
-      "ownerReferences": [
-        {
-          "apiVersion": "apps/v1",
-          "blockOwnerDeletion": true,
-          "controller": true,
-          "kind": "ReplicaSet",
-          "name": "aws-test-us-east-2-cl-polling-57d97bbf5f",
-          "uid": "3f8c4d1c-dd03-4d69-8c1d-704c9bb3ef4e"
-        }
-      ],
-      "resourceVersion": "79955889",
-      "uid": "122353a4-5bd3-4012-b8af-263dea1e6bac"
+  "apiVersion": "v1",
+  "kind": "Pod",
+  "metadata": {
+    "annotations": {
+      "collector.cardinalhq.io/config-version": "8cd8edfb0ed60e35"
     },
-    "spec": {
-      "affinity": {
-        "podAntiAffinity": {
-          "preferredDuringSchedulingIgnoredDuringExecution": [
-            {
-              "podAffinityTerm": {
-                "labelSelector": {
-                  "matchLabels": {
-                    "app.kubernetes.io/component": "collector",
-                    "app.kubernetes.io/instance": "aws-test-us-east-2-cl-polling",
-                    "app.kubernetes.io/managed-by": "cardinalhq-operator",
-                    "app.kubernetes.io/name": "cardinalhq-otel-collector"
+    "creationTimestamp": "2025-03-01T19:55:00Z",
+    "generateName": "aws-test-us-east-2-cl-polling-57d97bbf5f-",
+    "labels": {
+      "app.kubernetes.io/component": "collector",
+      "app.kubernetes.io/instance": "aws-test-us-east-2-cl-polling",
+      "app.kubernetes.io/managed-by": "cardinalhq-operator",
+      "app.kubernetes.io/name": "cardinalhq-otel-collector",
+      "pod-template-hash": "57d97bbf5f"
+    },
+    "managedFields": [
+      {
+        "apiVersion": "v1",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:metadata": {
+            "f:annotations": {
+              ".": {},
+              "f:collector.cardinalhq.io/config-version": {}
+            },
+            "f:generateName": {},
+            "f:labels": {
+              ".": {},
+              "f:app.kubernetes.io/component": {},
+              "f:app.kubernetes.io/instance": {},
+              "f:app.kubernetes.io/managed-by": {},
+              "f:app.kubernetes.io/name": {},
+              "f:pod-template-hash": {}
+            },
+            "f:ownerReferences": {
+              ".": {},
+              "k:{\"uid\":\"3f8c4d1c-dd03-4d69-8c1d-704c9bb3ef4e\"}": {}
+            }
+          },
+          "f:spec": {
+            "f:affinity": {
+              ".": {},
+              "f:podAntiAffinity": {
+                ".": {},
+                "f:preferredDuringSchedulingIgnoredDuringExecution": {}
+              }
+            },
+            "f:containers": {
+              "k:{\"name\":\"collector\"}": {
+                ".": {},
+                "f:command": {},
+                "f:env": {
+                  ".": {},
+                  "k:{\"name\":\"CARDINALHQ_API_KEY\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:valueFrom": {
+                      ".": {},
+                      "f:secretKeyRef": {}
+                    }
+                  },
+                  "k:{\"name\":\"CARDINALHQ_COLLECTOR_APP_COMPONENT\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
+                  },
+                  "k:{\"name\":\"CARDINALHQ_COLLECTOR_APP_INSTANCE\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
+                  },
+                  "k:{\"name\":\"CARDINALHQ_COLLECTOR_APP_MANAGED_BY\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
+                  },
+                  "k:{\"name\":\"CARDINALHQ_COLLECTOR_APP_NAME\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
+                  },
+                  "k:{\"name\":\"CARDINALHQ_COLLECTOR_IMAGE_DIGEST\"}": {
+                    ".": {},
+                    "f:name": {}
+                  },
+                  "k:{\"name\":\"CARDINALHQ_COLLECTOR_IMAGE_FULL\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
+                  },
+                  "k:{\"name\":\"CARDINALHQ_COLLECTOR_IMAGE_REGISTRY\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
+                  },
+                  "k:{\"name\":\"CARDINALHQ_COLLECTOR_IMAGE_REPOSITORY\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
+                  },
+                  "k:{\"name\":\"CARDINALHQ_COLLECTOR_IMAGE_TAG\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
+                  },
+                  "k:{\"name\":\"CARDINALHQ_PROVIDER\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
+                  },
+                  "k:{\"name\":\"CARDINALHQ_REGION\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
+                  },
+                  "k:{\"name\":\"GOMEMLIMIT\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
+                  },
+                  "k:{\"name\":\"HOST_IP\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:valueFrom": {
+                      ".": {},
+                      "f:fieldRef": {}
+                    }
+                  },
+                  "k:{\"name\":\"K8S_NODE_NAME\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:valueFrom": {
+                      ".": {},
+                      "f:fieldRef": {}
+                    }
+                  },
+                  "k:{\"name\":\"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
+                  },
+                  "k:{\"name\":\"POD_IP\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:valueFrom": {
+                      ".": {},
+                      "f:fieldRef": {}
+                    }
+                  },
+                  "k:{\"name\":\"POD_NAME\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:valueFrom": {
+                      ".": {},
+                      "f:fieldRef": {}
+                    }
+                  },
+                  "k:{\"name\":\"POD_NAMESPACE\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:valueFrom": {
+                      ".": {},
+                      "f:fieldRef": {}
+                    }
+                  },
+                  "k:{\"name\":\"UPSTREAM_OTLP_URL\"}": {
+                    ".": {},
+                    "f:name": {},
+                    "f:value": {}
                   }
                 },
-                "topologyKey": "kubernetes.io/hostname"
-              },
-              "weight": 100
-            }
-          ]
-        }
-      },
-      "containers": [
-        {
-          "command": [
-            "/app/bin/cardinalhq-otel-collector",
-            "--config=/app/config/collector.yaml"
-          ],
-          "env": [
-            {
-              "name": "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE",
-              "value": "Delta"
-            },
-            {
-              "name": "GOMEMLIMIT",
-              "value": "1638MiB"
-            },
-            {
-              "name": "HOST_IP",
-              "valueFrom": {
-                "fieldRef": {
-                  "apiVersion": "v1",
-                  "fieldPath": "status.hostIP"
+                "f:image": {},
+                "f:imagePullPolicy": {},
+                "f:name": {},
+                "f:ports": {
+                  ".": {},
+                  "k:{\"containerPort\":13133,\"protocol\":\"TCP\"}": {
+                    ".": {},
+                    "f:containerPort": {},
+                    "f:name": {},
+                    "f:protocol": {}
+                  },
+                  "k:{\"containerPort\":6060,\"protocol\":\"TCP\"}": {
+                    ".": {},
+                    "f:containerPort": {},
+                    "f:name": {},
+                    "f:protocol": {}
+                  },
+                  "k:{\"containerPort\":6061,\"protocol\":\"TCP\"}": {
+                    ".": {},
+                    "f:containerPort": {},
+                    "f:name": {},
+                    "f:protocol": {}
+                  }
+                },
+                "f:readinessProbe": {
+                  ".": {},
+                  "f:failureThreshold": {},
+                  "f:httpGet": {
+                    ".": {},
+                    "f:path": {},
+                    "f:port": {},
+                    "f:scheme": {}
+                  },
+                  "f:initialDelaySeconds": {},
+                  "f:periodSeconds": {},
+                  "f:successThreshold": {},
+                  "f:timeoutSeconds": {}
+                },
+                "f:resources": {
+                  ".": {},
+                  "f:limits": {
+                    ".": {},
+                    "f:cpu": {},
+                    "f:memory": {}
+                  },
+                  "f:requests": {
+                    ".": {},
+                    "f:cpu": {},
+                    "f:memory": {}
+                  }
+                },
+                "f:securityContext": {
+                  ".": {},
+                  "f:allowPrivilegeEscalation": {},
+                  "f:capabilities": {
+                    ".": {},
+                    "f:drop": {}
+                  },
+                  "f:runAsNonRoot": {},
+                  "f:seccompProfile": {
+                    ".": {},
+                    "f:type": {}
+                  }
+                },
+                "f:terminationMessagePath": {},
+                "f:terminationMessagePolicy": {},
+                "f:volumeMounts": {
+                  ".": {},
+                  "k:{\"mountPath\":\"/app/config\"}": {
+                    ".": {},
+                    "f:mountPath": {},
+                    "f:name": {}
+                  }
                 }
               }
             },
-            {
-              "name": "K8S_NODE_NAME",
-              "valueFrom": {
-                "fieldRef": {
-                  "apiVersion": "v1",
-                  "fieldPath": "spec.nodeName"
+            "f:dnsPolicy": {},
+            "f:enableServiceLinks": {},
+            "f:restartPolicy": {},
+            "f:schedulerName": {},
+            "f:securityContext": {
+              ".": {},
+              "f:fsGroup": {},
+              "f:runAsGroup": {},
+              "f:runAsNonRoot": {},
+              "f:runAsUser": {}
+            },
+            "f:serviceAccount": {},
+            "f:serviceAccountName": {},
+            "f:terminationGracePeriodSeconds": {},
+            "f:volumes": {
+              ".": {},
+              "k:{\"name\":\"config\"}": {
+                ".": {},
+                "f:name": {},
+                "f:secret": {
+                  ".": {},
+                  "f:defaultMode": {},
+                  "f:secretName": {}
                 }
               }
-            },
-            {
-              "name": "POD_IP",
-              "valueFrom": {
-                "fieldRef": {
-                  "apiVersion": "v1",
-                  "fieldPath": "status.podIP"
-                }
-              }
-            },
-            {
-              "name": "POD_NAME",
-              "valueFrom": {
-                "fieldRef": {
-                  "apiVersion": "v1",
-                  "fieldPath": "metadata.name"
-                }
-              }
-            },
-            {
-              "name": "POD_NAMESPACE",
-              "valueFrom": {
-                "fieldRef": {
-                  "apiVersion": "v1",
-                  "fieldPath": "metadata.namespace"
-                }
-              }
-            },
-            {
-              "name": "CARDINALHQ_API_KEY",
-              "valueFrom": {
-                "secretKeyRef": {
-                  "key": "cardinalhq-api-key",
-                  "name": "cardinalhq-api-key"
-                }
-              }
-            },
-            {
-              "name": "CARDINALHQ_PROVIDER",
-              "value": "aws"
-            },
-            {
-              "name": "CARDINALHQ_REGION",
-              "value": "us-east-2"
-            },
-            {
-              "name": "CARDINALHQ_COLLECTOR_IMAGE_FULL",
-              "value": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector:latest-dev"
-            },
-            {
-              "name": "CARDINALHQ_COLLECTOR_IMAGE_REPOSITORY",
-              "value": "cardinalhq.io/cardinalhq-otel-collector"
-            },
-            {
-              "name": "CARDINALHQ_COLLECTOR_IMAGE_REGISTRY",
-              "value": "public.ecr.aws"
-            },
-            {
-              "name": "CARDINALHQ_COLLECTOR_IMAGE_TAG",
-              "value": "latest-dev"
-            },
-            {
-              "name": "CARDINALHQ_COLLECTOR_IMAGE_DIGEST"
-            },
-            {
-              "name": "CARDINALHQ_COLLECTOR_APP_NAME",
-              "value": "cardinalhq-otel-collector"
-            },
-            {
-              "name": "CARDINALHQ_COLLECTOR_APP_INSTANCE",
-              "value": "aws-test-us-east-2-cl-polling"
-            },
-            {
-              "name": "CARDINALHQ_COLLECTOR_APP_COMPONENT",
-              "value": "collector"
-            },
-            {
-              "name": "CARDINALHQ_COLLECTOR_APP_MANAGED_BY",
-              "value": "cardinalhq-operator"
-            },
-            {
-              "name": "UPSTREAM_OTLP_URL",
-              "value": "http://aws-test-us-east-2-cl-interproc.collector.svc.cluster.local:24318"
             }
-          ],
-          "image": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector:latest-dev",
-          "imagePullPolicy": "Always",
-          "name": "collector",
-          "ports": [
-            {
-              "containerPort": 6060,
-              "name": "pprof",
-              "protocol": "TCP"
-            },
-            {
-              "containerPort": 6061,
-              "name": "zpages",
-              "protocol": "TCP"
-            },
-            {
-              "containerPort": 13133,
-              "name": "healthz",
-              "protocol": "TCP"
-            }
-          ],
-          "readinessProbe": {
-            "failureThreshold": 3,
-            "httpGet": {
-              "path": "/healthz",
-              "port": 13133,
-              "scheme": "HTTP"
-            },
-            "initialDelaySeconds": 3,
-            "periodSeconds": 10,
-            "successThreshold": 1,
-            "timeoutSeconds": 1
-          },
-          "resources": {
-            "limits": {
-              "cpu": "2",
-              "memory": "2Gi"
-            },
-            "requests": {
-              "cpu": "2",
-              "memory": "2Gi"
-            }
-          },
-          "securityContext": {
-            "allowPrivilegeEscalation": false,
-            "capabilities": {
-              "drop": [
-                "ALL"
-              ]
-            },
-            "runAsNonRoot": true,
-            "seccompProfile": {
-              "type": "RuntimeDefault"
-            }
-          },
-          "terminationMessagePath": "/dev/termination-log",
-          "terminationMessagePolicy": "File",
-          "volumeMounts": [
-            {
-              "mountPath": "/app/config",
-              "name": "config"
-            },
-            {
-              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
-              "name": "kube-api-access-58bcd",
-              "readOnly": true
-            }
-          ]
-        }
-      ],
-      "dnsPolicy": "ClusterFirst",
-      "enableServiceLinks": true,
-      "nodeName": "ip-10-181-4-236.us-east-2.compute.internal",
-      "preemptionPolicy": "PreemptLowerPriority",
-      "priority": 0,
-      "restartPolicy": "Always",
-      "schedulerName": "default-scheduler",
-      "securityContext": {
-        "fsGroup": 2000,
-        "runAsGroup": 2000,
-        "runAsNonRoot": true,
-        "runAsUser": 2000
-      },
-      "serviceAccount": "aws-test-us-east-2-cl-polling",
-      "serviceAccountName": "aws-test-us-east-2-cl-polling",
-      "terminationGracePeriodSeconds": 30,
-      "tolerations": [
-        {
-          "effect": "NoExecute",
-          "key": "node.kubernetes.io/not-ready",
-          "operator": "Exists",
-          "tolerationSeconds": 300
-        },
-        {
-          "effect": "NoExecute",
-          "key": "node.kubernetes.io/unreachable",
-          "operator": "Exists",
-          "tolerationSeconds": 300
-        }
-      ],
-      "volumes": [
-        {
-          "name": "config",
-          "secret": {
-            "defaultMode": 420,
-            "secretName": "aws-test-us-east-2-cl-polling-config"
           }
         },
-        {
-          "name": "kube-api-access-58bcd",
-          "projected": {
-            "defaultMode": 420,
-            "sources": [
-              {
-                "serviceAccountToken": {
-                  "expirationSeconds": 3607,
-                  "path": "token"
-                }
-              },
-              {
-                "configMap": {
-                  "items": [
-                    {
-                      "key": "ca.crt",
-                      "path": "ca.crt"
-                    }
-                  ],
-                  "name": "kube-root-ca.crt"
-                }
-              },
-              {
-                "downwardAPI": {
-                  "items": [
-                    {
-                      "fieldRef": {
-                        "apiVersion": "v1",
-                        "fieldPath": "metadata.namespace"
-                      },
-                      "path": "namespace"
-                    }
-                  ]
-                }
+        "manager": "kube-controller-manager",
+        "operation": "Update",
+        "time": "2025-03-01T19:55:00Z"
+      },
+      {
+        "apiVersion": "v1",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:status": {
+            "f:conditions": {
+              ".": {},
+              "k:{\"type\":\"PodScheduled\"}": {
+                ".": {},
+                "f:lastProbeTime": {},
+                "f:lastTransitionTime": {},
+                "f:message": {},
+                "f:reason": {},
+                "f:status": {},
+                "f:type": {}
               }
-            ]
+            }
           }
-        }
-      ]
-    },
-    "status": {
-      "conditions": [
-        {
-          "lastProbeTime": null,
-          "lastTransitionTime": "2025-03-01T19:55:04Z",
-          "status": "True",
-          "type": "PodReadyToStartContainers"
         },
-        {
-          "lastProbeTime": null,
-          "lastTransitionTime": "2025-03-01T19:55:02Z",
-          "status": "True",
-          "type": "Initialized"
-        },
-        {
-          "lastProbeTime": null,
-          "lastTransitionTime": "2025-03-01T19:55:15Z",
-          "status": "True",
-          "type": "Ready"
-        },
-        {
-          "lastProbeTime": null,
-          "lastTransitionTime": "2025-03-01T19:55:15Z",
-          "status": "True",
-          "type": "ContainersReady"
-        },
-        {
-          "lastProbeTime": null,
-          "lastTransitionTime": "2025-03-01T19:55:02Z",
-          "status": "True",
-          "type": "PodScheduled"
-        }
-      ],
-      "containerStatuses": [
-        {
-          "containerID": "containerd://67917e718b0acd6c70b2d03d363ec5ea9ec08d35a94c9618d5a4bf3adda3862c",
-          "image": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector:latest-dev",
-          "imageID": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector@sha256:c969517e8e5dfffd51fdd20168e71d8dcdcd47b187ffd5b26436cdf4df65a8c9",
-          "lastState": {},
-          "name": "collector",
-          "ready": true,
-          "restartCount": 0,
-          "started": true,
-          "state": {
-            "running": {
-              "startedAt": "2025-03-01T19:55:03Z"
-            }
-          },
-          "volumeMounts": [
-            {
-              "mountPath": "/app/config",
-              "name": "config"
+        "manager": "kube-scheduler",
+        "operation": "Update",
+        "subresource": "status",
+        "time": "2025-03-01T19:55:00Z"
+      },
+      {
+        "apiVersion": "v1",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:status": {
+            "f:conditions": {
+              "k:{\"type\":\"ContainersReady\"}": {
+                ".": {},
+                "f:lastProbeTime": {},
+                "f:lastTransitionTime": {},
+                "f:status": {},
+                "f:type": {}
+              },
+              "k:{\"type\":\"Initialized\"}": {
+                ".": {},
+                "f:lastProbeTime": {},
+                "f:lastTransitionTime": {},
+                "f:status": {},
+                "f:type": {}
+              },
+              "k:{\"type\":\"PodReadyToStartContainers\"}": {
+                ".": {},
+                "f:lastProbeTime": {},
+                "f:lastTransitionTime": {},
+                "f:status": {},
+                "f:type": {}
+              },
+              "k:{\"type\":\"Ready\"}": {
+                ".": {},
+                "f:lastProbeTime": {},
+                "f:lastTransitionTime": {},
+                "f:status": {},
+                "f:type": {}
+              }
             },
-            {
-              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
-              "name": "kube-api-access-58bcd",
-              "readOnly": true,
-              "recursiveReadOnly": "Disabled"
-            }
-          ]
-        }
-      ],
-      "hostIP": "10.181.4.236",
-      "hostIPs": [
-        {
-          "ip": "10.181.4.236"
-        }
-      ],
-      "phase": "Running",
-      "podIP": "10.181.7.227",
-      "podIPs": [
-        {
-          "ip": "10.181.7.227"
-        }
-      ],
-      "qosClass": "Guaranteed",
-      "startTime": "2025-03-01T19:55:02Z"
-    }
+            "f:containerStatuses": {},
+            "f:hostIP": {},
+            "f:hostIPs": {},
+            "f:phase": {},
+            "f:podIP": {},
+            "f:podIPs": {
+              ".": {},
+              "k:{\"ip\":\"10.181.7.227\"}": {
+                ".": {},
+                "f:ip": {}
+              }
+            },
+            "f:startTime": {}
+          }
+        },
+        "manager": "kubelet",
+        "operation": "Update",
+        "subresource": "status",
+        "time": "2025-03-01T19:55:15Z"
+      }
+    ],
+    "name": "aws-test-us-east-2-cl-polling-57d97bbf5f-gj9qx",
+    "namespace": "collector",
+    "ownerReferences": [
+      {
+        "apiVersion": "apps/v1",
+        "blockOwnerDeletion": true,
+        "controller": true,
+        "kind": "ReplicaSet",
+        "name": "aws-test-us-east-2-cl-polling-57d97bbf5f",
+        "uid": "3f8c4d1c-dd03-4d69-8c1d-704c9bb3ef4e"
+      }
+    ],
+    "resourceVersion": "79955889",
+    "uid": "122353a4-5bd3-4012-b8af-263dea1e6bac"
   },
-  "type": "MODIFIED"
+  "spec": {
+    "affinity": {
+      "podAntiAffinity": {
+        "preferredDuringSchedulingIgnoredDuringExecution": [
+          {
+            "podAffinityTerm": {
+              "labelSelector": {
+                "matchLabels": {
+                  "app.kubernetes.io/component": "collector",
+                  "app.kubernetes.io/instance": "aws-test-us-east-2-cl-polling",
+                  "app.kubernetes.io/managed-by": "cardinalhq-operator",
+                  "app.kubernetes.io/name": "cardinalhq-otel-collector"
+                }
+              },
+              "topologyKey": "kubernetes.io/hostname"
+            },
+            "weight": 100
+          }
+        ]
+      }
+    },
+    "containers": [
+      {
+        "command": [
+          "/app/bin/cardinalhq-otel-collector",
+          "--config=/app/config/collector.yaml"
+        ],
+        "env": [
+          {
+            "name": "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE",
+            "value": "Delta"
+          },
+          {
+            "name": "GOMEMLIMIT",
+            "value": "1638MiB"
+          },
+          {
+            "name": "HOST_IP",
+            "valueFrom": {
+              "fieldRef": {
+                "apiVersion": "v1",
+                "fieldPath": "status.hostIP"
+              }
+            }
+          },
+          {
+            "name": "K8S_NODE_NAME",
+            "valueFrom": {
+              "fieldRef": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.nodeName"
+              }
+            }
+          },
+          {
+            "name": "POD_IP",
+            "valueFrom": {
+              "fieldRef": {
+                "apiVersion": "v1",
+                "fieldPath": "status.podIP"
+              }
+            }
+          },
+          {
+            "name": "POD_NAME",
+            "valueFrom": {
+              "fieldRef": {
+                "apiVersion": "v1",
+                "fieldPath": "metadata.name"
+              }
+            }
+          },
+          {
+            "name": "POD_NAMESPACE",
+            "valueFrom": {
+              "fieldRef": {
+                "apiVersion": "v1",
+                "fieldPath": "metadata.namespace"
+              }
+            }
+          },
+          {
+            "name": "CARDINALHQ_API_KEY",
+            "valueFrom": {
+              "secretKeyRef": {
+                "key": "cardinalhq-api-key",
+                "name": "cardinalhq-api-key"
+              }
+            }
+          },
+          {
+            "name": "CARDINALHQ_PROVIDER",
+            "value": "aws"
+          },
+          {
+            "name": "CARDINALHQ_REGION",
+            "value": "us-east-2"
+          },
+          {
+            "name": "CARDINALHQ_COLLECTOR_IMAGE_FULL",
+            "value": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector:latest-dev"
+          },
+          {
+            "name": "CARDINALHQ_COLLECTOR_IMAGE_REPOSITORY",
+            "value": "cardinalhq.io/cardinalhq-otel-collector"
+          },
+          {
+            "name": "CARDINALHQ_COLLECTOR_IMAGE_REGISTRY",
+            "value": "public.ecr.aws"
+          },
+          {
+            "name": "CARDINALHQ_COLLECTOR_IMAGE_TAG",
+            "value": "latest-dev"
+          },
+          {
+            "name": "CARDINALHQ_COLLECTOR_IMAGE_DIGEST"
+          },
+          {
+            "name": "CARDINALHQ_COLLECTOR_APP_NAME",
+            "value": "cardinalhq-otel-collector"
+          },
+          {
+            "name": "CARDINALHQ_COLLECTOR_APP_INSTANCE",
+            "value": "aws-test-us-east-2-cl-polling"
+          },
+          {
+            "name": "CARDINALHQ_COLLECTOR_APP_COMPONENT",
+            "value": "collector"
+          },
+          {
+            "name": "CARDINALHQ_COLLECTOR_APP_MANAGED_BY",
+            "value": "cardinalhq-operator"
+          },
+          {
+            "name": "UPSTREAM_OTLP_URL",
+            "value": "http://aws-test-us-east-2-cl-interproc.collector.svc.cluster.local:24318"
+          }
+        ],
+        "image": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector:latest-dev",
+        "imagePullPolicy": "Always",
+        "name": "collector",
+        "ports": [
+          {
+            "containerPort": 6060,
+            "name": "pprof",
+            "protocol": "TCP"
+          },
+          {
+            "containerPort": 6061,
+            "name": "zpages",
+            "protocol": "TCP"
+          },
+          {
+            "containerPort": 13133,
+            "name": "healthz",
+            "protocol": "TCP"
+          }
+        ],
+        "readinessProbe": {
+          "failureThreshold": 3,
+          "httpGet": {
+            "path": "/healthz",
+            "port": 13133,
+            "scheme": "HTTP"
+          },
+          "initialDelaySeconds": 3,
+          "periodSeconds": 10,
+          "successThreshold": 1,
+          "timeoutSeconds": 1
+        },
+        "resources": {
+          "limits": {
+            "cpu": "2",
+            "memory": "2Gi"
+          },
+          "requests": {
+            "cpu": "2",
+            "memory": "2Gi"
+          }
+        },
+        "securityContext": {
+          "allowPrivilegeEscalation": false,
+          "capabilities": {
+            "drop": [
+              "ALL"
+            ]
+          },
+          "runAsNonRoot": true,
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "terminationMessagePath": "/dev/termination-log",
+        "terminationMessagePolicy": "File",
+        "volumeMounts": [
+          {
+            "mountPath": "/app/config",
+            "name": "config"
+          },
+          {
+            "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+            "name": "kube-api-access-58bcd",
+            "readOnly": true
+          }
+        ]
+      }
+    ],
+    "dnsPolicy": "ClusterFirst",
+    "enableServiceLinks": true,
+    "nodeName": "ip-10-181-4-236.us-east-2.compute.internal",
+    "preemptionPolicy": "PreemptLowerPriority",
+    "priority": 0,
+    "restartPolicy": "Always",
+    "schedulerName": "default-scheduler",
+    "securityContext": {
+      "fsGroup": 2000,
+      "runAsGroup": 2000,
+      "runAsNonRoot": true,
+      "runAsUser": 2000
+    },
+    "serviceAccount": "aws-test-us-east-2-cl-polling",
+    "serviceAccountName": "aws-test-us-east-2-cl-polling",
+    "terminationGracePeriodSeconds": 30,
+    "tolerations": [
+      {
+        "effect": "NoExecute",
+        "key": "node.kubernetes.io/not-ready",
+        "operator": "Exists",
+        "tolerationSeconds": 300
+      },
+      {
+        "effect": "NoExecute",
+        "key": "node.kubernetes.io/unreachable",
+        "operator": "Exists",
+        "tolerationSeconds": 300
+      }
+    ],
+    "volumes": [
+      {
+        "name": "config",
+        "secret": {
+          "defaultMode": 420,
+          "secretName": "aws-test-us-east-2-cl-polling-config"
+        }
+      },
+      {
+        "name": "kube-api-access-58bcd",
+        "projected": {
+          "defaultMode": 420,
+          "sources": [
+            {
+              "serviceAccountToken": {
+                "expirationSeconds": 3607,
+                "path": "token"
+              }
+            },
+            {
+              "configMap": {
+                "items": [
+                  {
+                    "key": "ca.crt",
+                    "path": "ca.crt"
+                  }
+                ],
+                "name": "kube-root-ca.crt"
+              }
+            },
+            {
+              "downwardAPI": {
+                "items": [
+                  {
+                    "fieldRef": {
+                      "apiVersion": "v1",
+                      "fieldPath": "metadata.namespace"
+                    },
+                    "path": "namespace"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "status": {
+    "conditions": [
+      {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2025-03-01T19:55:04Z",
+        "status": "True",
+        "type": "PodReadyToStartContainers"
+      },
+      {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2025-03-01T19:55:02Z",
+        "status": "True",
+        "type": "Initialized"
+      },
+      {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2025-03-01T19:55:15Z",
+        "status": "True",
+        "type": "Ready"
+      },
+      {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2025-03-01T19:55:15Z",
+        "status": "True",
+        "type": "ContainersReady"
+      },
+      {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2025-03-01T19:55:02Z",
+        "status": "True",
+        "type": "PodScheduled"
+      }
+    ],
+    "containerStatuses": [
+      {
+        "containerID": "containerd://67917e718b0acd6c70b2d03d363ec5ea9ec08d35a94c9618d5a4bf3adda3862c",
+        "image": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector:latest-dev",
+        "imageID": "public.ecr.aws/cardinalhq.io/cardinalhq-otel-collector@sha256:c969517e8e5dfffd51fdd20168e71d8dcdcd47b187ffd5b26436cdf4df65a8c9",
+        "lastState": {},
+        "name": "collector",
+        "ready": true,
+        "restartCount": 0,
+        "started": true,
+        "state": {
+          "running": {
+            "startedAt": "2025-03-01T19:55:03Z"
+          }
+        },
+        "volumeMounts": [
+          {
+            "mountPath": "/app/config",
+            "name": "config"
+          },
+          {
+            "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+            "name": "kube-api-access-58bcd",
+            "readOnly": true,
+            "recursiveReadOnly": "Disabled"
+          }
+        ]
+      }
+    ],
+    "hostIP": "10.181.4.236",
+    "hostIPs": [
+      {
+        "ip": "10.181.4.236"
+      }
+    ],
+    "phase": "Running",
+    "podIP": "10.181.7.227",
+    "podIPs": [
+      {
+        "ip": "10.181.7.227"
+      }
+    ],
+    "qosClass": "Guaranteed",
+    "startTime": "2025-03-01T19:55:02Z"
+  }
 }
