@@ -57,3 +57,7 @@ func (msb *MetricScopeBuilder) Metric(name string, units string, ty pmetric.Metr
 	msb.metrics[key] = item
 	return item, nil
 }
+
+func (msb *MetricScopeBuilder) Get() pmetric.ScopeMetrics {
+	return msb.scope
+}

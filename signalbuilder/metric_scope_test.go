@@ -63,3 +63,13 @@ func TestMetricScopeBuilder_Metric(t *testing.T) {
 		assert.Nil(t, item)
 	})
 }
+
+func TestMetricScopeBuilder_Get(t *testing.T) {
+	scope := pmetric.NewScopeMetrics()
+	msb := NewMetricScopeBuilder(scope)
+
+	t.Run("get scope metrics", func(t *testing.T) {
+		result := msb.Get()
+		assert.Equal(t, scope, result)
+	})
+}

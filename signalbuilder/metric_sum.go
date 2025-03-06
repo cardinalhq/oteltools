@@ -27,7 +27,9 @@ type MetricSumBuilder struct {
 var _ MetricDatapointBuilder = (*MetricSumBuilder)(nil)
 
 func NewMetricSumBuilder(metric pmetric.Metric) *MetricSumBuilder {
-	metric.SetEmptySum()
+	sum := metric.SetEmptySum()
+	sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+	sum.SetIsMonotonic(false)
 	return &MetricSumBuilder{
 		metric:     metric,
 		datapoints: map[uint64]pmetric.NumberDataPoint{},

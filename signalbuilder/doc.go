@@ -20,6 +20,8 @@
 // and each Scope will have exactly one of the appropriate signal
 // types.
 //
+// Sums are always configured to be non-monotonic and delta aggregation.
+//
 // Currently, the only signal type supported is Metric.
 //
 // This package is not thread-safe.
