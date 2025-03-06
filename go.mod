@@ -1,6 +1,6 @@
 module github.com/cardinalhq/oteltools
 
-go 1.23
+go 1.24
 
 require (
 	github.com/apache/datasketches-go v0.0.0-20250118213811-1dc6bd45f849
@@ -18,7 +18,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.34.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac
+	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
 	google.golang.org/protobuf v1.36.5
 	gopkg.in/yaml.v3 v3.0.1
 )

@@ -21,6 +21,8 @@ import (
 	"math"
 	"reflect"
 	"sort"
+
+	"github.com/cespare/xxhash/v2"
 )
 
 // Hasher is an interface that wraps a Sum64 method.  Any hash implementation that
@@ -32,19 +34,40 @@ type Hasher interface {
 
 // HashJSON takes a blob of JSON, unmarshals it, and returns a 64-bit hash using the provided hasher.
 // If there's an error unmarshaling, it returns 0 and the error.
-func HashJSON(input []byte, hasher Hasher) (uint64, error) {
+func HashJSON(hasher Hasher, input []byte) (uint64, error) {
+	if hasher == nil {
+		hasher = newDefaultHasher()
+	}
 	var v any
 	if err := json.Unmarshal(input, &v); err != nil {
 		return 0, err
 	}
-	return HashAny(v, hasher), nil
+	return HashAny(hasher, v), nil
 }
 
 // HashAny hashes an arbitrary Go value (the result of json.Unmarshal) in a
 // canonical way using the provided hasher. It returns a 64-bit non-cryptographic hash.
-func HashAny(value any, hasher Hasher) uint64 {
+func HashAny(hasher Hasher, value any) uint64 {
+	if hasher == nil {
+		hasher = newDefaultHasher()
+	}
 	writeHash(hasher, value)
 	return hasher.Sum64()
+}
+
+func HashStrings(hasher Hasher, values ...string) uint64 {
+	if hasher == nil {
+		hasher = newDefaultHasher()
+	}
+	for _, value := range values {
+		_, _ = hasher.Write([]byte(value + "\x00"))
+	}
+	return hasher.Sum64()
+}
+
+// newDefaultHasher returns a new hasher with a default seed.
+func newDefaultHasher() Hasher {
+	return xxhash.New()
 }
 
 // writeHash serializes and writes values into the hasher

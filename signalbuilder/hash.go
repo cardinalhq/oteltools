@@ -12,12 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package hashutils provides utilities for hashing objects in a stable
-// way.  The hash returned should be considered stable when
-// a hasher is provided.  If a hasher is not provided, the default
-// hasher is used, which is currently xxhash, but may change resulting
-// in different hashes.  It is OK to use the default hasher for
-// temporary hashes, but for long-term storage, a specific hasher
-// should be provided.  The hash returned is a 64-bit non-cryptographic
-// hash.
-package hashutils
+package signalbuilder
+
+import (
+	"github.com/cardinalhq/oteltools/hashutils"
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+)
+
+func attrkey(attr pcommon.Map) uint64 {
+	if attr.Len() == 0 {
+		return 1
+	}
+	m := attr.AsRaw()
+	return hashutils.HashAny(nil, m)
+}
+
+func metrickey(name string, units string, ty pmetric.MetricType) uint64 {
+	return hashutils.HashStrings(nil, name, units, ty.String())
+}

@@ -39,18 +39,49 @@ func TestHashAny(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hasher := fnv.New64a()
-			got := HashAny(tt.value, hasher)
+			got := HashAny(hasher, tt.value)
 			if got != tt.want {
 				t.Errorf("HashAny() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
+
+func TestDefaultHasher(t *testing.T) {
+	got := HashAny(nil, []byte("hello"))
+	if got == 0 {
+		t.Errorf("HashAny() = 0, want non-zero")
+	}
+}
+
+func TestHashStrings(t *testing.T) {
+	tests := []struct {
+		name   string
+		values []string
+		want   uint64
+	}{
+		{"empty", []string{}, 14695981039346656037},
+		{"single string", []string{"hello"}, 12230803299529341361},
+		{"multiple strings", []string{"hello", "world"}, 18168791734189485541},
+		{"strings with special characters", []string{"hello", "world", "!@#$%^&*()"}, 16906879461096828933},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hasher := fnv.New64a()
+			got := HashStrings(hasher, tt.values...)
+			if got != tt.want {
+				t.Errorf("HashStrings() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func BenchmarkHashAnyFNV(b *testing.B) {
 	value := map[string]any{"one": 1, "two": "two"}
 	for i := 0; i < b.N; i++ {
 		hasher := fnv.New64a()
-		HashAny(value, hasher)
+		HashAny(hasher, value)
 	}
 }
 
@@ -58,6 +89,6 @@ func BenchmarkHashAnyXXHash(b *testing.B) {
 	value := map[string]any{"one": 1, "two": "two"}
 	for i := 0; i < b.N; i++ {
 		hasher := xxhash.New()
-		HashAny(value, hasher)
+		HashAny(hasher, value)
 	}
 }

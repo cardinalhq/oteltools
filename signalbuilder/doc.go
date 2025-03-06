@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package hashutils provides utilities for hashing objects in a stable
-// way.  The hash returned should be considered stable when
-// a hasher is provided.  If a hasher is not provided, the default
-// hasher is used, which is currently xxhash, but may change resulting
-// in different hashes.  It is OK to use the default hasher for
-// temporary hashes, but for long-term storage, a specific hasher
-// should be provided.  The hash returned is a 64-bit non-cryptographic
-// hash.
-package hashutils
+// SignalBuilder is a package for building signals for OpenTelemetry
+// signal types.  It maintains an internal fast lookup method so that
+// data duplication is minimized, and the result will have exactly
+// one Resource level object based on attributes, and each
+// Resource will have exactly one of each Scope level object,
+// and each Scope will have exactly one of the appropriate signal
+// types.
+//
+// Currently, the only signal type supported is Metric.
+//
+// This package is not thread-safe.
+package signalbuilder
