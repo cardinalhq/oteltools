@@ -3,6 +3,7 @@ module github.com/cardinalhq/oteltools
 go 1.24
 
 require (
+	github.com/DataDog/sketches-go v1.4.7
 	github.com/apache/datasketches-go v0.0.0-20250118213811-1dc6bd45f849
 	github.com/cespare/xxhash v1.1.0
 	github.com/cespare/xxhash/v2 v2.3.0
