@@ -74,6 +74,8 @@ func DeserializePercentileSketch(data []byte) (*PercentileSketch, error) {
 
 type SpanSketch struct {
 	serviceName                 string
+	name                        string
+	kind                        string
 	fingerprint                 int64
 	Attributes                  map[string]any
 	latencySketch               *PercentileSketch
@@ -93,6 +95,8 @@ func (s *SpanSketch) Serialize() ([]byte, error) {
 
 	serializable := struct {
 		ServiceName                 string           `json:"service_name"`
+		Name                        string           `json:"span_name"`
+		Kind                        string           `json:"span_kind"`
 		Fingerprint                 int64            `json:"fingerprint"`
 		Attributes                  map[string]any   `json:"attributes"`
 		LatencySketch               []byte           `json:"latency_sketch"`
@@ -102,6 +106,8 @@ func (s *SpanSketch) Serialize() ([]byte, error) {
 		ExceptionCountByFingerprint map[int64]int64  `json:"exception_count_by_fingerprint"`
 	}{
 		ServiceName:                 s.serviceName,
+		Name:                        s.name,
+		Kind:                        s.kind,
 		Fingerprint:                 s.fingerprint,
 		Attributes:                  s.Attributes,
 		LatencySketch:               latencyBytes,
@@ -117,6 +123,8 @@ func (s *SpanSketch) Serialize() ([]byte, error) {
 func DeserializeSpanSketch(data []byte) (*SpanSketch, error) {
 	var deserialized struct {
 		ServiceName                 string           `json:"service_name"`
+		Name                        string           `json:"span_name"`
+		Kind                        string           `json:"span_kind"`
 		Fingerprint                 int64            `json:"fingerprint"`
 		Attributes                  map[string]any   `json:"attributes"`
 		LatencySketch               []byte           `json:"latency_sketch"`
@@ -137,6 +145,8 @@ func DeserializeSpanSketch(data []byte) (*SpanSketch, error) {
 
 	return &SpanSketch{
 		serviceName:                 deserialized.ServiceName,
+		name:                        deserialized.Name,
+		kind:                        deserialized.Kind,
 		fingerprint:                 deserialized.Fingerprint,
 		Attributes:                  deserialized.Attributes,
 		latencySketch:               latencySketch,
@@ -216,6 +226,9 @@ func (c *SketchCache) UpdateSpanSketch(serviceName string, span ptrace.Span) err
 	}
 
 	newSpanSketch := &SpanSketch{
+		serviceName:                 serviceName,
+		name:                        span.Name(),
+		kind:                        span.Kind().String(),
 		fingerprint:                 fingerprint.Int(),
 		Attributes:                  spanAttributes.AsRaw(),
 		latencySketch:               ps,
