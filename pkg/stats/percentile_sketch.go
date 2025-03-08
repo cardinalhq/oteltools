@@ -73,6 +73,7 @@ func DeserializePercentileSketch(data []byte) (*PercentileSketch, error) {
 }
 
 type SpanSketch struct {
+	timestamp                   int64
 	serviceName                 string
 	name                        string
 	kind                        string
@@ -95,6 +96,7 @@ func (s *SpanSketch) Serialize() ([]byte, error) {
 
 	serializable := struct {
 		ServiceName                 string           `json:"service_name"`
+		Timestamp                   int64            `json:"timestamp"`
 		Name                        string           `json:"span_name"`
 		Kind                        string           `json:"span_kind"`
 		Fingerprint                 int64            `json:"fingerprint"`
@@ -106,6 +108,7 @@ func (s *SpanSketch) Serialize() ([]byte, error) {
 		ExceptionCountByFingerprint map[int64]int64  `json:"exception_count_by_fingerprint"`
 	}{
 		ServiceName:                 s.serviceName,
+		Timestamp:                   s.timestamp,
 		Name:                        s.name,
 		Kind:                        s.kind,
 		Fingerprint:                 s.fingerprint,
@@ -173,10 +176,10 @@ type SketchCache struct {
 	sketches      sync.Map
 	flushEvery    time.Duration
 	fingerprinter fingerprinter.Fingerprinter
-	flushFunc     func(stepTimestamp time.Time, spans []*SpanSketch)
+	flushFunc     func(spans []*SpanSketch)
 }
 
-func NewSketchCache(flushEvery time.Duration, flushFunc func(time.Time, []*SpanSketch)) *SketchCache {
+func NewSketchCache(flushEvery time.Duration, flushFunc func([]*SpanSketch)) *SketchCache {
 	cache := &SketchCache{
 		sketches:      sync.Map{},
 		fingerprinter: fingerprinter.NewFingerprinter(fingerprinter.WithMaxTokens(100)),
@@ -187,8 +190,8 @@ func NewSketchCache(flushEvery time.Duration, flushFunc func(time.Time, []*SpanS
 	return cache
 }
 
-func ToKey(serviceName string, fingerprint int64) string {
-	return fmt.Sprintf("%s:%d", serviceName, fingerprint)
+func ToKey(timestamp int64, serviceName string, fingerprint int64) string {
+	return fmt.Sprintf("%d:%s:%d", timestamp, serviceName, fingerprint)
 }
 
 func (c *SketchCache) UpdateSpanSketch(serviceName string, span ptrace.Span) error {
@@ -197,7 +200,8 @@ func (c *SketchCache) UpdateSpanSketch(serviceName string, span ptrace.Span) err
 	if !found {
 		return fmt.Errorf("fingerprint not found in span")
 	}
-	key := ToKey(serviceName, fingerprint.Int())
+	interval := c.truncatedNow()
+	key := ToKey(interval, serviceName, fingerprint.Int())
 	latency, latencyFound := spanAttributes.Get(translate.CardinalFieldSpanDuration)
 	if !latencyFound {
 		return fmt.Errorf("latency not found in span")
@@ -227,6 +231,7 @@ func (c *SketchCache) UpdateSpanSketch(serviceName string, span ptrace.Span) err
 
 	newSpanSketch := &SpanSketch{
 		serviceName:                 serviceName,
+		timestamp:                   interval,
 		name:                        span.Name(),
 		kind:                        span.Kind().String(),
 		fingerprint:                 fingerprint.Int(),
@@ -264,21 +269,28 @@ func (c *SketchCache) UpdateSpanSketch(serviceName string, span ptrace.Span) err
 	return nil
 }
 
+func (c *SketchCache) truncatedNow() int64 {
+	return time.Now().Truncate(c.flushEvery).Unix()
+}
+
 func (c *SketchCache) flush() {
 	stepTimestamp := time.Now().Truncate(c.flushEvery)
 
 	var spans []*SpanSketch
 	c.sketches.Range(func(key, value interface{}) bool {
-		spans = append(spans, value.(*SpanSketch))
+		spanSketch := value.(*SpanSketch)
+		if spanSketch.timestamp < stepTimestamp.UnixMilli() {
+			spans = append(spans, spanSketch)
+		}
 		return true
 	})
 
-	c.flushFunc(stepTimestamp, spans)
+	c.flushFunc(spans)
 	c.sketches = sync.Map{}
 }
 
 func (c *SketchCache) MergeSpanSketch(incoming *SpanSketch) error {
-	key := ToKey(incoming.serviceName, incoming.fingerprint)
+	key := ToKey(incoming.timestamp, incoming.serviceName, incoming.fingerprint)
 	existingSketch, ok := c.sketches.Load(key)
 	if ok {
 		existing := existingSketch.(*SpanSketch)

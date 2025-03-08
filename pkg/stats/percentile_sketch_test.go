@@ -78,7 +78,7 @@ func TestSpanSketch(t *testing.T) {
 func TestSketchCacheFlush(t *testing.T) {
 	var flushedSpans []*SpanSketch
 
-	flushFunc := func(ts time.Time, spans []*SpanSketch) {
+	flushFunc := func(spans []*SpanSketch) {
 		flushedSpans = append(flushedSpans, spans...)
 	}
 
