@@ -89,28 +89,28 @@ func TestSketchCacheFlush(t *testing.T) {
 	span1.Attributes().PutStr("service", "auth")
 	span1.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 100)
 	span1.Attributes().PutInt(translate.CardinalFieldFingerprint, 1)
-	require.NoError(t, cache.UpdateSpanSketch(span1))
+	require.NoError(t, cache.UpdateSpanSketch("auth", span1))
 
 	span2 := ptrace.NewSpan()
 	span2.SetName("span2")
 	span2.Attributes().PutStr("service", "auth")
 	span2.Attributes().PutInt(translate.CardinalFieldFingerprint, 1)
 	span2.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 100)
-	require.NoError(t, cache.UpdateSpanSketch(span2))
+	require.NoError(t, cache.UpdateSpanSketch("auth", span2))
 
 	span3 := ptrace.NewSpan()
 	span3.SetName("span3")
 	span3.Attributes().PutStr("service", "billing")
 	span3.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 100)
 	span3.Attributes().PutInt(translate.CardinalFieldFingerprint, 2)
-	require.NoError(t, cache.UpdateSpanSketch(span3))
+	require.NoError(t, cache.UpdateSpanSketch("billing", span3))
 
 	span4 := ptrace.NewSpan()
 	span4.SetName("span4")
 	span4.Attributes().PutStr("service", "billing")
 	span4.Attributes().PutInt(translate.CardinalFieldFingerprint, 2)
 	span4.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 100)
-	require.NoError(t, cache.UpdateSpanSketch(span4))
+	require.NoError(t, cache.UpdateSpanSketch("billing", span4))
 
 	count := 0
 	cache.sketches.Range(func(key, value interface{}) bool {

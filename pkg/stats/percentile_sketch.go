@@ -73,6 +73,7 @@ func DeserializePercentileSketch(data []byte) (*PercentileSketch, error) {
 }
 
 type SpanSketch struct {
+	serviceName                 string
 	fingerprint                 int64
 	Attributes                  map[string]any
 	latencySketch               *PercentileSketch
@@ -91,6 +92,7 @@ func (s *SpanSketch) Serialize() ([]byte, error) {
 	latencyBytes := s.latencySketch.Serialize()
 
 	serializable := struct {
+		ServiceName                 string           `json:"service_name"`
 		Fingerprint                 int64            `json:"fingerprint"`
 		Attributes                  map[string]any   `json:"attributes"`
 		LatencySketch               []byte           `json:"latency_sketch"`
@@ -99,6 +101,7 @@ func (s *SpanSketch) Serialize() ([]byte, error) {
 		ExceptionsByFingerprint     map[int64]string `json:"exceptions_by_fingerprint"`
 		ExceptionCountByFingerprint map[int64]int64  `json:"exception_count_by_fingerprint"`
 	}{
+		ServiceName:                 s.serviceName,
 		Fingerprint:                 s.fingerprint,
 		Attributes:                  s.Attributes,
 		LatencySketch:               latencyBytes,
@@ -113,6 +116,7 @@ func (s *SpanSketch) Serialize() ([]byte, error) {
 
 func DeserializeSpanSketch(data []byte) (*SpanSketch, error) {
 	var deserialized struct {
+		ServiceName                 string           `json:"service_name"`
 		Fingerprint                 int64            `json:"fingerprint"`
 		Attributes                  map[string]any   `json:"attributes"`
 		LatencySketch               []byte           `json:"latency_sketch"`
@@ -132,6 +136,7 @@ func DeserializeSpanSketch(data []byte) (*SpanSketch, error) {
 	}
 
 	return &SpanSketch{
+		serviceName:                 deserialized.ServiceName,
 		fingerprint:                 deserialized.Fingerprint,
 		Attributes:                  deserialized.Attributes,
 		latencySketch:               latencySketch,
@@ -172,19 +177,24 @@ func NewSketchCache(flushEvery time.Duration, flushFunc func(time.Time, []*SpanS
 	return cache
 }
 
-func (c *SketchCache) UpdateSpanSketch(span ptrace.Span) error {
+func ToKey(serviceName string, fingerprint int64) string {
+	return fmt.Sprintf("%s:%d", serviceName, fingerprint)
+}
+
+func (c *SketchCache) UpdateSpanSketch(serviceName string, span ptrace.Span) error {
 	spanAttributes := span.Attributes()
 	fingerprint, found := spanAttributes.Get(translate.CardinalFieldFingerprint)
 	if !found {
 		return fmt.Errorf("fingerprint not found in span")
 	}
+	key := ToKey(serviceName, fingerprint.Int())
 	latency, latencyFound := spanAttributes.Get(translate.CardinalFieldSpanDuration)
 	if !latencyFound {
 		return fmt.Errorf("latency not found in span")
 	}
 	isError := span.Status().Code() == ptrace.StatusCodeError
 
-	existing, ok := c.sketches.Load(fingerprint.Int())
+	existing, ok := c.sketches.Load(key)
 	if ok {
 		existingSketch := existing.(*SpanSketch)
 		err := existingSketch.Update(latency.Double(), isError)
@@ -237,7 +247,7 @@ func (c *SketchCache) UpdateSpanSketch(span ptrace.Span) error {
 		}
 	}
 
-	c.sketches.Store(fingerprint.Int(), newSpanSketch)
+	c.sketches.Store(key, newSpanSketch)
 	return nil
 }
 
@@ -255,7 +265,8 @@ func (c *SketchCache) flush() {
 }
 
 func (c *SketchCache) MergeSpanSketch(incoming *SpanSketch) error {
-	existingSketch, ok := c.sketches.Load(incoming.fingerprint)
+	key := ToKey(incoming.serviceName, incoming.fingerprint)
+	existingSketch, ok := c.sketches.Load(key)
 	if ok {
 		existing := existingSketch.(*SpanSketch)
 		existing.mu.Lock()
@@ -277,7 +288,7 @@ func (c *SketchCache) MergeSpanSketch(incoming *SpanSketch) error {
 		return nil
 	}
 
-	c.sketches.Store(incoming.fingerprint, incoming)
+	c.sketches.Store(key, incoming)
 	return nil
 }
 
