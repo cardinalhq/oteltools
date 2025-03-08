@@ -182,8 +182,7 @@ func (c *SketchCache) UpdateSpanSketch(key string, tags map[string]string, laten
 }
 
 func (c *SketchCache) flush() {
-	// Align the step timestamp to the nearest 5-minute mark
-	stepTimestamp := time.Now().Truncate(1 * time.Minute)
+	stepTimestamp := time.Now().Truncate(c.flushEvery)
 
 	var spans []*SpanSketch
 	c.sketches.Range(func(key, value interface{}) bool {
@@ -191,7 +190,6 @@ func (c *SketchCache) flush() {
 		return true
 	})
 
-	// Call the flush function with the timestamp
 	c.flushFunc(stepTimestamp, spans)
 	c.sketches = sync.Map{}
 }
