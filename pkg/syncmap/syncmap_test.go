@@ -24,18 +24,15 @@ import (
 func TestSyncMap_SetSize(t *testing.T) {
 	var m SyncMap[int, string]
 	m.SetSize(10)
-	if len(m.m) != 0 {
-		t.Errorf("expected map to be empty, got %d elements", len(m.m))
-	}
+	assert.Len(t, m.m, 0)
 }
 
 func TestSyncMap_StoreAndLoad(t *testing.T) {
 	var m SyncMap[int, string]
 	m.Store(1, "one")
 	value, ok := m.Load(1)
-	if !ok || value != "one" {
-		t.Errorf("expected to load 'one', got '%v'", value)
-	}
+	assert.True(t, ok)
+	assert.Equal(t, "one", value)
 }
 
 func TestSyncMap_Delete(t *testing.T) {
@@ -43,9 +40,7 @@ func TestSyncMap_Delete(t *testing.T) {
 	m.Store(1, "one")
 	m.Delete(1)
 	_, ok := m.Load(1)
-	if ok {
-		t.Errorf("expected key 1 to be deleted")
-	}
+	assert.False(t, ok)
 }
 
 func TestSyncMap_Clone(t *testing.T) {
@@ -53,9 +48,8 @@ func TestSyncMap_Clone(t *testing.T) {
 	m.Store(1, "one")
 	clone := m.Clone()
 	value, ok := clone.Load(1)
-	if !ok || value != "one" {
-		t.Errorf("expected to load 'one' from clone, got '%v'", value)
-	}
+	assert.True(t, ok)
+	assert.Equal(t, "one", value)
 }
 
 func TestSyncMap_Range(t *testing.T) {
@@ -127,24 +121,19 @@ func TestSyncMap_Replace(t *testing.T) {
 	m.Store(1, "one")
 
 	previous, ok := m.Replace(1, "uno")
-	if !ok || previous != "one" {
-		t.Errorf("expected to replace 'one' with 'uno', got previous value '%v'", previous)
-	}
+	assert.True(t, ok)
+	assert.Equal(t, "one", previous)
 
 	value, ok := m.Load(1)
-	if !ok || value != "uno" {
-		t.Errorf("expected to load 'uno', got '%v'", value)
-	}
+	assert.True(t, ok)
+	assert.Equal(t, "uno", value)
 
 	previous, ok = m.Replace(2, "dos")
-	if ok || previous != "" {
-		t.Errorf("expected to replace non-existent key, got previous value '%v'", previous)
-	}
+	assert.False(t, ok)
 
 	value, ok = m.Load(2)
-	if !ok || value != "dos" {
-		t.Errorf("expected to load 'dos', got '%v'", value)
-	}
+	assert.True(t, ok)
+	assert.Equal(t, "dos", value)
 }
 
 func TestSyncMap_Touch(t *testing.T) {
@@ -164,4 +153,35 @@ func TestSyncMap_Touch(t *testing.T) {
 		return v + "!"
 	})
 	require.False(t, ok)
+}
+
+func TestSyncMap_LoadOrStore(t *testing.T) {
+	var m SyncMap[int, string]
+
+	// Test storing a new value
+	value := m.LoadOrStore(1, func() string {
+		return "one"
+	})
+	assert.Equal(t, "one", value)
+
+	// Test loading an existing value
+	value = m.LoadOrStore(1, func() string {
+		return "uno"
+	})
+	assert.Equal(t, "one", value)
+
+	// Test storing another new value
+	value = m.LoadOrStore(2, func() string {
+		return "two"
+	})
+	assert.Equal(t, "two", value)
+
+	// Verify the map contents
+	val1, ok1 := m.Load(1)
+	assert.True(t, ok1)
+	assert.Equal(t, "one", val1)
+
+	val2, ok2 := m.Load(2)
+	assert.True(t, ok2)
+	assert.Equal(t, "two", val2)
 }

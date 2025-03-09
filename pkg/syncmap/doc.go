@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package syncmap provides a thread-safe map implementation.
+// Package syncmap provides a typed thread-safe map implementation.
 package syncmap
