@@ -22,11 +22,17 @@ import (
 	"github.com/DataDog/sketches-go/ddsketch/store"
 	"github.com/cardinalhq/oteltools/pkg/fingerprinter"
 	"github.com/cardinalhq/oteltools/pkg/translate"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"sync"
 	"time"
 )
+
+var ServiceNameKey = string(semconv.ServiceNameKey)
+var ClusterNameKey = string(semconv.K8SClusterNameKey)
+var NamespaceNameKey = string(semconv.K8SNamespaceNameKey)
+var UnknownKey = "unknown"
 
 type PercentileSketch struct {
 	sketch *ddsketch.DDSketch
@@ -74,7 +80,7 @@ func DeserializePercentileSketch(data []byte) (*PercentileSketch, error) {
 
 type SpanSketch struct {
 	timestamp                   int64
-	serviceName                 string
+	serviceId                   string
 	name                        string
 	kind                        string
 	fingerprint                 int64
@@ -95,7 +101,7 @@ func (s *SpanSketch) Serialize() ([]byte, error) {
 	latencyBytes := s.latencySketch.Serialize()
 
 	serializable := struct {
-		ServiceName                 string           `json:"service_name"`
+		ServiceId                   string           `json:"service_id"`
 		Timestamp                   int64            `json:"timestamp"`
 		Name                        string           `json:"span_name"`
 		Kind                        string           `json:"span_kind"`
@@ -107,7 +113,7 @@ func (s *SpanSketch) Serialize() ([]byte, error) {
 		ExceptionsByFingerprint     map[int64]string `json:"exceptions_by_fingerprint"`
 		ExceptionCountByFingerprint map[int64]int64  `json:"exception_count_by_fingerprint"`
 	}{
-		ServiceName:                 s.serviceName,
+		ServiceId:                   s.serviceId,
 		Timestamp:                   s.timestamp,
 		Name:                        s.name,
 		Kind:                        s.kind,
@@ -125,7 +131,7 @@ func (s *SpanSketch) Serialize() ([]byte, error) {
 
 func DeserializeSpanSketch(data []byte) (*SpanSketch, error) {
 	var deserialized struct {
-		ServiceName                 string           `json:"service_name"`
+		ServiceId                   string           `json:"service_id"`
 		Name                        string           `json:"span_name"`
 		Kind                        string           `json:"span_kind"`
 		Fingerprint                 int64            `json:"fingerprint"`
@@ -147,7 +153,7 @@ func DeserializeSpanSketch(data []byte) (*SpanSketch, error) {
 	}
 
 	return &SpanSketch{
-		serviceName:                 deserialized.ServiceName,
+		serviceId:                   deserialized.ServiceId,
 		name:                        deserialized.Name,
 		kind:                        deserialized.Kind,
 		fingerprint:                 deserialized.Fingerprint,
@@ -190,18 +196,33 @@ func NewSketchCache(flushEvery time.Duration, flushFunc func([]*SpanSketch)) *Sk
 	return cache
 }
 
-func ToKey(timestamp int64, serviceName string, fingerprint int64) string {
-	return fmt.Sprintf("%d:%s:%d", timestamp, serviceName, fingerprint)
+func ToKey(timestamp int64, serviceId string, fingerprint int64) string {
+	return fmt.Sprintf("%d:%s:%d", timestamp, serviceId, fingerprint)
 }
 
-func (c *SketchCache) UpdateSpanSketch(serviceName string, span ptrace.Span) error {
+func GetFromResource(rl pcommon.Resource, key string) string {
+	resourceAttributes := rl.Attributes()
+	v, vFound := resourceAttributes.Get(key)
+	cluster := v.AsString()
+	if !vFound {
+		cluster = UnknownKey
+	}
+	return cluster
+}
+
+func (c *SketchCache) UpdateSpanSketch(resource pcommon.Resource, span ptrace.Span) error {
 	spanAttributes := span.Attributes()
 	fingerprint, found := spanAttributes.Get(translate.CardinalFieldFingerprint)
 	if !found {
 		return fmt.Errorf("fingerprint not found in span")
 	}
 	interval := c.truncatedNow()
-	key := ToKey(interval, serviceName, fingerprint.Int())
+	serviceName := GetFromResource(resource, ServiceNameKey)
+	clusterName := GetFromResource(resource, ClusterNameKey)
+	namespaceName := GetFromResource(resource, NamespaceNameKey)
+
+	serviceId := fmt.Sprintf("%s:%s:%s", serviceName, clusterName, namespaceName)
+	key := ToKey(interval, serviceId, fingerprint.Int())
 	latency, latencyFound := spanAttributes.Get(translate.CardinalFieldSpanDuration)
 	if !latencyFound {
 		return fmt.Errorf("latency not found in span")
@@ -230,7 +251,7 @@ func (c *SketchCache) UpdateSpanSketch(serviceName string, span ptrace.Span) err
 	}
 
 	newSpanSketch := &SpanSketch{
-		serviceName:                 serviceName,
+		serviceId:                   serviceId,
 		timestamp:                   interval,
 		name:                        span.Name(),
 		kind:                        span.Kind().String(),
@@ -290,7 +311,7 @@ func (c *SketchCache) flush() {
 }
 
 func (c *SketchCache) MergeSpanSketch(incoming *SpanSketch) error {
-	key := ToKey(incoming.timestamp, incoming.serviceName, incoming.fingerprint)
+	key := ToKey(incoming.timestamp, incoming.serviceId, incoming.fingerprint)
 	existingSketch, ok := c.sketches.Load(key)
 	if ok {
 		existing := existingSketch.(*SpanSketch)
