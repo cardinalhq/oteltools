@@ -80,18 +80,21 @@ func (s *SyncMap[K, V]) Store(key K, value V) {
 // LoadOrStore returns the existing value for the key if present,
 // otherwise it calls f and stores the result of f(key) in the map.
 // The lock is held while calling f, so f should not block.
-func (s *SyncMap[K, V]) LoadOrStore(key K, f func() V) (actual V) {
+func (s *SyncMap[K, V]) LoadOrStore(key K, f func() (V, error)) (actual V, err error) {
 	s.Lock()
 	defer s.Unlock()
 
 	s.ensure()
 
 	if value, ok := s.m[key]; ok {
-		return value
+		return value, nil
 	}
-	value := f()
+	value, err := f()
+	if err != nil {
+		return value, err
+	}
 	s.m[key] = value
-	return value
+	return value, nil
 }
 
 // Replace replaces the value for a key, and returns the previous value.

@@ -15,6 +15,7 @@
 package syncmap
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -159,22 +160,32 @@ func TestSyncMap_LoadOrStore(t *testing.T) {
 	var m SyncMap[int, string]
 
 	// Test storing a new value
-	value := m.LoadOrStore(1, func() string {
-		return "one"
+	value, err := m.LoadOrStore(1, func() (string, error) {
+		return "one", nil
 	})
+	assert.NoError(t, err)
 	assert.Equal(t, "one", value)
 
 	// Test loading an existing value
-	value = m.LoadOrStore(1, func() string {
-		return "uno"
+	value, err = m.LoadOrStore(1, func() (string, error) {
+		return "uno", nil
 	})
+	assert.NoError(t, err)
 	assert.Equal(t, "one", value)
 
 	// Test storing another new value
-	value = m.LoadOrStore(2, func() string {
-		return "two"
+	value, err = m.LoadOrStore(2, func() (string, error) {
+		return "two", nil
 	})
+	assert.NoError(t, err)
 	assert.Equal(t, "two", value)
+
+	wantErr := errors.New("wanted error")
+	// Test erroring when storing a new value
+	value, err = m.LoadOrStore(3, func() (string, error) {
+		return "", wantErr
+	})
+	assert.Error(t, err)
 
 	// Verify the map contents
 	val1, ok1 := m.Load(1)
@@ -184,4 +195,7 @@ func TestSyncMap_LoadOrStore(t *testing.T) {
 	val2, ok2 := m.Load(2)
 	assert.True(t, ok2)
 	assert.Equal(t, "two", val2)
+
+	_, ok3 := m.Load(3)
+	assert.False(t, ok3)
 }
