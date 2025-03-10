@@ -203,11 +203,13 @@ func ToKey(timestamp int64, serviceId string, fingerprint int64) string {
 func GetFromResource(rl pcommon.Resource, key string) string {
 	resourceAttributes := rl.Attributes()
 	v, vFound := resourceAttributes.Get(key)
-	cluster := v.AsString()
+	strValue := ""
 	if !vFound {
-		cluster = UnknownKey
+		strValue = UnknownKey
+	} else {
+		strValue = v.AsString()
 	}
-	return cluster
+	return strValue
 }
 
 func (c *SketchCache) UpdateSpanSketch(resource pcommon.Resource, span ptrace.Span) error {

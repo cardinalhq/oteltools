@@ -16,7 +16,9 @@ package stats
 
 import (
 	"github.com/cardinalhq/oteltools/pkg/translate"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"testing"
 	"time"
 
@@ -89,28 +91,32 @@ func TestSketchCacheFlush(t *testing.T) {
 	span1.Attributes().PutStr("service", "auth")
 	span1.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 100)
 	span1.Attributes().PutInt(translate.CardinalFieldFingerprint, 1)
-	require.NoError(t, cache.UpdateSpanSketch("auth", span1))
+	resource1 := pcommon.NewResource()
+	resource1.Attributes().PutStr(string(semconv.ServiceNameKey), "auth")
+	require.NoError(t, cache.UpdateSpanSketch(resource1, span1))
 
 	span2 := ptrace.NewSpan()
 	span2.SetName("span2")
 	span2.Attributes().PutStr("service", "auth")
 	span2.Attributes().PutInt(translate.CardinalFieldFingerprint, 1)
 	span2.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 100)
-	require.NoError(t, cache.UpdateSpanSketch("auth", span2))
+	require.NoError(t, cache.UpdateSpanSketch(resource1, span2))
 
 	span3 := ptrace.NewSpan()
 	span3.SetName("span3")
 	span3.Attributes().PutStr("service", "billing")
 	span3.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 100)
 	span3.Attributes().PutInt(translate.CardinalFieldFingerprint, 2)
-	require.NoError(t, cache.UpdateSpanSketch("billing", span3))
+	resource2 := pcommon.NewResource()
+	resource2.Attributes().PutStr(string(semconv.ServiceNameKey), "billing")
+	require.NoError(t, cache.UpdateSpanSketch(resource2, span3))
 
 	span4 := ptrace.NewSpan()
 	span4.SetName("span4")
 	span4.Attributes().PutStr("service", "billing")
 	span4.Attributes().PutInt(translate.CardinalFieldFingerprint, 2)
 	span4.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 100)
-	require.NoError(t, cache.UpdateSpanSketch("billing", span4))
+	require.NoError(t, cache.UpdateSpanSketch(resource2, span4))
 
 	count := 0
 	cache.sketches.Range(func(key, value interface{}) bool {
