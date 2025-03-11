@@ -51,6 +51,7 @@ func dbQueryScrub[K any](queryGetter ottl.StringGetter[K]) ottl.ExprFunc[K] {
 }
 
 var sqlScrubRegex = regexp.MustCompile(`\b\d+\.\d+\b|\b\d+\b|'[^']*'|"[^"]*"`)
+var doUpdateSetRegex = regexp.MustCompile(`UPDATE SET\s+(\?=\?(\.\?)?,?)*`)
 
 var specialChars = map[uint8]bool{
 	'*': true,
@@ -78,9 +79,15 @@ func ScrubWord(word string) string {
 	return string(tokenList)
 }
 
-func collapseBatchInsertTuples(s string) string {
-	if idx := strings.Index(s, "),("); idx != -1 {
-		return s[:idx+1]
+func collapsePlaceholders(s string) string {
+	// If the token is enclosed in parentheses...
+	if strings.HasPrefix(s, "(") && strings.HasSuffix(s, ")") {
+		// Get the inner part.
+		inner := s[1 : len(s)-1]
+		// If the inner part contains a comma, assume it is a batch of placeholders.
+		if strings.Contains(inner, ",") {
+			return "(?)"
+		}
 	}
 	return s
 }
@@ -88,9 +95,10 @@ func collapseBatchInsertTuples(s string) string {
 func normalizeQuery(query string) string {
 	query = sqlScrubRegex.ReplaceAllString(query, "?")
 
+	query = doUpdateSetRegex.ReplaceAllString(query, "UPDATE SET ?=?")
 	tokens := strings.Fields(query)
 	for i, token := range tokens {
-		tokens[i] = ScrubWord(collapseBatchInsertTuples(token))
+		tokens[i] = ScrubWord(collapsePlaceholders(token))
 	}
 
 	return strings.Join(tokens, " ")
