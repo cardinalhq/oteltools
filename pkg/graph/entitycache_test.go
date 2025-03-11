@@ -244,7 +244,7 @@ func TestMessagingProducesToRelationship(t *testing.T) {
 	recordAttributes := pcommon.NewMap()
 	recordAttributes.PutStr(string(semconv.MessagingSystemKey), "kafka")
 	recordAttributes.PutStr(string(semconv.MessagingDestinationNameKey), "topic-1")
-	recordAttributes.PutStr(string(semconv.MessagingOperationNameKey), "publish")
+	recordAttributes.PutStr(string(semconv.MessagingOperationTypeKey), "publish")
 
 	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
 	entities := ec._allEntities()
