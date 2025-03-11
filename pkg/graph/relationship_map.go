@@ -28,6 +28,7 @@ const (
 	BelongsToRegion          = "belongs to region"
 	BelongsToZone            = "belongs to zone"
 	ConsumesFrom             = "consumes from"
+	SettlesMessagesTo        = "settles messages to"
 	ContainsAvailabilityZone = "contains availability zone"
 	ContainsNamespace        = "contains namespace"
 	ContainsPod              = "contains pod"
@@ -137,6 +138,18 @@ type EntityInfo struct {
 
 type RelationshipMap map[string]*EntityInfo
 
+var messagingPublishOperations = map[string]struct{}{
+	"publish": {},
+	"create":  {},
+	"send":    {},
+}
+
+var messagingConsumeOperations = map[string]struct{}{
+	"consume": {},
+	"receive": {},
+	"process": {},
+}
+
 var EntityRelationships = RelationshipMap{
 	// Cluster
 	string(semconv.K8SClusterNameKey): {
@@ -206,14 +219,17 @@ var EntityRelationships = RelationshipMap{
 					return ConsumesFrom
 				}
 
-				monV, monVFound := m.Get(string(semconv.MessagingOperationNameKey))
+				monV, monVFound := m.Get(string(semconv.MessagingOperationTypeKey))
 				if monVFound {
 					operation := monV.AsString()
-					if operation == "publish" {
+					if _, ok := messagingPublishOperations[operation]; ok {
 						return ProducesTo
 					}
-					if operation == "process" {
+					if _, ok := messagingConsumeOperations[operation]; ok {
 						return ConsumesFrom
+					}
+					if operation == "settle" {
+						return SettlesMessagesTo
 					}
 				}
 				return UsesMessagingDestination
