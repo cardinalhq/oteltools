@@ -78,12 +78,19 @@ func ScrubWord(word string) string {
 	return string(tokenList)
 }
 
+func collapseBatchInsertTuples(s string) string {
+	if idx := strings.Index(s, "),("); idx != -1 {
+		return s[:idx+1]
+	}
+	return s
+}
+
 func normalizeQuery(query string) string {
 	query = sqlScrubRegex.ReplaceAllString(query, "?")
 
 	tokens := strings.Fields(query)
 	for i, token := range tokens {
-		tokens[i] = ScrubWord(token)
+		tokens[i] = ScrubWord(collapseBatchInsertTuples(token))
 	}
 
 	return strings.Join(tokens, " ")
