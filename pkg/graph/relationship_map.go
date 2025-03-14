@@ -17,6 +17,7 @@ package graph
 import (
 	"github.com/cardinalhq/oteltools/pkg/ottl/functions"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
@@ -75,11 +76,16 @@ const (
 	IsStatefulSetFor         = "is statefulset for"
 	IsUsedByContainer        = "is used by container"
 	IsUsedByService          = "is used by service"
+	IsServedByService        = "is served by service"
+	IsCalledByService        = "is called by service"
+	CallsEndpoint            = "calls endpoint"
+	ServesEndpoint           = "serves endpoint"
 	IsConsumedFromByService  = "is consumed from by service"
 	ManagesAccount           = "manages account"
 	ManagesReplicaset        = "manages replicaset"
 	NetPeerName              = "net.peer.name"
 	ProducesTo               = "produces to"
+	SpanKindString           = "span.kind.string"
 	RunsInPod                = "runs in pod"
 	RunsOnOperatingSystem    = "runs on operating system"
 	UsesDatabase             = "uses database"
@@ -117,6 +123,7 @@ const (
 	Os                     = "os"
 	Process                = "process"
 	Service                = "service"
+	Endpoint               = "endpoint"
 	Database               = "database"
 	DatabaseCollection     = "database.collection"
 	MessagingDestination   = "messaging.destination"
@@ -189,6 +196,38 @@ var EntityRelationships = RelationshipMap{
 		AttributePrefixes: []string{},
 	},
 
+	string(semconv.URLPathKey): {
+		Type: Endpoint,
+		DeriveRelationshipCallbacks: map[string]func(pcommon.Map) string{
+			string(semconv.ServiceNameKey): func(m pcommon.Map) string {
+				spanKindCode, spanKindCodeFound := m.Get(SpanKindString)
+				if spanKindCodeFound {
+					spanKind := spanKindCode.AsString()
+					if spanKind == ptrace.SpanKindServer.String() {
+						return IsServedByService
+					}
+				}
+				return ""
+			},
+		},
+	},
+
+	string(semconv.URLFullKey): {
+		Type: Endpoint,
+		DeriveRelationshipCallbacks: map[string]func(pcommon.Map) string{
+			string(semconv.ServiceNameKey): func(m pcommon.Map) string {
+				spanKindCode, spanKindCodeFound := m.Get(SpanKindString)
+				if spanKindCodeFound {
+					spanKind := spanKindCode.AsString()
+					if spanKind == ptrace.SpanKindClient.String() {
+						return IsCalledByService
+					}
+				}
+				return ""
+			},
+		},
+	},
+
 	// Service
 	string(semconv.ServiceNameKey): {
 		Type: Service,
@@ -233,6 +272,26 @@ var EntityRelationships = RelationshipMap{
 					}
 				}
 				return UsesMessagingDestination
+			},
+			string(semconv.URLPathKey): func(m pcommon.Map) string {
+				spanKindCode, spanKindCodeFound := m.Get(SpanKindString)
+				if spanKindCodeFound {
+					spanKind := spanKindCode.AsString()
+					if spanKind == ptrace.SpanKindServer.String() {
+						return ServesEndpoint
+					}
+				}
+				return ""
+			},
+			string(semconv.URLFullKey): func(m pcommon.Map) string {
+				spanKindCode, spanKindCodeFound := m.Get(SpanKindString)
+				if spanKindCodeFound {
+					spanKind := spanKindCode.AsString()
+					if spanKind == ptrace.SpanKindClient.String() {
+						return CallsEndpoint
+					}
+				}
+				return ""
 			},
 		},
 	},

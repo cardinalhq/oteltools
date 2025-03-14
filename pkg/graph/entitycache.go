@@ -263,8 +263,10 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 					deriveRelationshipCallback := entityInfo.DeriveRelationshipCallbacks[childKey]
 					if childEntity, childExists := globalEntityMap[childKey]; childExists {
 						relationship := deriveRelationshipCallback(recordAttributes)
-						parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
-						foundLinkage = true
+						if relationship != "" {
+							parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
+							foundLinkage = true
+						}
 					}
 				}
 			}
