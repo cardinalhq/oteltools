@@ -87,6 +87,155 @@ func TestBuild(t *testing.T) {
 	require.Equal(t, float64(44), pm2a.ResourceMetrics().At(1).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(1).DoubleValue())
 }
 
+func TestRemoveEmptyMetrics(t *testing.T) {
+	tests := []struct {
+		name     string
+		inm      pmetric.Metrics
+		validate func(t *testing.T, pm pmetric.Metrics)
+	}{
+		{
+			name: "empty",
+			inm:  pmetric.NewMetrics(),
+			validate: func(t *testing.T, pm pmetric.Metrics) {
+				require.Equal(t, 0, pm.ResourceMetrics().Len())
+			},
+		},
+		{
+			name: "empty resource",
+			inm: func() pmetric.Metrics {
+				pm := pmetric.NewMetrics()
+				pm.ResourceMetrics().AppendEmpty()
+				return pm
+			}(),
+			validate: func(t *testing.T, pm pmetric.Metrics) {
+				require.Equal(t, 0, pm.ResourceMetrics().Len())
+			},
+		},
+		{
+			name: "empty scope",
+			inm: func() pmetric.Metrics {
+				pm := pmetric.NewMetrics()
+				rm := pm.ResourceMetrics().AppendEmpty()
+				rm.ScopeMetrics().AppendEmpty()
+				return pm
+			}(),
+			validate: func(t *testing.T, pm pmetric.Metrics) {
+				require.Equal(t, 0, pm.ResourceMetrics().Len())
+			},
+		},
+		{
+			name: "empty metric",
+			inm: func() pmetric.Metrics {
+				pm := pmetric.NewMetrics()
+				rm := pm.ResourceMetrics().AppendEmpty()
+				sm := rm.ScopeMetrics().AppendEmpty()
+				sm.Metrics().AppendEmpty()
+				return pm
+			}(),
+			validate: func(t *testing.T, pm pmetric.Metrics) {
+				require.Equal(t, 0, pm.ResourceMetrics().Len())
+			},
+		},
+		{
+			name: "empty gauge",
+			inm: func() pmetric.Metrics {
+				pm := pmetric.NewMetrics()
+				rm := pm.ResourceMetrics().AppendEmpty()
+				sm := rm.ScopeMetrics().AppendEmpty()
+				m := sm.Metrics().AppendEmpty()
+				m.SetEmptyGauge()
+				return pm
+			}(),
+			validate: func(t *testing.T, pm pmetric.Metrics) {
+				require.Equal(t, 0, pm.ResourceMetrics().Len())
+			},
+		},
+		{
+			name: "empty sum",
+			inm: func() pmetric.Metrics {
+				pm := pmetric.NewMetrics()
+				rm := pm.ResourceMetrics().AppendEmpty()
+				sm := rm.ScopeMetrics().AppendEmpty()
+				m := sm.Metrics().AppendEmpty()
+				m.SetEmptySum()
+				return pm
+			}(),
+			validate: func(t *testing.T, pm pmetric.Metrics) {
+				require.Equal(t, 0, pm.ResourceMetrics().Len())
+			},
+		},
+		{
+			name: "empty histogram",
+			inm: func() pmetric.Metrics {
+				pm := pmetric.NewMetrics()
+				rm := pm.ResourceMetrics().AppendEmpty()
+				sm := rm.ScopeMetrics().AppendEmpty()
+				m := sm.Metrics().AppendEmpty()
+				m.SetEmptyHistogram()
+				return pm
+			}(),
+			validate: func(t *testing.T, pm pmetric.Metrics) {
+				require.Equal(t, 0, pm.ResourceMetrics().Len())
+			},
+		},
+		{
+			name: "empty exponential histogram",
+			inm: func() pmetric.Metrics {
+				pm := pmetric.NewMetrics()
+				rm := pm.ResourceMetrics().AppendEmpty()
+				sm := rm.ScopeMetrics().AppendEmpty()
+				m := sm.Metrics().AppendEmpty()
+				m.SetEmptyExponentialHistogram()
+				return pm
+			}(),
+			validate: func(t *testing.T, pm pmetric.Metrics) {
+				require.Equal(t, 0, pm.ResourceMetrics().Len())
+			},
+		},
+		{
+			name: "empty summary",
+			inm: func() pmetric.Metrics {
+				pm := pmetric.NewMetrics()
+				rm := pm.ResourceMetrics().AppendEmpty()
+				sm := rm.ScopeMetrics().AppendEmpty()
+				m := sm.Metrics().AppendEmpty()
+				m.SetEmptySummary()
+				return pm
+			}(),
+			validate: func(t *testing.T, pm pmetric.Metrics) {
+				require.Equal(t, 0, pm.ResourceMetrics().Len())
+			},
+		},
+		{
+			name: "one empty resource, one metric with a datapoint",
+			inm: func() pmetric.Metrics {
+				pm := pmetric.NewMetrics()
+				_ = pm.ResourceMetrics().AppendEmpty()
+				rm := pm.ResourceMetrics().AppendEmpty()
+				sm := rm.ScopeMetrics().AppendEmpty()
+				m := sm.Metrics().AppendEmpty()
+				m.SetEmptyGauge()
+				m.Gauge().DataPoints().AppendEmpty().SetDoubleValue(42)
+				return pm
+			}(),
+			validate: func(t *testing.T, pm pmetric.Metrics) {
+				require.Equal(t, 1, pm.ResourceMetrics().Len())
+				require.Equal(t, 1, pm.ResourceMetrics().At(0).ScopeMetrics().Len())
+				require.Equal(t, 1, pm.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().Len())
+				require.Equal(t, 1, pm.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().Len())
+				require.Equal(t, float64(42), pm.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).DoubleValue())
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pm := removeEmptyMetrics(tt.inm)
+			tt.validate(t, pm)
+		})
+	}
+}
+
 func BenchmarkBuilding(b *testing.B) {
 	for b.Loop() {
 		mb := NewMetricsBuilder()
