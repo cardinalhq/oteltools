@@ -196,7 +196,8 @@ var EntityRelationships = RelationshipMap{
 		AttributePrefixes: []string{},
 	},
 
-	string(semconv.URLPathKey): {
+	// HTTP endpoints
+	string(semconv.URLTemplateKey): {
 		Type: Endpoint,
 		DeriveRelationshipCallbacks: map[string]func(pcommon.Map) string{
 			string(semconv.ServiceNameKey): func(m pcommon.Map) string {
@@ -205,21 +206,7 @@ var EntityRelationships = RelationshipMap{
 					spanKind := spanKindCode.AsString()
 					if spanKind == ptrace.SpanKindServer.String() {
 						return IsServedByService
-					}
-				}
-				return ""
-			},
-		},
-	},
-
-	string(semconv.URLFullKey): {
-		Type: Endpoint,
-		DeriveRelationshipCallbacks: map[string]func(pcommon.Map) string{
-			string(semconv.ServiceNameKey): func(m pcommon.Map) string {
-				spanKindCode, spanKindCodeFound := m.Get(SpanKindString)
-				if spanKindCodeFound {
-					spanKind := spanKindCode.AsString()
-					if spanKind == ptrace.SpanKindClient.String() {
+					} else if spanKind == ptrace.SpanKindClient.String() {
 						return IsCalledByService
 					}
 				}
@@ -273,21 +260,13 @@ var EntityRelationships = RelationshipMap{
 				}
 				return UsesMessagingDestination
 			},
-			string(semconv.URLPathKey): func(m pcommon.Map) string {
+			string(semconv.URLTemplateKey): func(m pcommon.Map) string {
 				spanKindCode, spanKindCodeFound := m.Get(SpanKindString)
 				if spanKindCodeFound {
 					spanKind := spanKindCode.AsString()
 					if spanKind == ptrace.SpanKindServer.String() {
 						return ServesEndpoint
-					}
-				}
-				return ""
-			},
-			string(semconv.URLFullKey): func(m pcommon.Map) string {
-				spanKindCode, spanKindCodeFound := m.Get(SpanKindString)
-				if spanKindCodeFound {
-					spanKind := spanKindCode.AsString()
-					if spanKind == ptrace.SpanKindClient.String() {
+					} else if spanKind == ptrace.SpanKindClient.String() {
 						return CallsEndpoint
 					}
 				}
