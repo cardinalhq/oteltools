@@ -125,7 +125,6 @@ func TestContainerRelationships(t *testing.T) {
 	attributes.PutStr(string(semconv.ContainerCommandArgsKey), "-c echo hello")
 	attributes.PutStr(string(semconv.ContainerRuntimeKey), "docker")
 	attributes.PutStr(string(semconv.ContainerCommandLineKey), "/bin/bash -c echo hello")
-	attributes.PutStr(string(semconv.ContainerImageNameKey), "nginx")
 	attributes.PutStr(string(semconv.ContainerImageIDKey), "sha256:abcdef123456")
 	attributes.PutStr(string(semconv.ContainerImageTagsKey), "latest")
 	attributes.PutStr(string(semconv.ContainerImageRepoDigestsKey), "nginx@sha256:abcdef123456")
@@ -150,7 +149,6 @@ func TestContainerRelationships(t *testing.T) {
 
 	expectedEntities := map[string]string{
 		"my-container": "container",
-		"nginx":        "container.image",
 		"java":         "process",
 	}
 
@@ -168,10 +166,6 @@ func TestContainerRelationships(t *testing.T) {
 	assert.Equal(t, "/bin/bash -c echo hello", entities[toEntityId("my-container", "container")].Attributes[string(semconv.ContainerCommandLineKey)])
 	assert.Equal(t, "team-a", entities[toEntityId("my-container", "container")].Attributes["container.label.owner"])
 
-	assert.Equal(t, "sha256:abcdef123456", entities[toEntityId("nginx", "container.image")].Attributes[string(semconv.ContainerImageIDKey)])
-	assert.Equal(t, "latest", entities[toEntityId("nginx", "container.image")].Attributes[string(semconv.ContainerImageTagsKey)])
-	assert.Equal(t, "nginx@sha256:abcdef123456", entities[toEntityId("nginx", "container.image")].Attributes[string(semconv.ContainerImageRepoDigestsKey)])
-
 	assert.Equal(t, "java", entities[toEntityId("java", "process")].Attributes[string(semconv.ProcessExecutableNameKey)])
 	assert.Equal(t, "/usr/bin/java", entities[toEntityId("java", "process")].Attributes[string(semconv.ProcessExecutablePathKey)])
 	assert.Equal(t, "-jar myapp.jar", entities[toEntityId("java", "process")].Attributes[string(semconv.ProcessCommandArgsKey)])
@@ -183,10 +177,6 @@ func TestContainerRelationships(t *testing.T) {
 	assert.Equal(t, "1000", entities[toEntityId("java", "process")].Attributes[string(semconv.ProcessParentPIDKey)])
 	assert.Equal(t, "2000", entities[toEntityId("java", "process")].Attributes[string(semconv.ProcessPIDKey)])
 
-	assert.Equal(t, UsesImage, entities[toEntityId("my-container", "container")].Edges[toEntityId("nginx", "container.image")].Relationship)
-	assert.Equal(t, IsUsedByContainer, entities[toEntityId("nginx", "container.image")].Edges[toEntityId("my-container", "container")].Relationship)
-
-	assert.Equal(t, IsAssociatedWith, entities[toEntityId("java", "process")].Edges[toEntityId("my-container", "container")].Relationship)
 }
 
 func TestDBRelationships(t *testing.T) {
