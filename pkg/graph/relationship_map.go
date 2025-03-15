@@ -29,6 +29,9 @@ const (
 	BelongsToRegion          = "belongs to region"
 	BelongsToZone            = "belongs to zone"
 	ConsumesFrom             = "consumes from"
+	IsHostedOnNode           = "is hosted on node"
+	IsDeployedOnCluster      = "is deployed on cluster"
+	RunsProcess              = "runs process"
 	SettlesMessagesTo        = "settles messages to"
 	ContainsAvailabilityZone = "contains availability zone"
 	ContainsNamespace        = "contains namespace"
@@ -162,7 +165,8 @@ var EntityRelationships = RelationshipMap{
 	string(semconv.K8SClusterNameKey): {
 		Type: KubernetesCluster,
 		Relationships: map[string]string{
-			string(semconv.K8SNodeNameKey): HasNode,
+			string(semconv.K8SNodeNameKey):      HasNode,
+			string(semconv.K8SNamespaceNameKey): ContainsNamespace,
 		},
 		AttributeNames: []string{
 			string(semconv.K8SClusterUIDKey),
@@ -228,6 +232,9 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.DBNamespaceKey):                UsesDatabase,
 			string(semconv.DBCollectionNameKey):           UsesDatabaseCollection,
 			string(semconv.MessagingConsumerGroupNameKey): ConsumesFrom,
+			string(semconv.K8SNodeNameKey):                IsHostedOnNode,
+			string(semconv.K8SClusterNameKey):             IsDeployedOnCluster,
+			string(semconv.ProcessCommandKey):             RunsProcess,
 		},
 		AttributeNames: []string{
 			string(semconv.ServiceInstanceIDKey),
@@ -236,6 +243,7 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.TelemetrySDKNameKey),
 			string(semconv.TelemetrySDKLanguageKey),
 			string(semconv.TelemetrySDKVersionKey),
+			string(semconv.ContainerImageNameKey),
 		},
 		AttributePrefixes: []string{},
 		DeriveRelationshipCallbacks: map[string]func(m pcommon.Map) string{
@@ -417,8 +425,7 @@ var EntityRelationships = RelationshipMap{
 	string(semconv.ContainerNameKey): {
 		Type: Container,
 		Relationships: map[string]string{
-			string(semconv.ServiceNameKey):        IsDeployedOnContainer,
-			string(semconv.ContainerImageNameKey): UsesImage,
+			string(semconv.ServiceNameKey): IsDeployedOnContainer,
 		},
 		AttributeNames: []string{
 			string(semconv.ContainerIDKey),
@@ -428,20 +435,6 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.ContainerCommandLineKey),
 		},
 		AttributePrefixes: []string{"container.label"},
-	},
-
-	// Container Image Entity
-	string(semconv.ContainerImageNameKey): {
-		Type: ContainerImage,
-		Relationships: map[string]string{
-			string(semconv.ContainerNameKey): IsUsedByContainer,
-		},
-		AttributeNames: []string{
-			string(semconv.ContainerImageIDKey),
-			string(semconv.ContainerImageTagsKey),
-			string(semconv.ContainerImageRepoDigestsKey),
-		},
-		AttributePrefixes: []string{},
 	},
 
 	string(semconv.OSNameKey): {

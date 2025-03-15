@@ -15,7 +15,6 @@
 package graph
 
 import (
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -244,17 +243,13 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 }
 
 func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
-	var unlinkedEntities []*ResourceEntity
-
 	for _, parentEntity := range globalEntityMap {
 		if entityInfo, exists := EntityRelationships[parentEntity.AttributeName]; exists {
 
-			foundLinkage := false
 			parentEntity.mu.Lock()
 			for childKey, relationship := range entityInfo.Relationships {
 				if childEntity, childExists := globalEntityMap[childKey]; childExists {
 					parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
-					foundLinkage = true
 				}
 			}
 
@@ -265,35 +260,12 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 						relationship := deriveRelationshipCallback(recordAttributes)
 						if relationship != "" {
 							parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
-							foundLinkage = true
 						}
 					}
 				}
 			}
 			parentEntity.mu.Unlock()
-
-			if !foundLinkage {
-				unlinkedEntities = append(unlinkedEntities, parentEntity)
-			}
 		}
-	}
-
-	keys := make([]string, 0, len(globalEntityMap))
-	for key := range globalEntityMap {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-
-	for _, entity := range unlinkedEntities {
-		entity.mu.Lock()
-		for _, key := range keys {
-			otherEntity := globalEntityMap[key]
-			if entity == otherEntity {
-				continue
-			}
-			entity.AddEdge(otherEntity.Name, otherEntity.Type, IsAssociatedWith)
-		}
-		entity.mu.Unlock()
 	}
 }
 
