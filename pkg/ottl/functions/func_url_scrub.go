@@ -53,6 +53,10 @@ func urlScrub[K any](urlGetter ottl.StringGetter[K]) ottl.ExprFunc[K] {
 			return urlValue, nil
 		}
 
+		if isIPv4Address(parsedURL.Host) {
+			parsedURL.Host = "<ip>"
+		}
+
 		parsedURL.RawQuery = scrubQueryString(parsedURL.RawQuery)
 		parsedURL.Path = scrubPath(parsedURL.Path)
 
@@ -115,6 +119,7 @@ var (
 	numberRegex         = regexp.MustCompile(`\d`)
 	multipleNumberRegex = regexp.MustCompile(`\d+$`)
 	versionRegex        = regexp.MustCompile(`^v\d+$`)
+	ipv4Regex           = regexp.MustCompile(`\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
 )
 
 func isNumber(segment string) bool {
@@ -123,6 +128,10 @@ func isNumber(segment string) bool {
 
 func isVersion(segment string) bool {
 	return versionRegex.MatchString(segment)
+}
+
+func isIPv4Address(segment string) bool {
+	return ipv4Regex.MatchString(segment)
 }
 
 func containsAlphaAndNumeric(segment string) bool {

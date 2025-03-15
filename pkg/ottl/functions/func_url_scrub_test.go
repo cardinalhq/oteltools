@@ -58,6 +58,16 @@ func Test_UrlScrub(t *testing.T) {
 			input:    "/api/v1/graph",
 			expected: "/api/v1/graph",
 		},
+		{
+			name:     "Scrub IP addresses from URL host",
+			input:    "http://169.254.169.254/latest/api/token",
+			expected: "http://<ip>/latest/api/token",
+		},
+		{
+			name:     "Don't scrub DNS names from from URL host",
+			input:    "https://api.global.aws.test.cardinalhq.net/api/v1/validateOTTL",
+			expected: "https://api.global.aws.test.cardinalhq.net/api/v1/validateOTTL",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
