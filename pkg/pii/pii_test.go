@@ -202,7 +202,7 @@ func BenchmarkTokenize(b *testing.B) {
 	detector := NewDetector()
 	var t []Token
 	var err error
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		t, err = detector.Tokenize("test input with SSN 123-45-6789")
 		if err != nil {
 			b.Fail()
@@ -217,7 +217,7 @@ func BenchmarkSanitize(b *testing.B) {
 	detector := NewDetector()
 	s := "test input with SSN 123-45-6789, phone 123-456-7890, email example@example.com, and CCN 4111-1111-1111-1111"
 	tokens, _ := detector.Tokenize(s)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		detector.Sanitize(s, tokens)
 	}
 }

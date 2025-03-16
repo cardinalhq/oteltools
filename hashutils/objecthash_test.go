@@ -79,7 +79,7 @@ func TestHashStrings(t *testing.T) {
 
 func BenchmarkHashAnyFNV(b *testing.B) {
 	value := map[string]any{"one": 1, "two": "two"}
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		hasher := fnv.New64a()
 		HashAny(hasher, value)
 	}
@@ -87,7 +87,7 @@ func BenchmarkHashAnyFNV(b *testing.B) {
 
 func BenchmarkHashAnyXXHash(b *testing.B) {
 	value := map[string]any{"one": 1, "two": "two"}
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		hasher := xxhash.New()
 		HashAny(hasher, value)
 	}

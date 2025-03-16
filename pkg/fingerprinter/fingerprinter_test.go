@@ -377,7 +377,7 @@ func BenchmarkFingerprinter1(b *testing.B) {
 	input := "[2024-04-06 21:23:32,742] INFO [GroupCoordinator 100]: Preparing to rebalance group metadata.ingest.stats.consumer in state PreparingRebalance with old generation 14 (__consumer_offsets-14) (reason: Adding new member metadata.ingest.stats.consumer-0-e78065b6-0f83-4397-92ae-965997f4b1a2 with group instance id Some(metadata.ingest.stats.consumer-0); client reason: not provided) (kafka.coordinator.group.GroupCoordinator)"
 	fp := NewFingerprinter()
 	log.Printf("Running loop for %d times", b.N)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, _, _, err := fp.Fingerprint(input)
 		if err != nil {
 			b.Fatal(err)
@@ -607,8 +607,7 @@ func BenchmarkIsWord(b *testing.B) {
 		"bar":   {},
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		fp.IsWord("heLLo")
 	}
 }

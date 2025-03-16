@@ -96,14 +96,12 @@ func BenchmarkAttrkey(b *testing.B) {
 		m.PutInt("key2", 123)
 		return m
 	}()
-	b.ResetTimer()
 	for b.Loop() {
 		attrkey(attr)
 	}
 }
 
 func BenchmarkMetrickey(b *testing.B) {
-	b.ResetTimer()
 	for b.Loop() {
 		metrickey("metric1", "ms", pmetric.MetricTypeGauge)
 	}

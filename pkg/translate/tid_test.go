@@ -123,7 +123,7 @@ func TestCalculateTID(t *testing.T) {
 }
 
 func Benchmark_calculateTID_1item(t *testing.B) {
-	for i := 0; i < t.N; i++ {
+	for t.Loop() {
 		calculateTID(map[string]string{
 			"key1": "value1",
 		})
@@ -131,7 +131,7 @@ func Benchmark_calculateTID_1item(t *testing.B) {
 }
 
 func Benchmark_calculateTID_10items(t *testing.B) {
-	for i := 0; i < t.N; i++ {
+	for t.Loop() {
 		calculateTID(map[string]string{
 			"key1":  "value1",
 			"key2":  "value2",

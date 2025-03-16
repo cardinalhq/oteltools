@@ -47,28 +47,28 @@ var tests = map[string]string{
 
 func BenchmarkRemoveANSICodesNoCodes(b *testing.B) {
 	s := tests["nocodes"]
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		RemoveANSICodes(s)
 	}
 }
 
 func BenchmarkRemoveANSICodesLengthShort(b *testing.B) {
 	s := tests["short"]
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		RemoveANSICodes(s)
 	}
 }
 
 func BenchmarkRemoveANSICodesLengthMedium(b *testing.B) {
 	s := tests["medium"]
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		RemoveANSICodes(s)
 	}
 }
 
 func BenchmarkRemoveANSICodesLengthLong(b *testing.B) {
 	s := tests["long"]
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		RemoveANSICodes(s)
 	}
 }
