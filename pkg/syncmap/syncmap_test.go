@@ -16,6 +16,7 @@ package syncmap
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -195,6 +196,76 @@ func TestSyncMap_LoadOrStore(t *testing.T) {
 	val2, ok2 := m.Load(2)
 	assert.True(t, ok2)
 	assert.Equal(t, "two", val2)
+
+	_, ok3 := m.Load(3)
+	assert.False(t, ok3)
+}
+
+func TestSyncMap_RemoveIf(t *testing.T) {
+	var m SyncMap[int, string]
+	m.Store(1, "one")
+	m.Store(2, "two")
+	m.Store(3, "three")
+
+	// Remove keys where the value contains the letter 'o'
+	m.RemoveIf(func(key int, value string) bool {
+		return strings.Contains(value, "o")
+	})
+
+	// Verify the remaining keys and values
+	_, ok1 := m.Load(1)
+	assert.False(t, ok1) // "one" should be removed
+
+	_, ok2 := m.Load(2)
+	assert.False(t, ok2) // "two" should be removed
+
+	val3, ok3 := m.Load(3)
+	assert.True(t, ok3) // "three" should remain
+	assert.Equal(t, "three", val3)
+}
+
+func TestSyncMap_RemoveIf_NoMatch(t *testing.T) {
+	var m SyncMap[int, string]
+	m.Store(1, "one")
+	m.Store(2, "two")
+	m.Store(3, "three")
+
+	// Remove keys where the value contains the letter 'z' (no match)
+	m.RemoveIf(func(key int, value string) bool {
+		return strings.Contains(value, "z")
+	})
+
+	// Verify all keys and values remain
+	val1, ok1 := m.Load(1)
+	assert.True(t, ok1)
+	assert.Equal(t, "one", val1)
+
+	val2, ok2 := m.Load(2)
+	assert.True(t, ok2)
+	assert.Equal(t, "two", val2)
+
+	val3, ok3 := m.Load(3)
+	assert.True(t, ok3)
+	assert.Equal(t, "three", val3)
+}
+
+func TestSyncMap_RemoveIf_AllMatch(t *testing.T) {
+	var m SyncMap[int, string]
+	m.Store(1, "one")
+	m.Store(2, "two")
+	m.Store(3, "three")
+
+	// Remove all keys
+	m.RemoveIf(func(key int, value string) bool {
+		return true
+	})
+
+	// Verify the map is empty
+	_, ok1 := m.Load(1)
+	assert.False(t, ok1)
+
+	_, ok2 := m.Load(2)
+	assert.False(t, ok2)
 
 	_, ok3 := m.Load(3)
 	assert.False(t, ok3)

@@ -14,7 +14,10 @@
 
 package syncmap
 
-import "sync"
+import (
+	"maps"
+	"sync"
+)
 
 // SyncMap is a thread-safe map that uses Load and Store semantics.
 // The zero value of SyncMap is an empty map ready to use.  It must not be copied after first use.
@@ -23,8 +26,8 @@ type SyncMap[K comparable, V any] struct {
 	m map[K]V
 }
 
-// SetSize ets the size of the map.  This is a hint to the map to pre-allocate memory,
-// and must be called before any write operations.
+// SetSize ets the size of the map.  This will pre-allocate the map to the specified size
+// and must be called before any other operations or the call will be a no-op.
 func (s *SyncMap[K, V]) SetSize(size int) {
 	s.Lock()
 	defer s.Unlock()
@@ -41,7 +44,10 @@ func (s *SyncMap[K, V]) ensure(size ...int) {
 	}
 }
 
-// Clone returns a clone of the SyncMap.
+// Clone returns a clone of the SyncMap.  The clone has a separate
+// underlying map, but depending on how the values are stored, the
+// values may be shared between the two maps.
+// The new map has its own lock from the source.
 func (s *SyncMap[K, V]) Clone() SyncMap[K, V] {
 	s.Lock()
 	defer s.Unlock()
@@ -49,9 +55,7 @@ func (s *SyncMap[K, V]) Clone() SyncMap[K, V] {
 	s.ensure()
 
 	clone := make(map[K]V, len(s.m))
-	for k, v := range s.m {
-		clone[k] = v
-	}
+	maps.Copy(clone, s.m)
 	return SyncMap[K, V]{m: clone}
 }
 
@@ -78,8 +82,9 @@ func (s *SyncMap[K, V]) Store(key K, value V) {
 }
 
 // LoadOrStore returns the existing value for the key if present,
-// otherwise it calls f and stores the result of f(key) in the map.
-// The lock is held while calling f, so f should not block.
+// otherwise it calls f and stores the result of f() in the map.
+// If f returns an error, the value is not stored and the error is returned.
+// The lock is held while calling f, so f must not block.
 func (s *SyncMap[K, V]) LoadOrStore(key K, f func() (V, error)) (actual V, err error) {
 	s.Lock()
 	defer s.Unlock()
@@ -121,24 +126,20 @@ func (s *SyncMap[K, V]) Delete(key K) {
 
 // Range calls f sequentially for each key and value present in the map.
 // If f returns false, range stops the iteration.
-// The map is unlocked while calling f.
+// The map is locked while calling f, so f must not block.
 func (s *SyncMap[K, V]) Range(f func(key K, value V) bool) {
 	s.Lock()
+	defer s.Unlock()
 
 	if len(s.m) == 0 {
-		s.Unlock()
 		return
 	}
 
 	for k, v := range s.m {
-		s.Unlock()
 		if !f(k, v) {
 			return
 		}
-		s.Lock()
 	}
-
-	s.Unlock()
 }
 
 // Keys returns a slice of all keys in the map.
@@ -170,7 +171,7 @@ func (s *SyncMap[K, V]) Values() []V {
 }
 
 // Touch calls a function for a specific key.  The syncmap is
-// locked while calling the function, so it should not block.
+// locked while calling the function, so it must not block.
 // This allows a safe way to update a value in the map without
 // needing to lock the object itself.
 // If the key does not exist, the funciton is not called
@@ -186,4 +187,21 @@ func (s *SyncMap[K, V]) Touch(key K, f func(value V) V) (found bool) {
 		return true
 	}
 	return false
+}
+
+// RemoveIf calls a function for all keys in the map.  The syncmap is
+// locked while calling the function, so it must not block.
+// If the function returns true, the key is removed from the map.
+// It is safe to "pluck" out the values from within the function.
+func (s *SyncMap[K, V]) RemoveIf(f func(key K, value V) bool) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.ensure()
+
+	for k, v := range s.m {
+		if f(k, v) {
+			delete(s.m, k)
+		}
+	}
 }
