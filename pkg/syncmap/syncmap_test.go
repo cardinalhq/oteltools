@@ -130,7 +130,7 @@ func TestSyncMap_Replace(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "uno", value)
 
-	previous, ok = m.Replace(2, "dos")
+	_, ok = m.Replace(2, "dos")
 	assert.False(t, ok)
 
 	value, ok = m.Load(2)
@@ -183,7 +183,7 @@ func TestSyncMap_LoadOrStore(t *testing.T) {
 
 	wantErr := errors.New("wanted error")
 	// Test erroring when storing a new value
-	value, err = m.LoadOrStore(3, func() (string, error) {
+	_, err = m.LoadOrStore(3, func() (string, error) {
 		return "", wantErr
 	})
 	assert.Error(t, err)
