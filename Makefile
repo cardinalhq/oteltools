@@ -31,8 +31,8 @@ generate: ${pb_deps}
 # Run pre-commit checks
 #
 check: test
-	license-eye header check
-	golangci-lint run
+	go tool license-eye header check
+	go tool golangci-lint run
 
 #
 # build protobufs
@@ -47,6 +47,10 @@ ${pb_deps}: pkg/chqpb/%.pb.go: pkg/chqpb/%.proto
 .PHONY: test
 test: generate
 	go test -race ./...
+
+.PHONY: bench benchmark
+bench benchmark: generate
+	go test -bench=. ./...
 
 #
 # Clean the world.
