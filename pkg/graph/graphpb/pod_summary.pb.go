@@ -38,16 +38,15 @@ const (
 
 // PodSummary summarizes a Kubernetes Pod.
 type PodSummary struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	BaseObject *BaseObject            `protobuf:"bytes,1,opt,name=base_object,json=baseObject,proto3" json:"base_object,omitempty"`
-	Containers []*PodContainerSummary `protobuf:"bytes,2,rep,name=containers,proto3" json:"containers,omitempty"`
-	HostIps    []string               `protobuf:"bytes,3,rep,name=host_ips,json=hostIps,proto3" json:"host_ips,omitempty"`
-	PodIps     []string               `protobuf:"bytes,4,rep,name=pod_ips,json=podIps,proto3" json:"pod_ips,omitempty"`
-	Phase      string                 `protobuf:"bytes,5,opt,name=phase,proto3" json:"phase,omitempty"`
-	StartedAt  *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	// This field corresponds to the pending_reason from the original type.
-	PhaseMessage       string `protobuf:"bytes,7,opt,name=phase_message,json=phaseMessage,proto3" json:"phase_message,omitempty"`
-	ServiceAccountName string `protobuf:"bytes,8,opt,name=service_account_name,json=serviceAccountName,proto3" json:"service_account_name,omitempty"`
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	BaseObject         *BaseObject            `protobuf:"bytes,1,opt,name=base_object,json=baseObject,proto3" json:"base_object,omitempty"`
+	Containers         []*PodContainerSummary `protobuf:"bytes,2,rep,name=containers,proto3" json:"containers,omitempty"`
+	HostIps            []string               `protobuf:"bytes,3,rep,name=host_ips,json=hostIps,proto3" json:"host_ips,omitempty"`
+	PodIps             []string               `protobuf:"bytes,4,rep,name=pod_ips,json=podIps,proto3" json:"pod_ips,omitempty"`
+	Phase              string                 `protobuf:"bytes,5,opt,name=phase,proto3" json:"phase,omitempty"`
+	StartedAt          *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	PhaseMessage       string                 `protobuf:"bytes,7,opt,name=phase_message,json=phaseMessage,proto3" json:"phase_message,omitempty"`
+	ServiceAccountName string                 `protobuf:"bytes,8,opt,name=service_account_name,json=serviceAccountName,proto3" json:"service_account_name,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
