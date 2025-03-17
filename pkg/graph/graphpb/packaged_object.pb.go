@@ -36,7 +36,6 @@ const (
 )
 
 // PackagedObject represents an object with arbitrary attributes.
-// (Using google.protobuf.Struct for dynamic maps)
 type PackagedObject struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	ResourceAttributes map[string]string      `protobuf:"bytes,1,rep,name=resource_attributes,json=resourceAttributes,proto3" json:"resource_attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`

@@ -23,7 +23,6 @@ import "secret_summary.proto";
 import "configmap_summary.proto";
 
 // PackagedObject represents an object with arbitrary attributes.
-// (Using google.protobuf.Struct for dynamic maps)
 message PackagedObject {
   map<string, string> resource_attributes = 1;
   map<string, string> record_attributes = 2;
