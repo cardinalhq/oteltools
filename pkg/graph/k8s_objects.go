@@ -39,7 +39,7 @@ type K8SPodObject struct {
 func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 	rawValue := lr.Body().AsRaw()
 
-	objectMap, ok := rawValue.(map[string]interface{})
+	objectMap, ok := rawValue.(map[string]any)
 	if !ok {
 		return nil
 	}
@@ -48,7 +48,7 @@ func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 		return nil
 	}
 
-	metadata, metadataPresent := objectMap["metadata"].(map[string]interface{})
+	metadata, metadataPresent := objectMap["metadata"].(map[string]any)
 	if !metadataPresent {
 		return nil
 	}
@@ -56,7 +56,7 @@ func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 	name, _ := metadata["name"].(string)
 
 	labels := make(map[string]string)
-	if labelMap, exists := metadata["labels"].(map[string]interface{}); exists {
+	if labelMap, exists := metadata["labels"].(map[string]any); exists {
 		for k, v := range labelMap {
 			if str, ok := v.(string); ok {
 				labels[k] = str
@@ -66,8 +66,8 @@ func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 
 	// Extract owner reference
 	ownerKind, ownerName := "", ""
-	if ownerRefs, exists := metadata["ownerReferences"].([]interface{}); exists && len(ownerRefs) > 0 {
-		if firstOwnerRef, ok := ownerRefs[0].(map[string]interface{}); ok {
+	if ownerRefs, exists := metadata["ownerReferences"].([]any); exists && len(ownerRefs) > 0 {
+		if firstOwnerRef, ok := ownerRefs[0].(map[string]any); ok {
 			ownerKind, _ = firstOwnerRef["kind"].(string)
 			ownerName, _ = firstOwnerRef["name"].(string)
 		}
@@ -75,19 +75,19 @@ func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 
 	// Extract resources from spec
 	resourceMap := make(map[string]string)
-	if spec, exists := objectMap["spec"].(map[string]interface{}); exists {
-		if containers, exists := spec["containers"].([]interface{}); exists {
+	if spec, exists := objectMap["spec"].(map[string]any); exists {
+		if containers, exists := spec["containers"].([]any); exists {
 			for _, container := range containers {
-				if containerMap, ok := container.(map[string]interface{}); ok {
-					if resources, exists := containerMap["resources"].(map[string]interface{}); exists {
-						if requests, exists := resources["requests"].(map[string]interface{}); exists {
+				if containerMap, ok := container.(map[string]any); ok {
+					if resources, exists := containerMap["resources"].(map[string]any); exists {
+						if requests, exists := resources["requests"].(map[string]any); exists {
 							for k, v := range requests {
 								if str, ok := v.(string); ok {
 									resourceMap["requests."+k] = str
 								}
 							}
 						}
-						if limits, exists := resources["limits"].(map[string]interface{}); exists {
+						if limits, exists := resources["limits"].(map[string]any); exists {
 							for k, v := range limits {
 								if str, ok := v.(string); ok {
 									resourceMap["limits."+k] = str
@@ -103,16 +103,16 @@ func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 	phase, podIP, hostIP, imageID, startedAt := "", "", "", "", ""
 	pendingReason, isImagePullBackOff, isCrashLoopBackOff, isOOMKilled := "", false, false, false
 
-	if status, exists := objectMap["status"].(map[string]interface{}); exists {
+	if status, exists := objectMap["status"].(map[string]any); exists {
 		phase, _ = status["phase"].(string)
 		podIP, _ = status["podIP"].(string)
 		hostIP, _ = status["hostIP"].(string)
 		startedAt, _ = status["startTime"].(string) // Extract `startTime`
 
 		if phase == "Pending" {
-			if conditions, exists := status["conditions"].([]interface{}); exists {
+			if conditions, exists := status["conditions"].([]any); exists {
 				for _, cond := range conditions {
-					if condMap, ok := cond.(map[string]interface{}); ok {
+					if condMap, ok := cond.(map[string]any); ok {
 						if condType, exists := condMap["type"].(string); exists && condType == "PodScheduled" {
 							pendingReason, _ = condMap["reason"].(string)
 							break
@@ -124,13 +124,13 @@ func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 			pendingReason = "N/A"
 		}
 
-		if containerStatuses, exists := status["containerStatuses"].([]interface{}); exists {
+		if containerStatuses, exists := status["containerStatuses"].([]any); exists {
 			for _, container := range containerStatuses {
-				if containerMap, ok := container.(map[string]interface{}); ok {
+				if containerMap, ok := container.(map[string]any); ok {
 					imageID, _ = containerMap["imageID"].(string)
 
-					if state, exists := containerMap["state"].(map[string]interface{}); exists {
-						if waiting, exists := state["waiting"].(map[string]interface{}); exists {
+					if state, exists := containerMap["state"].(map[string]any); exists {
+						if waiting, exists := state["waiting"].(map[string]any); exists {
 							if reason, exists := waiting["reason"].(string); exists {
 								if reason == "ImagePullBackOff" {
 									isImagePullBackOff = true
@@ -142,8 +142,8 @@ func ExtractPodObject(lr plog.LogRecord) *K8SPodObject {
 					}
 
 					// Check last terminated state for OOMKilled
-					if lastState, exists := containerMap["lastState"].(map[string]interface{}); exists {
-						if terminated, exists := lastState["terminated"].(map[string]interface{}); exists {
+					if lastState, exists := containerMap["lastState"].(map[string]any); exists {
+						if terminated, exists := lastState["terminated"].(map[string]any); exists {
 							if reason, exists := terminated["reason"].(string); exists && reason == "OOMKilled" {
 								isOOMKilled = true
 							}
@@ -184,12 +184,12 @@ type K8SDeploymentObject struct {
 
 func ExtractDeploymentObject(lr plog.LogRecord) *K8SDeploymentObject {
 	rawValue := lr.Body().AsRaw()
-	if bodyMap, ok := rawValue.(map[string]interface{}); ok {
+	if bodyMap, ok := rawValue.(map[string]any); ok {
 		if kind, exists := bodyMap["kind"].(string); !exists || kind != "Deployment" {
 			return nil
 		}
 
-		metadata, metadataPresent := bodyMap["metadata"].(map[string]interface{})
+		metadata, metadataPresent := bodyMap["metadata"].(map[string]any)
 		if !metadataPresent {
 			return nil
 		}
@@ -203,7 +203,7 @@ func ExtractDeploymentObject(lr plog.LogRecord) *K8SDeploymentObject {
 		replicasUpdated := 0
 		progressMessage := ""
 
-		if status, exists := bodyMap["status"].(map[string]interface{}); exists {
+		if status, exists := bodyMap["status"].(map[string]any); exists {
 			if available, exists := status["availableReplicas"].(float64); exists {
 				replicasAvailable = int(available)
 			}
@@ -217,10 +217,10 @@ func ExtractDeploymentObject(lr plog.LogRecord) *K8SDeploymentObject {
 
 		// Extract deployment progress status
 		deploymentStatus := "Unknown"
-		if status, exists := bodyMap["status"].(map[string]interface{}); exists {
-			if conditions, exists := status["conditions"].([]interface{}); exists {
+		if status, exists := bodyMap["status"].(map[string]any); exists {
+			if conditions, exists := status["conditions"].([]any); exists {
 				for _, condition := range conditions {
-					if conditionMap, ok := condition.(map[string]interface{}); ok {
+					if conditionMap, ok := condition.(map[string]any); ok {
 						condType, _ := conditionMap["type"].(string)
 						condStatus, _ := conditionMap["status"].(string)
 						if condType == "Progressing" && condStatus == "True" {
@@ -257,7 +257,7 @@ type K8SStatefulSetObject struct {
 }
 
 // Safe extraction helper
-func getStringFromMap(m map[string]interface{}, key string) string {
+func getStringFromMap(m map[string]any, key string) string {
 	if val, ok := m[key]; ok {
 		if str, ok := val.(string); ok {
 			return str
@@ -268,12 +268,12 @@ func getStringFromMap(m map[string]interface{}, key string) string {
 
 func ExtractStatefulSetObject(lr plog.LogRecord) *K8SStatefulSetObject {
 	rawValue := lr.Body().AsRaw()
-	bodyMap, ok := rawValue.(map[string]interface{})
+	bodyMap, ok := rawValue.(map[string]any)
 	if !ok {
 		return nil
 	}
 
-	metadata, metadataPresent := bodyMap["metadata"].(map[string]interface{})
+	metadata, metadataPresent := bodyMap["metadata"].(map[string]any)
 	if !metadataPresent {
 		return nil
 	}
@@ -281,7 +281,7 @@ func ExtractStatefulSetObject(lr plog.LogRecord) *K8SStatefulSetObject {
 	name := getStringFromMap(metadata, "name")
 	namespace := getStringFromMap(metadata, "namespace")
 
-	status, statusPresent := bodyMap["status"].(map[string]interface{})
+	status, statusPresent := bodyMap["status"].(map[string]any)
 	if !statusPresent {
 		return nil
 	}
@@ -293,11 +293,11 @@ func ExtractStatefulSetObject(lr plog.LogRecord) *K8SStatefulSetObject {
 		"CurrentRevision":   getStringFromMap(status, "currentRevision"),
 	}
 
-	if volumeTemplates, exists := bodyMap["spec"].(map[string]interface{})["volumeClaimTemplates"]; exists {
-		if volumeList, ok := volumeTemplates.([]interface{}); ok && len(volumeList) > 0 {
-			if firstVolume, ok := volumeList[0].(map[string]interface{}); ok {
+	if volumeTemplates, exists := bodyMap["spec"].(map[string]any)["volumeClaimTemplates"]; exists {
+		if volumeList, ok := volumeTemplates.([]any); ok && len(volumeList) > 0 {
+			if firstVolume, ok := volumeList[0].(map[string]any); ok {
 				attributes["PersistentVolume"] = getStringFromMap(firstVolume, "metadata.name")
-				if spec, exists := firstVolume["status"].(map[string]interface{}); exists {
+				if spec, exists := firstVolume["status"].(map[string]any); exists {
 					attributes["VolumeStatus"] = getStringFromMap(spec, "phase")
 				}
 			}
