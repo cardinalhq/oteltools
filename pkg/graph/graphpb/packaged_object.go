@@ -14,13 +14,15 @@
 
 package graphpb
 
-func (m *PackagedObject) GetBaseObject() *BaseObject {
-	if m == nil {
+func (po *PackagedObject) GetBaseObject() *BaseObject {
+	switch obj := po.Object.(type) {
+	case *PackagedObject_PodSummary:
+		return obj.PodSummary.BaseObject
+	case *PackagedObject_SecretSummary:
+		return obj.SecretSummary.BaseObject
+	case *PackagedObject_ConfigMapSummary:
+		return obj.ConfigMapSummary.BaseObject
+	default:
 		return nil
 	}
-	g, ok := m.Object.(BaseObjectGetter)
-	if ok {
-		return g.GetBaseObject()
-	}
-	return nil
 }
