@@ -33,3 +33,7 @@ message PackagedObject {
     ConfigMapSummary config_map_summary = 5;
   }
 }
+
+message PackagedObjectList {
+  repeated PackagedObject items = 1;
+}
