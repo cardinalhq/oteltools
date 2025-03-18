@@ -16,8 +16,6 @@
 // versions:
 // 	protoc-gen-go v1.36.5
 // 	protoc        v5.29.3
-// 	protoc-gen-go v1.36.5
-// 	protoc        v5.29.3
 // source: resource_entity.proto
 
 package chqpb
@@ -27,7 +25,6 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
-	unsafe "unsafe"
 	unsafe "unsafe"
 )
 
@@ -45,7 +42,6 @@ type ResourceEntityProto struct {
 	Attributes    map[string]string      `protobuf:"bytes,3,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	Edges         []*ResourceEdge        `protobuf:"bytes,4,rep,name=edges,proto3" json:"edges,omitempty"`
 	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
 	sizeCache     protoimpl.SizeCache
 }
 
@@ -178,10 +174,7 @@ func (x *ResourceEdge) GetExtra() string {
 type ResourceEntityProtoList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Entities      [][]byte               `protobuf:"bytes,1,rep,name=entities,proto3" json:"entities,omitempty"`
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Entities      [][]byte               `protobuf:"bytes,1,rep,name=entities,proto3" json:"entities,omitempty"`
 	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
 	sizeCache     protoimpl.SizeCache
 }
 
@@ -225,7 +218,6 @@ func (x *ResourceEntityProtoList) GetEntities() [][]byte {
 var File_resource_entity_proto protoreflect.FileDescriptor
 
 var file_resource_entity_proto_rawDesc = string([]byte{
-var file_resource_entity_proto_rawDesc = string([]byte{
 	0x0a, 0x15, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x5f, 0x65, 0x6e, 0x74, 0x69, 0x74,
 	0x79, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x05, 0x63, 0x68, 0x71, 0x70, 0x62, 0x22, 0xf3,
 	0x01, 0x0a, 0x13, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x45, 0x6e, 0x74, 0x69, 0x74,
@@ -260,12 +252,10 @@ var file_resource_entity_proto_rawDesc = string([]byte{
 var (
 	file_resource_entity_proto_rawDescOnce sync.Once
 	file_resource_entity_proto_rawDescData []byte
-	file_resource_entity_proto_rawDescData []byte
 )
 
 func file_resource_entity_proto_rawDescGZIP() []byte {
 	file_resource_entity_proto_rawDescOnce.Do(func() {
-		file_resource_entity_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_resource_entity_proto_rawDesc), len(file_resource_entity_proto_rawDesc)))
 		file_resource_entity_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_resource_entity_proto_rawDesc), len(file_resource_entity_proto_rawDesc)))
 	})
 	return file_resource_entity_proto_rawDescData
@@ -297,7 +287,6 @@ func file_resource_entity_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_resource_entity_proto_rawDesc), len(file_resource_entity_proto_rawDesc)),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_resource_entity_proto_rawDesc), len(file_resource_entity_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   4,
