@@ -161,32 +161,36 @@ func TestSyncMap_LoadOrStore(t *testing.T) {
 	var m SyncMap[int, string]
 
 	// Test storing a new value
-	value, err := m.LoadOrStore(1, func() (string, error) {
+	value, created, err := m.LoadOrStoreFunc(1, func() (string, error) {
 		return "one", nil
 	})
 	assert.NoError(t, err)
+	assert.True(t, created)
 	assert.Equal(t, "one", value)
 
 	// Test loading an existing value
-	value, err = m.LoadOrStore(1, func() (string, error) {
+	value, created, err = m.LoadOrStoreFunc(1, func() (string, error) {
 		return "uno", nil
 	})
 	assert.NoError(t, err)
+	assert.False(t, created)
 	assert.Equal(t, "one", value)
 
 	// Test storing another new value
-	value, err = m.LoadOrStore(2, func() (string, error) {
+	value, created, err = m.LoadOrStoreFunc(2, func() (string, error) {
 		return "two", nil
 	})
 	assert.NoError(t, err)
+	assert.True(t, created)
 	assert.Equal(t, "two", value)
 
 	wantErr := errors.New("wanted error")
 	// Test erroring when storing a new value
-	_, err = m.LoadOrStore(3, func() (string, error) {
+	_, created, err = m.LoadOrStoreFunc(3, func() (string, error) {
 		return "", wantErr
 	})
 	assert.Error(t, err)
+	assert.False(t, created)
 
 	// Verify the map contents
 	val1, ok1 := m.Load(1)

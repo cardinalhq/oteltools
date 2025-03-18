@@ -22,7 +22,14 @@ message ResourceEntityProto {
   string name = 1;
   string type = 2;
   map<string, string> attributes = 3;
-  map<string, string> edges = 4;
+  repeated ResourceEdge edges = 4;
+}
+
+message ResourceEdge {
+  string name = 1;
+  string type = 2;
+  string value = 3;
+  string extra = 4;
 }
 
 message ResourceEntityProtoList {

@@ -81,25 +81,47 @@ func (s *SyncMap[K, V]) Store(key K, value V) {
 	s.m[key] = value
 }
 
-// LoadOrStore returns the existing value for the key if present,
+// LoadOrStoreFunc returns the existing value for the key if present,
 // otherwise it calls f and stores the result of f() in the map.
 // If f returns an error, the value is not stored and the error is returned.
 // The lock is held while calling f, so f must not block.
-func (s *SyncMap[K, V]) LoadOrStore(key K, f func() (V, error)) (actual V, err error) {
+func (s *SyncMap[K, V]) LoadOrStoreFunc(key K, f func() (V, error)) (actual V, created bool, err error) {
 	s.Lock()
 	defer s.Unlock()
 
 	s.ensure()
 
 	if value, ok := s.m[key]; ok {
-		return value, nil
+		return value, false, nil
 	}
 	value, err := f()
 	if err != nil {
-		return value, err
+		return value, false, err
 	}
 	s.m[key] = value
-	return value, nil
+	return value, true, nil
+}
+
+// ReplaceFunc calls f for a key and replaces the value with the result of f.
+// If the key does not exist, the function is not called and the map is not modified.
+// If the function returns an error, the value is not stored and the error is returned.
+// The lock is held while calling f, so f must not block.
+func (s *SyncMap[K, V]) ReplaceFunc(key K, f func(current V) (V, error)) (actual V, replaced bool, err error) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.ensure()
+
+	if value, ok := s.m[key]; ok {
+		actual = value
+		value, err = f(value)
+		if err != nil {
+			return actual, false, err
+		}
+		s.m[key] = value
+		return actual, true, nil
+	}
+	return actual, false, nil
 }
 
 // Replace replaces the value for a key, and returns the previous value.

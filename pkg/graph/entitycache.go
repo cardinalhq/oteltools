@@ -19,11 +19,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cardinalhq/oteltools/pkg/chqpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"golang.org/x/exp/slog"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/cardinalhq/oteltools/pkg/chqpb"
+	"github.com/cardinalhq/oteltools/pkg/syncmap"
 )
 
 type EdgeInfo struct {
@@ -35,95 +37,102 @@ const (
 	defaultExpiry = 600000 // 10 minutes
 )
 
+type ResourceEntityEdgeKey struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Extra string `json:"extra"`
+}
+
 type ResourceEntity struct {
-	AttributeName string               `json:"-"`
-	Name          string               `json:"name"`
-	Type          string               `json:"type"`
-	Attributes    map[string]string    `json:"attributes"`
-	Edges         map[string]*EdgeInfo `json:"edges"`
-	lastSeen      int64
-	mu            sync.Mutex
+	AttributeName string                              `json:"-"`
+	Name          string                              `json:"name"`
+	Type          string                              `json:"type"`
+	Attributes    map[string]string                   `json:"attributes"`
+	Edges         map[ResourceEntityEdgeKey]*EdgeInfo `json:"edges"`
+
+	lastSeen int64
+	mu       sync.Mutex
 }
 
 type ResourceEntityCache struct {
-	entityMap sync.Map
+	entityMap syncmap.SyncMap[ResourceEntityEdgeKey, *ResourceEntity]
 }
 
 func NewResourceEntityCache() *ResourceEntityCache {
 	return &ResourceEntityCache{}
 }
 
-func toEntityId(name, entityType string) string {
-	return name + ":" + entityType
+func toEntityKey(name, ty, extra string) ResourceEntityEdgeKey {
+	return ResourceEntityEdgeKey{
+		Name:  name,
+		Type:  ty,
+		Extra: extra,
+	}
 }
 
 func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType string, attributes map[string]string) (*ResourceEntity, bool) {
-	entityId := toEntityId(entityName, entityType)
+	entityId := toEntityKey(entityName, entityType, "")
 
-	if entity, exists := ec.entityMap.Load(entityId); exists {
-		re := entity.(*ResourceEntity)
-		re.mu.Lock()
-		re.lastSeen = now()
+	if foundEntity, exists, _ := ec.entityMap.ReplaceFunc(entityId, func(entity *ResourceEntity) (*ResourceEntity, error) {
+		entity.mu.Lock()
+		entity.lastSeen = nowMillis()
 		for key, value := range attributes {
-			re.PutAttribute(key, value)
+			entity.PutAttribute(key, value)
 		}
-		re.mu.Unlock()
-		return re, false
+		entity.mu.Unlock()
+		return entity, nil
+	}); exists {
+		return foundEntity, false
 	}
 
-	newEntity := &ResourceEntity{
-		AttributeName: attributeName,
-		Name:          entityName,
-		Type:          entityType,
-		Attributes:    make(map[string]string),
-		Edges:         make(map[string]*EdgeInfo),
-		lastSeen:      now(),
-	}
-
-	entity, loaded := ec.entityMap.LoadOrStore(entityId, newEntity)
-	re := entity.(*ResourceEntity)
-	re.mu.Lock()
-	for key, value := range attributes {
-		re.PutAttribute(key, value)
-	}
-	re.mu.Unlock()
-	return re, !loaded
+	entity, loaded, _ := ec.entityMap.LoadOrStoreFunc(entityId, func() (*ResourceEntity, error) {
+		newEntity := &ResourceEntity{
+			AttributeName: attributeName,
+			Name:          entityName,
+			Type:          entityType,
+			Attributes:    make(map[string]string),
+			Edges:         make(map[ResourceEntityEdgeKey]*EdgeInfo),
+			lastSeen:      nowMillis(),
+		}
+		for key, value := range attributes {
+			newEntity.PutAttribute(key, value)
+		}
+		return newEntity, nil
+	})
+	return entity, !loaded
 }
 
 func (ec *ResourceEntityCache) PutEntityObject(entity *ResourceEntity) {
-	entityId := toEntityId(entity.Name, entity.Type)
+	entityId := toEntityKey(entity.Name, entity.Type, "")
 	ec.entityMap.Store(entityId, entity)
-}
-
-func (ec *ResourceEntityCache) _allEntities() map[string]*ResourceEntity {
-	entities := make(map[string]*ResourceEntity)
-
-	ec.entityMap.Range(func(key, value interface{}) bool {
-		entities[key.(string)] = value.(*ResourceEntity)
-		return true
-	})
-
-	return entities
 }
 
 func (ec *ResourceEntityCache) GetAllEntities() []byte {
 	var batch [][]byte
 
-	currentTime := now()
-	ec.entityMap.Range(func(key, value interface{}) bool {
-		entity := value.(*ResourceEntity)
+	currentTime := nowMillis()
+
+	// We use RemoveIf to iterate over the map and remove expired entities
+	// as well as serialize the entities to be sent to the collector.  This
+	// could be done in two passes, but as we are iterating over the map
+	// anyway, we can do it in one pass.
+	ec.entityMap.RemoveIf(func(key ResourceEntityEdgeKey, entity *ResourceEntity) bool {
 		entity.mu.Lock()
-		edges := make(map[string]string)
+		edges := []*chqpb.ResourceEdge{}
 		for k, v := range entity.Edges {
 			if currentTime-v.LastSeen > defaultExpiry {
 				delete(entity.Edges, k)
 				continue
 			}
-			edges[k] = v.Relationship
+			edges = append(edges, &chqpb.ResourceEdge{
+				Name:  k.Name,
+				Type:  k.Type,
+				Extra: k.Extra,
+				Value: v.Relationship,
+			})
 		}
 		if currentTime-entity.lastSeen > defaultExpiry {
 			entity.mu.Unlock()
-			ec.entityMap.Delete(key)
 			return true
 		}
 		protoEntity := &chqpb.ResourceEntityProto{
@@ -137,7 +146,7 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 			batch = append(batch, serialized)
 		}
 		entity.mu.Unlock()
-		return true
+		return false
 	})
 
 	serialized, err := proto.Marshal(&chqpb.ResourceEntityProtoList{Entities: batch})
@@ -148,21 +157,21 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 	return []byte{}
 }
 
-func (re *ResourceEntity) AddEdge(targetName, targetType, relationship string) {
+func (re *ResourceEntity) AddEdge(key ResourceEntityEdgeKey, relationship string) {
 	if re.Edges == nil {
-		re.Edges = make(map[string]*EdgeInfo)
+		re.Edges = map[ResourceEntityEdgeKey]*EdgeInfo{}
 	}
-	if edgeInfo, exists := re.Edges[toEntityId(targetName, targetType)]; exists {
-		edgeInfo.LastSeen = now()
+	if edgeInfo, exists := re.Edges[key]; exists {
+		edgeInfo.LastSeen = nowMillis()
 	} else {
-		re.Edges[toEntityId(targetName, targetType)] = &EdgeInfo{
+		re.Edges[key] = &EdgeInfo{
 			Relationship: relationship,
-			LastSeen:     now(),
+			LastSeen:     nowMillis(),
 		}
 	}
 }
 
-func now() int64 {
+func nowMillis() int64 {
 	return time.Now().UnixMilli()
 }
 
@@ -170,8 +179,8 @@ func (re *ResourceEntity) PutAttribute(k, v string) {
 	re.Attributes[k] = v
 }
 
-func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Map) map[string]*ResourceEntity {
-	entityMap := make(map[string]*ResourceEntity)
+func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Map) map[ResourceEntityEdgeKey]*ResourceEntity {
+	entityMap := make(map[ResourceEntityEdgeKey]*ResourceEntity)
 	serviceName, serviceNameFound := attributes.Get(string(semconv.ServiceNameKey))
 	if serviceNameFound && RestrictedServices[serviceName.AsString()] {
 		return entityMap
@@ -186,7 +195,7 @@ func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Ma
 	return entityMap
 }
 
-func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
+func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[ResourceEntityEdgeKey]*ResourceEntity, recordAttributes pcommon.Map) {
 	newEntityMap := ec.provisionEntities(recordAttributes, resourceEntityMap)
 	if serviceEntity, exists := resourceEntityMap[string(semconv.ServiceNameKey)]; exists {
 		newEntityMap[string(semconv.ServiceNameKey)] = serviceEntity
@@ -196,9 +205,9 @@ func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[s
 	}
 }
 
-func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityMap map[string]*ResourceEntity) map[string]*ResourceEntity {
+func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityMap map[ResourceEntityEdgeKey]*ResourceEntity) map[string]*ResourceEntity {
 	matches := make(map[*EntityInfo]*ResourceEntity)
-	newEntities := make(map[string]*ResourceEntity)
+	newEntities := make(map[ResourceEntityEdgeKey]*ResourceEntity)
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		entityName := v.AsString()
 		if entityInfo, exists := EntityRelationships[k]; exists && entityName != "" {
@@ -242,30 +251,32 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 	return newEntities
 }
 
-func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
+func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[ResourceEntityEdgeKey]*ResourceEntity, recordAttributes pcommon.Map) {
 	for _, parentEntity := range globalEntityMap {
-		if entityInfo, exists := EntityRelationships[parentEntity.AttributeName]; exists {
+		entityInfo, exists := EntityRelationships[parentEntity.AttributeName]
+		if !exists {
+			continue
+		}
 
-			parentEntity.mu.Lock()
-			for childKey, relationship := range entityInfo.Relationships {
-				if childEntity, childExists := globalEntityMap[childKey]; childExists {
-					parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
-				}
+		parentEntity.mu.Lock()
+		for childKey, relationship := range entityInfo.Relationships {
+			if childEntity, childExists := globalEntityMap[childKey]; childExists {
+				parentEntity.AddEdge(toEntityKey(childEntity.Name, childEntity.Type, ""), relationship)
 			}
+		}
 
-			if entityInfo.DeriveRelationshipCallbacks != nil {
-				for childKey := range entityInfo.DeriveRelationshipCallbacks {
-					deriveRelationshipCallback := entityInfo.DeriveRelationshipCallbacks[childKey]
-					if childEntity, childExists := globalEntityMap[childKey]; childExists {
-						relationship := deriveRelationshipCallback(recordAttributes)
-						if relationship != "" {
-							parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
-						}
+		if entityInfo.DeriveRelationshipCallbacks != nil {
+			for childKey := range entityInfo.DeriveRelationshipCallbacks {
+				deriveRelationshipCallback := entityInfo.DeriveRelationshipCallbacks[childKey]
+				if childEntity, childExists := globalEntityMap[childKey]; childExists {
+					relationship := deriveRelationshipCallback(recordAttributes)
+					if relationship != "" {
+						parentEntity.AddEdge(toEntityKey(childEntity.Name, childEntity.Type, ""), relationship)
 					}
 				}
 			}
-			parentEntity.mu.Unlock()
 		}
+		parentEntity.mu.Unlock()
 	}
 }
 
@@ -279,7 +290,7 @@ func (ec *ResourceEntityCache) ProvisionStatefulSet(statefulSet *K8SStatefulSetO
 	statefulSetEntity, _ := ec.PutEntity(string(semconv.K8SStatefulSetNameKey), statefulSet.Name, KubernetesStatefulSet, entityAttrs)
 	if serviceEntity != nil && statefulSetEntity != nil {
 		serviceEntity.mu.Lock()
-		serviceEntity.AddEdge(statefulSet.Name, KubernetesStatefulSet, IsManagedByStatefulSet)
+		serviceEntity.AddEdge(toEntityKey(statefulSet.Name, KubernetesStatefulSet, ""), IsManagedByStatefulSet)
 		serviceEntity.mu.Unlock()
 	}
 }
@@ -297,7 +308,7 @@ func (ec *ResourceEntityCache) ProvisionDeployment(deployment *K8SDeploymentObje
 		deploymentEntity, _ := ec.PutEntity(string(semconv.K8SDeploymentNameKey), deployment.Name, KubernetesDeployment, entityAttrs)
 		if serviceEntity != nil && deploymentEntity != nil {
 			serviceEntity.mu.Lock()
-			serviceEntity.AddEdge(deployment.Name, KubernetesDeployment, IsManagedByDeployment)
+			serviceEntity.AddEdge(toEntityKey(deployment.Name, KubernetesDeployment, ""), IsManagedByDeployment)
 			serviceEntity.mu.Unlock()
 		}
 	}
@@ -339,7 +350,7 @@ func (ec *ResourceEntityCache) ProvisionPod(podObject *K8SPodObject) {
 	if parentAttributeName != "" {
 		parentEntity, _ := ec.PutEntity(parentAttributeName, podObject.OwnerRefName, parentEntityType, make(map[string]string))
 		parentEntity.mu.Lock()
-		podEntity.AddEdge(parentEntity.Name, parentEntity.Type, IsAPodFor)
+		podEntity.AddEdge(toEntityKey(parentEntity.Name, parentEntity.Type, ""), IsAPodFor)
 		parentEntity.mu.Unlock()
 	}
 }
