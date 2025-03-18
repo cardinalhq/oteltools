@@ -15,8 +15,9 @@
 package graph
 
 import (
-	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"testing"
+
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 
@@ -66,13 +67,13 @@ func TestKubernetesEntityRelationships(t *testing.T) {
 	assert.Equal(t, "127.0.0.1", entities[toEntityId("pod-1", "k8s.pod")].Attributes["k8s.pod.ip"])
 	assert.Equal(t, "cardinal", entities[toEntityId("pod-1", "k8s.pod")].Attributes["k8s.pod.label.company-name"])
 
-	assert.Equal(t, HasNode, entities[toEntityId("cluster-1", "k8s.cluster")].Edges["node-1:k8s.node"].Relationship)
-	assert.Equal(t, BelongsToCluster, entities[toEntityId("node-1", "k8s.node")].Edges["cluster-1:k8s.cluster"].Relationship)
-	assert.Equal(t, ContainsService, entities[toEntityId("default", "k8s.namespace")].Edges["service-1:service"].Relationship)
-	assert.Equal(t, BelongsToNamespace, entities[toEntityId("service-1", "service")].Edges["default:k8s.namespace"].Relationship)
-	assert.Equal(t, IsManagedByDeployment, entities[toEntityId("service-1", "service")].Edges["deployment-1:k8s.deployment"].Relationship)
-	assert.Equal(t, ManagesReplicaset, entities[toEntityId("deployment-1", "k8s.deployment")].Edges["replicaset-1:k8s.replicaset"].Relationship)
-	assert.Equal(t, ContainsPod, entities[toEntityId("replicaset-1", "k8s.replicaset")].Edges["pod-1:k8s.pod"].Relationship)
+	assert.Equal(t, HasNode, entities[toEntityId("cluster-1", "k8s.cluster")].Edges["node-1|k8s.node"].Relationship)
+	assert.Equal(t, BelongsToCluster, entities[toEntityId("node-1", "k8s.node")].Edges["cluster-1|k8s.cluster"].Relationship)
+	assert.Equal(t, ContainsService, entities[toEntityId("default", "k8s.namespace")].Edges["service-1|service"].Relationship)
+	assert.Equal(t, BelongsToNamespace, entities[toEntityId("service-1", "service")].Edges["default|k8s.namespace"].Relationship)
+	assert.Equal(t, IsManagedByDeployment, entities[toEntityId("service-1", "service")].Edges["deployment-1|k8s.deployment"].Relationship)
+	assert.Equal(t, ManagesReplicaset, entities[toEntityId("deployment-1", "k8s.deployment")].Edges["replicaset-1|k8s.replicaset"].Relationship)
+	assert.Equal(t, ContainsPod, entities[toEntityId("replicaset-1", "k8s.replicaset")].Edges["pod-1|k8s.pod"].Relationship)
 }
 
 func TestInterdependencyBetweenRelationshipMaps(t *testing.T) {

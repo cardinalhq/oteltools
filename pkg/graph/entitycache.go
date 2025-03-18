@@ -54,7 +54,7 @@ func NewResourceEntityCache() *ResourceEntityCache {
 }
 
 func toEntityId(name, entityType string) string {
-	return name + ":" + entityType
+	return name + "|" + entityType
 }
 
 func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType string, attributes map[string]string) (*ResourceEntity, bool) {
