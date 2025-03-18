@@ -14,8 +14,4 @@
 
 package chqpb
 
-//go:generate protoc --go_out=. --go_opt=paths=source_relative stats.proto
-//go:generate protoc --go_out=. --go_opt=paths=source_relative kafkaenvelope.proto
-//go:generate protoc --go_out=. --go_opt=paths=source_relative log_ingest_stats.proto
-//go:generate protoc --go_out=. --go_opt=paths=source_relative metric_ingest_stats.proto
-//go:generate protoc --go_out=. --go_opt=paths=source_relative span_ingest_stats.proto
+//go:generate sh -c "protoc -I . --go_out=. --go_opt=paths=source_relative *.proto"

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate sh -c "protoc -I . --go_out=. --go_opt=paths=source_relative *.proto"
-
 // Package graphpb holds source and generated code for the graph objects that we
 // collect from Kubernetes and other sources.  Each top-level "summary" object
 // is a description of a Kubernetes resource definition, and the PackagedObject
 // includes the additional OpenTelemetry resource and log record attributes.
 package graphpb
+
+//go:generate sh -c "protoc -I . --go_out=. --go_opt=paths=source_relative *.proto"
