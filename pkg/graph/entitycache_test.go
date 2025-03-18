@@ -248,6 +248,34 @@ func TestMessagingProducesToRelationship(t *testing.T) {
 	assert.Equal(t, ProducesTo, entities[toEntityId("service-1", "service")].Edges[messagingDestinationEntityId].Relationship)
 }
 
+func TestIfWeSkipBotTraffic(t *testing.T) {
+	ec := NewResourceEntityCache()
+	attributes := pcommon.NewMap()
+	attributes.PutStr(string(semconv.ServiceNameKey), "service-1")
+	globalEntityMap := ec.ProvisionResourceAttributes(attributes)
+
+	recordAttributes := pcommon.NewMap()
+	recordAttributes.PutStr(string(semconv.URLTemplateKey), "/robots.txt")
+	recordAttributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), 404)
+
+	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
+	entities := ec._allEntities()
+
+	// assert that we skip the entity creation for the record
+	assert.Equal(t, 1, len(entities))
+
+	// assert that there is no entity of Endpoint type
+	_, endpointExists := entities[toEntityId("/robots.txt", Endpoint)]
+	assert.False(t, endpointExists, "Expected entity %s not found", toEntityId("/robots.txt", Endpoint))
+
+	// Now let's test if the status code was 200, we would indeed create the entity.
+	recordAttributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), 200)
+	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
+	entities = ec._allEntities()
+	_, endpointExists = entities[toEntityId("/robots.txt", Endpoint)]
+	assert.True(t, endpointExists, "Expected entity %s not found", toEntityId("/robots.txt", Endpoint))
+}
+
 func TestCloudRelationships(t *testing.T) {
 	ec := NewResourceEntityCache()
 

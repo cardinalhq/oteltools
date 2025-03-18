@@ -146,6 +146,7 @@ type EntityInfo struct {
 	AttributePrefixes           []string
 	NameTransformer             func(string) string
 	DeriveRelationshipCallbacks map[string]func(pcommon.Map) string
+	ShouldCreateCallBack        func(p pcommon.Map) bool
 }
 
 type RelationshipMap map[string]*EntityInfo
@@ -218,6 +219,10 @@ var EntityRelationships = RelationshipMap{
 				}
 				return ""
 			},
+		},
+		ShouldCreateCallBack: func(m pcommon.Map) bool {
+			httpStatusCode, httpStatusCodeFound := m.Get(string(semconv.HTTPResponseStatusCodeKey))
+			return httpStatusCodeFound && httpStatusCode.Int() != 404
 		},
 	},
 

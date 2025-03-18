@@ -202,6 +202,11 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		entityName := v.AsString()
 		if entityInfo, exists := EntityRelationships[k]; exists && entityName != "" {
+			if entityInfo.ShouldCreateCallBack != nil {
+				if !entityInfo.ShouldCreateCallBack(attributes) {
+					return true
+				}
+			}
 			entityAttrs := make(map[string]string)
 			if entityInfo.NameTransformer != nil {
 				entityName = entityInfo.NameTransformer(entityName)
