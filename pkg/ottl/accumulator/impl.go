@@ -35,6 +35,8 @@ func NewAccumulatorImlp[T int64 | float64](buckets []T) *AccumulatorImpl[T] {
 	return &AccumulatorImpl[T]{
 		buckets: buckets,
 		sum:     make([]T, len(buckets)),
+		max:     make([]T, len(buckets)),
+		min:     make([]T, len(buckets)),
 	}
 }
 

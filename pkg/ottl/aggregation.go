@@ -76,10 +76,16 @@ func (a *AggregationImpl[T]) Add(name string, values []T) error {
 }
 
 func (a *AggregationImpl[T]) Value() []T {
-	if a.ty == AggregationTypeAvg {
+	switch a.ty {
+	case AggregationTypeAvg:
 		return a.accumulator.Avg()
+	case AggregationTypeMin:
+		return a.accumulator.Min()
+	case AggregationTypeMax:
+		return a.accumulator.Max()
+	default:
+		return a.accumulator.Sum()
 	}
-	return a.accumulator.Sum()
 }
 
 func (a *AggregationImpl[T]) Count() uint64 {

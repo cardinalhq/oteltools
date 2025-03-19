@@ -57,3 +57,25 @@ func TestAggregationImpl_Value_sum(t *testing.T) {
 	assert.Equal(t, []float64{16.0}, aggregation.Value())
 	assert.Equal(t, "alice", aggregation.Name())
 }
+
+func TestAggregationImpl_Value_max(t *testing.T) {
+	aggregation := NewAggregationImpl("alice", []float64{1}, AggregationTypeMax, nil)
+
+	err := aggregation.Add("alice", []float64{10.5})
+	assert.Nil(t, err)
+	err = aggregation.Add("alice", []float64{5.5})
+	assert.Nil(t, err)
+	assert.Equal(t, []float64{10.5}, aggregation.Value())
+	assert.Equal(t, "alice", aggregation.Name())
+}
+
+func TestAggregationImpl_Value_min(t *testing.T) {
+	aggregation := NewAggregationImpl("alice", []float64{1}, AggregationTypeMin, nil)
+
+	err := aggregation.Add("alice", []float64{10.5})
+	assert.Nil(t, err)
+	err = aggregation.Add("alice", []float64{5.5})
+	assert.Nil(t, err)
+	assert.Equal(t, []float64{5.5}, aggregation.Value())
+	assert.Equal(t, "alice", aggregation.Name())
+}
