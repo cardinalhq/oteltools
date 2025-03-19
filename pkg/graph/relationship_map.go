@@ -112,8 +112,9 @@ const (
 	CloudRegion            = "cloud.region"
 	CloudResourceId        = "cloud.resource_id"
 	Container              = "container"
-	ContainerImageName     = "container.image.name"
-	ContainerImageID       = "container.image.id"
+	ContainerImage         = "container.image"
+	ContainerImageName     = string(semconv.ContainerImageNameKey)
+	ContainerImageID       = string(semconv.ContainerImageIDKey)
 	Database               = "database"
 	DatabaseCollection     = "database.collection"
 	Endpoint               = "endpoint"
@@ -137,7 +138,7 @@ const (
 	MessagingConsumerGroup = "messaging.consumer.group"
 	MessagingDestination   = "messaging.destination"
 	Node                   = "k8s.node"
-	Os                     = "os"
+	OperatingSystem        = "os"
 	PendingReason          = "pending.reason"
 	PodPhase               = "pod.phase"
 	Process                = "process"
@@ -450,7 +451,7 @@ var EntityRelationships = RelationshipMap{
 	},
 
 	string(semconv.OSNameKey): {
-		Type:          Os,
+		Type:          OperatingSystem,
 		Relationships: map[string]string{},
 		AttributeNames: []string{
 			string(semconv.OSVersionKey),
