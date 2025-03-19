@@ -23,4 +23,6 @@ type Accumulator[T int64 | float64] interface {
 	Count() uint64
 	Sum() []T
 	Avg() []T
+	Max() []T
+	Min() []T
 }

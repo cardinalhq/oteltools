@@ -22,6 +22,8 @@ type AccumulatorImpl[T int64 | float64] struct {
 	buckets []T
 	count   uint64
 	sum     []T
+	max     []T
+	min     []T
 }
 
 var (
@@ -42,6 +44,12 @@ func (a *AccumulatorImpl[T]) Add(value []T) error {
 	}
 	for i, v := range value {
 		a.sum[i] += v
+		if a.count == 0 || v > a.max[i] {
+			a.max[i] = v
+		}
+		if a.count == 0 || v < a.min[i] {
+			a.min[i] = v
+		}
 	}
 	a.count++
 	return nil
@@ -57,6 +65,14 @@ func (a *AccumulatorImpl[T]) Count() uint64 {
 
 func (a *AccumulatorImpl[T]) Sum() []T {
 	return a.sum
+}
+
+func (a *AccumulatorImpl[T]) Max() []T {
+	return a.max
+}
+
+func (a *AccumulatorImpl[T]) Min() []T {
+	return a.min
 }
 
 func (a *AccumulatorImpl[T]) Avg() []T {
