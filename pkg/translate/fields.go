@@ -19,6 +19,7 @@ const (
 	CardinalFieldPrefixDot = CardinalFieldPrefix + "."
 
 	CardinalFieldAggregate         = CardinalFieldPrefixDot + "aggregate"
+	CardinalFieldAggregationType   = CardinalFieldPrefixDot + "aggregation_type"
 	CardinalFieldBucketBounds      = CardinalFieldPrefixDot + "bucket_bounds"
 	CardinalFieldClassification    = CardinalFieldPrefixDot + "classification"
 	CardinalFieldCollectorID       = CardinalFieldPrefixDot + "collector_id"
