@@ -79,25 +79,23 @@ func TestSyncMap_Range_Empty(t *testing.T) {
 		return true
 	})
 
-	if len(keys) != 0 {
-		t.Errorf("expected no keys to be present, got %v", keys)
-	}
+	assert.Empty(t, keys)
 }
 
 func TestSyncMap_Range_Break(t *testing.T) {
 	var m SyncMap[int, string]
 	m.Store(1, "one")
 	m.Store(2, "two")
+	m.Store(3, "three")
+	m.Store(4, "four")
 
-	keys := make(map[int]bool)
+	iterations := 0
 	m.Range(func(key int, _ string) bool {
-		keys[key] = true
-		return false
+		iterations++
+		return iterations < 2
 	})
 
-	val, ok := keys[1]
-	assert.True(t, ok)
-	assert.True(t, val)
+	assert.Equal(t, 2, iterations)
 }
 
 func TestSyncMap_Keys(t *testing.T) {
