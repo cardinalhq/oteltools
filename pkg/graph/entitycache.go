@@ -316,7 +316,7 @@ func (ec *ResourceEntityCache) ProvisionPod(podObject *K8SPodObject) {
 	for resourceName, resourceValue := range podObject.Resources {
 		entityAttrs[resourceName] = resourceValue
 	}
-	entityAttrs[ContainerImage] = podObject.ImageID
+	entityAttrs[ContainerImageName] = podObject.ImageID
 	entityAttrs[K8SPodIp] = podObject.PodIP
 	entityAttrs[HostIp] = podObject.HostIP
 	entityAttrs[PodPhase] = podObject.Phase
