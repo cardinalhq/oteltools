@@ -25,6 +25,8 @@ type AggregationType int
 const (
 	AggregationTypeSum AggregationType = iota
 	AggregationTypeAvg
+	AggregationTypeMin
+	AggregationTypeMax
 )
 
 func (a AggregationType) String() string {
