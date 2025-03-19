@@ -15,6 +15,7 @@
 package ottl
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cardinalhq/oteltools/pkg/ottl/accumulator"
@@ -42,6 +43,20 @@ func (a AggregationType) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+var stringToAggregationType = map[string]AggregationType{
+	"sum": AggregationTypeSum,
+	"avg": AggregationTypeAvg,
+	"min": AggregationTypeMin,
+	"max": AggregationTypeMax,
+}
+
+func ParseAggregationType(s string) (AggregationType, error) {
+	if aggType, exists := stringToAggregationType[s]; exists {
+		return aggType, nil
+	}
+	return 0, errors.New("invalid aggregation type")
 }
 
 type Aggregation interface {
