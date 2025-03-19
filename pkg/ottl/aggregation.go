@@ -35,6 +35,10 @@ func (a AggregationType) String() string {
 		return "sum"
 	case AggregationTypeAvg:
 		return "avg"
+	case AggregationTypeMin:
+		return "min"
+	case AggregationTypeMax:
+		return "max"
 	default:
 		return "unknown"
 	}
