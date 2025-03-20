@@ -18,8 +18,10 @@ package graphpb;
 
 option go_package = "github.com/cardinalhq/oteltools/pkg/graph/graphpb";
 
-import "base.proto";
 import "google/protobuf/timestamp.proto";
+
+import "base.proto";
+import "image.proto";
 
 // PodSummary summarizes a Kubernetes Pod.
 message PodSummary {
@@ -45,10 +47,4 @@ message PodContainerSummary {
   bool is_image_pull_back_off = 7;
   bool is_crash_loop_back_off = 8;
   bool was_oom_killed = 9;
-}
-
-// ImageSummary contains details about a container image.
-message ImageSummary {
-  string image = 1;
-  string image_id = 2;
 }

@@ -1,0 +1,84 @@
+// Copyright 2024-2025 CardinalHQ, Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package graphpb;
+
+option go_package = "github.com/cardinalhq/oteltools/pkg/graph/graphpb";
+
+import "base.proto";
+import "image.proto";
+
+// AppsDeploymentSummary summarizes a Kubernetes apps/v1 Deployment.
+message AppsDeploymentSummary {
+  BaseObject base_object = 1;
+
+  // "label_selectors" corresponds to the pod label selectors in the
+  // Deployment's PodTemplateSpec pod label selectors.
+  map<string, string> label_selectors = 2;
+
+  // "service_account_name" corresponds to the service account name in the
+  // Deployment's PodTemplateSpec.
+  string service_account_name = 3;
+
+  // "containers" is a list of containers within the
+  // Deployment's PodTemplateSpec.
+  repeated AppsDeploymentPodContainerSummary containers = 4;
+
+  // "pod_metadata" is the metadata of the Deployment's PodTemplateSpec.
+  BaseObject pod_metadata = 5;
+
+  // "status" is the status of the Deployment, which indicats the controller's
+  // observation of the Deployment's state.
+  AppDeploymentStatus status = 6;
+}
+
+// PodContainerSummary summarizes a container within a Pod.
+message AppsDeploymentPodContainerSummary {
+  // "name" is the name of the container.
+  string name = 1;
+
+  // "image" is the container's image details.
+  ImageSummary image = 2;
+
+  // "resources" corresponds to the container resource requests and limits.
+  map<string, string> resources = 3;
+
+  // "config_map_names" is a list of ConfigMap names mounted or
+  // used as an environment variable in the container.
+  repeated string config_map_names = 4;
+
+  // "secret_names" is a list of Secret names mounted or
+  // used as an environment variable in the container.
+  repeated string secret_names = 5;
+}
+
+// AppDeploymentStatus is the status of a Kubernetes apps/v1 Deployment.
+message AppDeploymentStatus {
+  // "replicas" is the number of desired replicas in the Deployment.
+  int32 replicas = 1;
+
+  // "ready_replicas" is the number of ready replicas in the Deployment.
+  int32 ready_replicas = 2;
+
+  // "available_replicas" is the number of available replicas in the Deployment.
+  int32 available_replicas = 3;
+
+  // "unavailable_replicas" is the number of unavailable replicas in the Deployment.
+  int32 unavailable_replicas = 4;
+
+  // "updated_replicas" is the number of updated replicas in the Deployment.
+  int32 updated_replicas = 5;
+}

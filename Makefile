@@ -12,20 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Due to the way we build, we will make the universe no matter which files
-# actually change.  With the many targets, this is just so much easier,
-# and it also ensures the Docker images have identical timestamp-based tags.
-pb_deps = pkg/chqpb/attribute.pb.go \
-	pkg/chqpb/kafkaenvelope.pb.go \
-	pkg/chqpb/log_ingest_stats.pb.go \
-	pkg/chqpb/metric_ingest_stats.pb.go \
-	pkg/chqpb/span_ingest_stats.pb.go \
-	pkg/chqpb/stats.pb.go \
-
 #
 # Generate all the things.
 #
-generate: ${pb_deps}
+generate:
+	go generate ./...
 
 #
 # Run pre-commit checks
@@ -33,12 +24,6 @@ generate: ${pb_deps}
 check: test
 	go tool license-eye header check
 	go tool golangci-lint run
-
-#
-# build protobufs
-#
-${pb_deps}: pkg/chqpb/%.pb.go: pkg/chqpb/%.proto
-	go generate ./...
 
 #
 # Test targets
