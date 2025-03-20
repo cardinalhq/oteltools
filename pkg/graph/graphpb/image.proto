@@ -18,24 +18,8 @@ package graphpb;
 
 option go_package = "github.com/cardinalhq/oteltools/pkg/graph/graphpb";
 
-import "pod.proto";
-import "secret.proto";
-import "configmap.proto";
-import "apps_deployment.proto";
-
-// PackagedObject represents an object with arbitrary attributes.
-message PackagedObject {
-  map<string, string> resource_attributes = 1;
-  map<string, string> record_attributes = 2;
-
-  oneof object {
-    PodSummary pod_summary = 3;
-    SecretSummary secret_summary = 4;
-    ConfigMapSummary config_map_summary = 5;
-    AppsDeploymentSummary apps_deployment_summary = 6;
-  }
-}
-
-message PackagedObjectList {
-  repeated PackagedObject items = 1;
+// ImageSummary contains details about a container image.
+message ImageSummary {
+  string image = 1;
+  string image_id = 2;
 }
