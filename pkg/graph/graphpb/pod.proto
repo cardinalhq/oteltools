@@ -36,7 +36,7 @@ message PodSummary {
 
 // PodSpec is the spec of a PodSummary.
 message PodSpec {
-  repeated PodContainerSummary containers = 1;
+  repeated PodContainerSpec containers = 1;
   string service_account_name = 2;
 }
 
@@ -47,12 +47,12 @@ message PodStatus {
   string phase = 3;
   google.protobuf.Timestamp started_at = 4;
   string phase_message = 5;
+  PodContainerStatus container_status = 6;
 }
 
 // PodContainerSummary summarizes a container within a Pod.
 message PodContainerSummary {
   PodContainerSpec spec = 1;
-  PodContainerStatus status = 2;
 }
 
 // PodContainerSpec is the spec of a PodContainerSummary.
@@ -66,9 +66,10 @@ message PodContainerSpec {
 
 // PodContainerStatus is the status of a PodContainerSummary.
 message PodContainerStatus {
-  bool ready = 1;
+  string name = 1;
+  bool ready = 2;
   // The "resources" field corresponds to the container resource requests.
-  bool is_image_pull_back_off = 2;
-  bool is_crash_loop_back_off = 3;
-  bool was_oom_killed = 4;
+  bool is_image_pull_back_off = 3;
+  bool is_crash_loop_back_off = 4;
+  bool was_oom_killed = 5;
 }
