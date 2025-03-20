@@ -47,7 +47,7 @@ message PodStatus {
   string phase = 3;
   google.protobuf.Timestamp started_at = 4;
   string phase_message = 5;
-  PodContainerStatus container_status = 6;
+  repeated PodContainerStatus container_status = 6;
 }
 
 // PodContainerSummary summarizes a container within a Pod.
@@ -58,7 +58,7 @@ message PodContainerSummary {
 // PodContainerSpec is the spec of a PodContainerSummary.
 message PodContainerSpec {
   string name = 1;
-  ImageSummary image = 2;
+  string image = 2;
   map<string, string> resources = 3;
   repeated string config_map_names = 4;
   repeated string secret_names = 5;
@@ -72,4 +72,5 @@ message PodContainerStatus {
   bool is_image_pull_back_off = 3;
   bool is_crash_loop_back_off = 4;
   bool was_oom_killed = 5;
+  ImageSummary image = 6;
 }

@@ -1,0 +1,81 @@
+// Copyright 2024-2025 CardinalHQ, Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package graphpb;
+
+option go_package = "github.com/cardinalhq/oteltools/pkg/graph/graphpb";
+
+import "base.proto";
+import "pod.proto";
+
+// AppsDaemonSetSummary summarizes a Kubernetes apps/v1 DaemonSet.
+message AppsDaemonSetSummary {
+  BaseObject base_object = 1;
+  AppsDaemonSetSpec spec = 2;
+  AppDaemonSetStatus status = 3;
+}
+
+// AppsDaemonSetSummarySpec is the spec of a AppsDaemonSetSummary.
+message AppsDaemonSetSpec {
+  int32 replicas = 1;
+
+  // "template" is the pod template of the DaemonSet.
+  AppsDaemonSetTemplate template = 2;
+
+  // "service_name" is the name of the service that governs the DaemonSet.
+  string service_name = 3;
+}
+
+// AppsDaemonSetSummaryStatus is the status of a AppsDaemonSetSummary.
+message AppsDaemonSetTemplate {
+  BaseObject metadata = 1;
+  PodSpec pod_spec = 2;
+}
+
+// AppDaemonSetStatus is the status of a Kubernetes apps/v1 DaemonSet.
+message AppDaemonSetStatus {
+	// The number of nodes that are running at least 1
+	// daemon pod and are supposed to run the daemon pod.
+	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
+  int32 current_number_scheduled = 1;
+
+ 	// The number of nodes that are running the daemon pod, but are
+	// not supposed to run the daemon pod.
+	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
+  int32 number_misscheduled = 2;
+
+	// The total number of nodes that should be running the daemon
+	// pod (including nodes correctly running the daemon pod).
+	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
+  int32 desired_number_scheduled = 3;
+
+	// numberReady is the number of nodes that should be running the daemon pod and have one
+	// or more of the daemon pod running with a Ready Condition.
+  int32 number_ready = 4;
+
+	// The total number of nodes that are running updated daemon pod
+  int32 updated_number_scheduled = 6;
+
+	// The number of nodes that should be running the
+	// daemon pod and have one or more of the daemon pod running and
+	// available (ready for at least spec.minReadySeconds)
+  int32 number_available = 7;
+
+	// The number of nodes that should be running the
+	// daemon pod and have none of the daemon pod running and available
+	// (ready for at least spec.minReadySeconds)
+  int32 number_unavailable = 8;
+}

@@ -32,12 +32,8 @@ message AppsDeploymentSummary {
 message AppsDeploymentSpec {
   int32 replicas = 1;
 
-  // "selector" corresponds to the pod labels used to identify the pods
-  // controlled by the Deployment.
-  map<string, string> selector = 2;
-
   // "template" is the pod template of the Deployment.
-  AppsDeploymentTemplate template = 3;
+  AppsDeploymentTemplate template = 2;
 }
 
 // AppsDeploymentSummaryStatus is the status of a AppsDeploymentSummary.
@@ -48,18 +44,20 @@ message AppsDeploymentTemplate {
 
 // AppDeploymentStatus is the status of a Kubernetes apps/v1 Deployment.
 message AppDeploymentStatus {
-  // "replicas" is the number of desired replicas in the Deployment.
+	// Total number of non-terminated pods targeted by this deployment (their labels match the selector).
   int32 replicas = 1;
 
-  // "ready_replicas" is the number of ready replicas in the Deployment.
-  int32 ready_replicas = 2;
+	// Total number of non-terminated pods targeted by this deployment that have the desired template spec.
+  int32 updated_replicas = 2;
 
-  // "available_replicas" is the number of available replicas in the Deployment.
-  int32 available_replicas = 3;
+	// readyReplicas is the number of pods targeted by this Deployment with a Ready Condition.
+  int32 ready_replicas = 3;
 
-  // "unavailable_replicas" is the number of unavailable replicas in the Deployment.
-  int32 unavailable_replicas = 4;
+	// Total number of available pods (ready for at least minReadySeconds) targeted by this deployment.
+  int32 available_replicas = 4;
 
-  // "updated_replicas" is the number of updated replicas in the Deployment.
-  int32 updated_replicas = 5;
+	// Total number of unavailable pods targeted by this deployment. This is the total number of
+	// pods that are still required for the deployment to have 100% available capacity. They may
+	// either be pods that are running but not yet available or pods that still have not been created.
+  int32 unavailable_replicas = 5;
 }
