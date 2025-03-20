@@ -18,12 +18,13 @@ package graphpb;
 
 option go_package = "github.com/cardinalhq/oteltools/pkg/graph/graphpb";
 
+import "apps_daemonset.proto";
+import "apps_deployment.proto";
+import "apps_replicaset.proto";
+import "apps_statefulset.proto";
+import "configmap.proto";
 import "pod.proto";
 import "secret.proto";
-import "configmap.proto";
-import "apps_deployment.proto";
-import "apps_statefulset.proto";
-import "apps_daemonset.proto";
 
 // PackagedObject represents an object with arbitrary attributes.
 message PackagedObject {
@@ -37,6 +38,7 @@ message PackagedObject {
     AppsDeploymentSummary apps_deployment_summary = 6;
     AppsStatefulSetSummary apps_stateful_set_summary = 7;
     AppsDaemonSetSummary apps_daemon_set_summary = 8;
+    AppsReplicaSetSummary apps_replica_set_summary = 9;
   }
 }
 
