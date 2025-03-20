@@ -22,6 +22,8 @@ import "pod.proto";
 import "secret.proto";
 import "configmap.proto";
 import "apps_deployment.proto";
+import "apps_statefulset.proto";
+import "apps_daemonset.proto";
 
 // PackagedObject represents an object with arbitrary attributes.
 message PackagedObject {
@@ -33,6 +35,8 @@ message PackagedObject {
     SecretSummary secret_summary = 4;
     ConfigMapSummary config_map_summary = 5;
     AppsDeploymentSummary apps_deployment_summary = 6;
+    AppsStatefulSetSummary apps_stateful_set_summary = 7;
+    AppsDaemonSetSummary apps_daemon_set_summary = 8;
   }
 }
 
