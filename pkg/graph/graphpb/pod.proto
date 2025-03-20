@@ -26,25 +26,49 @@ import "image.proto";
 // PodSummary summarizes a Kubernetes Pod.
 message PodSummary {
   BaseObject base_object = 1;
-  repeated PodContainerSummary containers = 2;
-  repeated string host_ips = 3;
-  repeated string pod_ips = 4;
-  string phase = 5;
-  google.protobuf.Timestamp started_at = 6;
-  string phase_message = 7;
-  string service_account_name = 8;
+
+  // "spec" is the spec of the Pod, which is static.
+  PodSpec spec = 2;
+
+  // "status" is the dynamic status of the Pod.
+  PodStatus status = 3;
+}
+
+// PodSpec is the spec of a PodSummary.
+message PodSpec {
+  repeated PodContainerSummary containers = 1;
+  string service_account_name = 2;
+}
+
+// PodStatus is the status of a PodSummary.
+message PodStatus {
+  repeated string host_ips = 1;
+  repeated string pod_ips = 2;
+  string phase = 3;
+  google.protobuf.Timestamp started_at = 4;
+  string phase_message = 5;
 }
 
 // PodContainerSummary summarizes a container within a Pod.
 message PodContainerSummary {
+  PodContainerSpec spec = 1;
+  PodContainerStatus status = 2;
+}
+
+// PodContainerSpec is the spec of a PodContainerSummary.
+message PodContainerSpec {
   string name = 1;
   ImageSummary image = 2;
-  bool ready = 3;
+  map<string, string> resources = 3;
+  repeated string config_map_names = 4;
+  repeated string secret_names = 5;
+}
+
+// PodContainerStatus is the status of a PodContainerSummary.
+message PodContainerStatus {
+  bool ready = 1;
   // The "resources" field corresponds to the container resource requests.
-  map<string, string> resources = 4;
-  repeated string config_map_names = 5;
-  repeated string secret_names = 6;
-  bool is_image_pull_back_off = 7;
-  bool is_crash_loop_back_off = 8;
-  bool was_oom_killed = 9;
+  bool is_image_pull_back_off = 2;
+  bool is_crash_loop_back_off = 3;
+  bool was_oom_killed = 4;
 }

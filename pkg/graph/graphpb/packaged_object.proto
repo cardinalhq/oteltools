@@ -18,9 +18,10 @@ package graphpb;
 
 option go_package = "github.com/cardinalhq/oteltools/pkg/graph/graphpb";
 
-import "pod_summary.proto";
-import "secret_summary.proto";
-import "configmap_summary.proto";
+import "pod.proto";
+import "secret.proto";
+import "configmap.proto";
+import "apps_deployment.proto";
 
 // PackagedObject represents an object with arbitrary attributes.
 message PackagedObject {
@@ -31,6 +32,7 @@ message PackagedObject {
     PodSummary pod_summary = 3;
     SecretSummary secret_summary = 4;
     ConfigMapSummary config_map_summary = 5;
+    AppsDeploymentSummary apps_deployment_summary = 6;
   }
 }
 
