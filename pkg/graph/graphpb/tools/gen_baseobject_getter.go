@@ -132,8 +132,10 @@ func NewPackagedObject(obj any, rla map[string]string, la map[string]string) *Pa
 	case *{{.FieldSelector}}:
 		result.Object = &{{.CaseType}}{ {{.FieldSelector}}: s }
 	{{- end }}
+	default:
+		return nil
 	}
-	return nil
+	return result
 }
 `
 	tmpl := template.Must(template.New("getbaseobject").Parse(codeTemplate))

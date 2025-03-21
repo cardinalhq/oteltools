@@ -58,6 +58,8 @@ func NewPackagedObject(obj any, rla map[string]string, la map[string]string) *Pa
 		result.Object = &PackagedObject_PodSummary{ PodSummary: s }
 	case *SecretSummary:
 		result.Object = &PackagedObject_SecretSummary{ SecretSummary: s }
+	default:
+		return nil
 	}
-	return nil
+	return result
 }
