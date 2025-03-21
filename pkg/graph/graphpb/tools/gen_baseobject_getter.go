@@ -153,8 +153,6 @@ func NewPackagedObject(obj any, rla map[string]string, la map[string]string) *Pa
 		fmt.Fprintf(os.Stderr, "error writing %s: %v\n", *output, err)
 		os.Exit(1)
 	}
-
-	fmt.Printf("Generated %s successfully.\n", *output)
 }
 
 // snakeToCamel converts a snake_case string to CamelCase.
