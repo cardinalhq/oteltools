@@ -19,3 +19,4 @@
 package graphpb
 
 //go:generate sh -c "protoc -I . --go_out=. --go_opt=paths=source_relative *.proto"
+//go:generate go run tools/gen_baseobject_getter.go -o baseobject_getter.go
