@@ -18,20 +18,20 @@ package graphpb
 
 func (po *PackagedObject) GetBaseObject() *BaseObject {
 	switch x := po.Object.(type) {
+	case *PackagedObject_AppsDaemonSetSummary:
+		return x.AppsDaemonSetSummary.BaseObject
+	case *PackagedObject_AppsDeploymentSummary:
+		return x.AppsDeploymentSummary.BaseObject
+	case *PackagedObject_AppsReplicaSetSummary:
+		return x.AppsReplicaSetSummary.BaseObject
+	case *PackagedObject_AppsStatefulSetSummary:
+		return x.AppsStatefulSetSummary.BaseObject
+	case *PackagedObject_ConfigMapSummary:
+		return x.ConfigMapSummary.BaseObject
 	case *PackagedObject_PodSummary:
 		return x.PodSummary.BaseObject
 	case *PackagedObject_SecretSummary:
 		return x.SecretSummary.BaseObject
-	case *PackagedObject_ConfigMapSummary:
-		return x.ConfigMapSummary.BaseObject
-	case *PackagedObject_AppsDeploymentSummary:
-		return x.AppsDeploymentSummary.BaseObject
-	case *PackagedObject_AppsStatefulSetSummary:
-		return x.AppsStatefulSetSummary.BaseObject
-	case *PackagedObject_AppsDaemonSetSummary:
-		return x.AppsDaemonSetSummary.BaseObject
-	case *PackagedObject_AppsReplicaSetSummary:
-		return x.AppsReplicaSetSummary.BaseObject
 	default:
 		return nil
 	}
@@ -44,20 +44,20 @@ func NewPackagedObject(obj any, rla map[string]string, la map[string]string) *Pa
 	}
 
 	switch s := obj.(type) {
-	case *PodSummary:
-		result.Object = &PackagedObject_PodSummary{PodSummary: s}
-	case *SecretSummary:
-		result.Object = &PackagedObject_SecretSummary{SecretSummary: s}
-	case *ConfigMapSummary:
-		result.Object = &PackagedObject_ConfigMapSummary{ConfigMapSummary: s}
 	case *AppsDaemonSetSummary:
-		result.Object = &PackagedObject_AppsDaemonSetSummary{AppsDaemonSetSummary: s}
+		result.Object = &PackagedObject_AppsDaemonSetSummary{ AppsDaemonSetSummary: s }
 	case *AppsDeploymentSummary:
-		result.Object = &PackagedObject_AppsDeploymentSummary{AppsDeploymentSummary: s}
+		result.Object = &PackagedObject_AppsDeploymentSummary{ AppsDeploymentSummary: s }
 	case *AppsReplicaSetSummary:
-		result.Object = &PackagedObject_AppsReplicaSetSummary{AppsReplicaSetSummary: s}
+		result.Object = &PackagedObject_AppsReplicaSetSummary{ AppsReplicaSetSummary: s }
 	case *AppsStatefulSetSummary:
-		result.Object = &PackagedObject_AppsStatefulSetSummary{AppsStatefulSetSummary: s}
+		result.Object = &PackagedObject_AppsStatefulSetSummary{ AppsStatefulSetSummary: s }
+	case *ConfigMapSummary:
+		result.Object = &PackagedObject_ConfigMapSummary{ ConfigMapSummary: s }
+	case *PodSummary:
+		result.Object = &PackagedObject_PodSummary{ PodSummary: s }
+	case *SecretSummary:
+		result.Object = &PackagedObject_SecretSummary{ SecretSummary: s }
 	}
 	return nil
 }

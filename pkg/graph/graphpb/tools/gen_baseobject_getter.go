@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -66,19 +67,23 @@ func main() {
 
 	// Build case data for each field (oneof case).
 	var cases []caseData
-	for i := 0; i < oneof.Fields().Len(); i++ {
+	for i := range oneof.Fields().Len() {
 		fd := oneof.Fields().Get(i)
 		// Assume the proto field name (e.g. "pod_summary") converts to CamelCase (e.g. "PodSummary").
 		innerFieldName := snakeToCamel(string(fd.Name()))
 		// The generated wrapper type is typically named "PackagedObject_<CamelCaseFieldName>".
 		wrapperTypeName := fmt.Sprintf("PackagedObject_%s", innerFieldName)
-		caseType := "*" + wrapperTypeName
+		caseType := wrapperTypeName
 
 		cases = append(cases, caseData{
 			CaseType:      caseType,
 			FieldSelector: innerFieldName,
 		})
 	}
+
+	slices.SortFunc(cases, func(i, j caseData) int {
+		return strings.Compare(i.CaseType, j.CaseType)
+	})
 
 	// Prepare the data for the template.
 	data := templateData{
@@ -108,7 +113,7 @@ package {{.PackageName}}
 func (po *PackagedObject) GetBaseObject() *BaseObject {
 	switch x := po.Object.(type) {
 	{{- range .Cases }}
-	case {{.CaseType}}:
+	case *{{.CaseType}}:
 		return x.{{.FieldSelector}}.BaseObject
 	{{- end }}
 	default:
@@ -123,20 +128,10 @@ func NewPackagedObject(obj any, rla map[string]string, la map[string]string) *Pa
 	}
 
 	switch s := obj.(type) {
-	case *PodSummary:
-		result.Object = &PackagedObject_PodSummary{PodSummary: s}
-	case *SecretSummary:
-		result.Object = &PackagedObject_SecretSummary{SecretSummary: s}
-	case *ConfigMapSummary:
-		result.Object = &PackagedObject_ConfigMapSummary{ConfigMapSummary: s}
-	case *AppsDaemonSetSummary:
-		result.Object = &PackagedObject_AppsDaemonSetSummary{AppsDaemonSetSummary: s}
-	case *AppsDeploymentSummary:
-		result.Object = &PackagedObject_AppsDeploymentSummary{AppsDeploymentSummary: s}
-	case *AppsReplicaSetSummary:
-		result.Object = &PackagedObject_AppsReplicaSetSummary{AppsReplicaSetSummary: s}
-	case *AppsStatefulSetSummary:
-		result.Object = &PackagedObject_AppsStatefulSetSummary{AppsStatefulSetSummary: s}
+	{{- range .Cases }}
+	case *{{.FieldSelector}}:
+		result.Object = &{{.CaseType}}{ {{.FieldSelector}}: s }
+	{{- end }}
 	}
 	return nil
 }
