@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/cardinalhq/oteltools/pkg/chqpb"
+	"github.com/cardinalhq/oteltools/pkg/syncmap"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"golang.org/x/exp/slog"
@@ -36,17 +37,17 @@ const (
 )
 
 type ResourceEntity struct {
+	sync.Mutex
 	AttributeName string               `json:"-"`
 	Name          string               `json:"name"`
 	Type          string               `json:"type"`
 	Attributes    map[string]string    `json:"attributes"`
 	Edges         map[string]*EdgeInfo `json:"edges"`
 	lastSeen      int64
-	mu            sync.Mutex
 }
 
 type ResourceEntityCache struct {
-	entityMap sync.Map
+	entityMap syncmap.SyncMap[string, *ResourceEntity]
 }
 
 func NewResourceEntityCache() *ResourceEntityCache {
@@ -60,34 +61,33 @@ func toEntityId(name, entityType string) string {
 func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType string, attributes map[string]string) (*ResourceEntity, bool) {
 	entityId := toEntityId(entityName, entityType)
 
-	if entity, exists := ec.entityMap.Load(entityId); exists {
-		re := entity.(*ResourceEntity)
-		re.mu.Lock()
-		re.lastSeen = now()
+	if current, replaced, _ := ec.entityMap.ReplaceFunc(entityId, func(current *ResourceEntity) (*ResourceEntity, error) {
+		current.Lock()
+		current.lastSeen = now()
 		for key, value := range attributes {
-			re.PutAttribute(key, value)
+			current.PutAttribute(key, value)
 		}
-		re.mu.Unlock()
-		return re, false
+		current.Unlock()
+		return current, nil
+	}); replaced {
+		return current, false
 	}
 
-	newEntity := &ResourceEntity{
-		AttributeName: attributeName,
-		Name:          entityName,
-		Type:          entityType,
-		Attributes:    make(map[string]string),
-		Edges:         make(map[string]*EdgeInfo),
-		lastSeen:      now(),
-	}
-
-	entity, loaded := ec.entityMap.LoadOrStore(entityId, newEntity)
-	re := entity.(*ResourceEntity)
-	re.mu.Lock()
-	for key, value := range attributes {
-		re.PutAttribute(key, value)
-	}
-	re.mu.Unlock()
-	return re, !loaded
+	entity, created, _ := ec.entityMap.LoadOrStoreFunc(entityId, func() (*ResourceEntity, error) {
+		newEntity := &ResourceEntity{
+			AttributeName: attributeName,
+			Name:          entityName,
+			Type:          entityType,
+			Attributes:    make(map[string]string),
+			Edges:         make(map[string]*EdgeInfo),
+			lastSeen:      now(),
+		}
+		for key, value := range attributes {
+			newEntity.PutAttribute(key, value)
+		}
+		return newEntity, nil
+	})
+	return entity, created
 }
 
 func (ec *ResourceEntityCache) PutEntityObject(entity *ResourceEntity) {
@@ -98,8 +98,8 @@ func (ec *ResourceEntityCache) PutEntityObject(entity *ResourceEntity) {
 func (ec *ResourceEntityCache) _allEntities() map[string]*ResourceEntity {
 	entities := make(map[string]*ResourceEntity)
 
-	ec.entityMap.Range(func(key, value interface{}) bool {
-		entities[key.(string)] = value.(*ResourceEntity)
+	ec.entityMap.Range(func(key string, value *ResourceEntity) bool {
+		entities[key] = value
 		return true
 	})
 
@@ -110,9 +110,9 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 	var batch [][]byte
 
 	currentTime := now()
-	ec.entityMap.Range(func(key, value interface{}) bool {
-		entity := value.(*ResourceEntity)
-		entity.mu.Lock()
+	ec.entityMap.RemoveIf(func(key string, entity *ResourceEntity) bool {
+		entity.Lock()
+		defer entity.Unlock()
 		edges := make(map[string]string)
 		for k, v := range entity.Edges {
 			if currentTime-v.LastSeen > defaultExpiry {
@@ -122,8 +122,6 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 			edges[k] = v.Relationship
 		}
 		if currentTime-entity.lastSeen > defaultExpiry {
-			entity.mu.Unlock()
-			ec.entityMap.Delete(key)
 			return true
 		}
 		protoEntity := &chqpb.ResourceEntityProto{
@@ -136,8 +134,7 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 		if err == nil {
 			batch = append(batch, serialized)
 		}
-		entity.mu.Unlock()
-		return true
+		return false
 	})
 
 	serialized, err := proto.Marshal(&chqpb.ResourceEntityProtoList{Entities: batch})
@@ -223,11 +220,11 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 
 	for entityInfo, entity := range matches {
 		for _, attributeName := range entityInfo.AttributeNames {
-			entity.mu.Lock()
+			entity.Lock()
 			if v, exists := attributes.Get(attributeName); exists {
 				entity.PutAttribute(attributeName, v.AsString())
 			}
-			entity.mu.Unlock()
+			entity.Unlock()
 		}
 		if len(entityInfo.AttributePrefixes) > 0 {
 			attributes.Range(func(k string, v pcommon.Value) bool {
@@ -251,7 +248,7 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 	for _, parentEntity := range globalEntityMap {
 		if entityInfo, exists := EntityRelationships[parentEntity.AttributeName]; exists {
 
-			parentEntity.mu.Lock()
+			parentEntity.Lock()
 			for childKey, relationship := range entityInfo.Relationships {
 				if childEntity, childExists := globalEntityMap[childKey]; childExists {
 					parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
@@ -269,82 +266,7 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 					}
 				}
 			}
-			parentEntity.mu.Unlock()
+			parentEntity.Unlock()
 		}
-	}
-}
-
-func (ec *ResourceEntityCache) ProvisionStatefulSet(statefulSet *K8SStatefulSetObject) {
-	entityAttrs := make(map[string]string)
-	for resourceName, resourceValue := range statefulSet.Attributes {
-		entityAttrs[resourceName] = resourceValue
-	}
-
-	serviceEntity, _ := ec.PutEntity(string(semconv.ServiceNameKey), statefulSet.Name, Service, make(map[string]string))
-	statefulSetEntity, _ := ec.PutEntity(string(semconv.K8SStatefulSetNameKey), statefulSet.Name, KubernetesStatefulSet, entityAttrs)
-	if serviceEntity != nil && statefulSetEntity != nil {
-		serviceEntity.mu.Lock()
-		serviceEntity.AddEdge(statefulSet.Name, KubernetesStatefulSet, IsManagedByStatefulSet)
-		serviceEntity.mu.Unlock()
-	}
-}
-
-func (ec *ResourceEntityCache) ProvisionDeployment(deployment *K8SDeploymentObject) {
-	if deployment.Name != "" {
-		entityAttrs := make(map[string]string)
-		entityAttrs["replicasAvailable"] = string(rune(deployment.ReplicasAvailable))
-		entityAttrs["replicasDesired"] = string(rune(deployment.ReplicasDesired))
-		entityAttrs["replicasUpdated"] = string(rune(deployment.ReplicasUpdated))
-		entityAttrs["deploymentStatus"] = deployment.DeploymentStatus
-		entityAttrs["progressMessage"] = deployment.ProgressMessage
-
-		serviceEntity, _ := ec.PutEntity(string(semconv.ServiceNameKey), deployment.Name, Service, make(map[string]string))
-		deploymentEntity, _ := ec.PutEntity(string(semconv.K8SDeploymentNameKey), deployment.Name, KubernetesDeployment, entityAttrs)
-		if serviceEntity != nil && deploymentEntity != nil {
-			serviceEntity.mu.Lock()
-			serviceEntity.AddEdge(deployment.Name, KubernetesDeployment, IsManagedByDeployment)
-			serviceEntity.mu.Unlock()
-		}
-	}
-}
-
-func (ec *ResourceEntityCache) ProvisionPod(podObject *K8SPodObject) {
-	entityAttrs := make(map[string]string)
-	for labelName, labelValue := range podObject.Labels {
-		entityAttrs[labelName] = labelValue
-	}
-	for resourceName, resourceValue := range podObject.Resources {
-		entityAttrs[resourceName] = resourceValue
-	}
-	entityAttrs[ContainerImageName] = podObject.ImageID
-	entityAttrs[K8SPodIp] = podObject.PodIP
-	entityAttrs[HostIp] = podObject.HostIP
-	entityAttrs[PodPhase] = podObject.Phase
-	if podObject.PendingReason != "" {
-		entityAttrs[PendingReason] = podObject.PendingReason
-	}
-	podEntity, _ := ec.PutEntity(string(semconv.K8SPodNameKey), podObject.Name, KubernetesPod, entityAttrs)
-
-	var parentAttributeName, parentEntityType string
-	switch podObject.OwnerRefKind {
-	case "ReplicaSet":
-		parentAttributeName = string(semconv.K8SReplicaSetNameKey)
-		parentEntityType = KubernetesReplicaSet
-
-	case "StatefulSet":
-		parentAttributeName = string(semconv.K8SStatefulSetNameKey)
-		parentEntityType = KubernetesStatefulSet
-
-	case "DaemonSet":
-		parentAttributeName = string(semconv.K8SDaemonSetNameKey)
-		parentEntityType = KubernetesDaemonSet
-	default:
-	}
-
-	if parentAttributeName != "" {
-		parentEntity, _ := ec.PutEntity(parentAttributeName, podObject.OwnerRefName, parentEntityType, make(map[string]string))
-		parentEntity.mu.Lock()
-		podEntity.AddEdge(parentEntity.Name, parentEntity.Type, IsAPodFor)
-		parentEntity.mu.Unlock()
 	}
 }
