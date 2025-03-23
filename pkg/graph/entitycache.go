@@ -15,6 +15,7 @@
 package graph
 
 import (
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +40,8 @@ const (
 type ResourceEntity struct {
 	sync.Mutex
 	AttributeName string               `json:"-"`
+	ClusterName   string               `json:"clusterName"`
+	Namespace     string               `json:"namespace"`
 	Name          string               `json:"name"`
 	Type          string               `json:"type"`
 	Attributes    map[string]string    `json:"attributes"`
@@ -54,14 +57,19 @@ func NewResourceEntityCache() *ResourceEntityCache {
 	return &ResourceEntityCache{}
 }
 
-func toEntityId(name, entityType string) string {
-	return name + "|" + entityType
+func (re *ResourceEntity) ToEntityID() string {
+	return toEntityId(re.ClusterName, re.Namespace, re.Name, re.Type)
 }
 
-func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType string, attributes map[string]string) (*ResourceEntity, bool) {
-	entityId := toEntityId(entityName, entityType)
+func toEntityId(cluster, namespace, name, entityType string) string {
+	return cluster + "|" + namespace + "|" + name + "|" + entityType
+}
+
+func (ec *ResourceEntityCache) PutEntity(attributeName, cluster, namespace, entityName, entityType string, attributes map[string]string) (*ResourceEntity, bool) {
+	entityId := toEntityId(cluster, namespace, entityName, entityType)
 
 	if current, replaced, _ := ec.entityMap.ReplaceFunc(entityId, func(current *ResourceEntity) (*ResourceEntity, error) {
+		log.Printf("Updating entity %s", entityId)
 		current.Lock()
 		current.lastSeen = now()
 		for key, value := range attributes {
@@ -74,6 +82,7 @@ func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType s
 	}
 
 	entity, created, _ := ec.entityMap.LoadOrStoreFunc(entityId, func() (*ResourceEntity, error) {
+		log.Printf("Creating entity %s", entityId)
 		newEntity := &ResourceEntity{
 			AttributeName: attributeName,
 			Name:          entityName,
@@ -91,8 +100,7 @@ func (ec *ResourceEntityCache) PutEntity(attributeName, entityName, entityType s
 }
 
 func (ec *ResourceEntityCache) PutEntityObject(entity *ResourceEntity) {
-	entityId := toEntityId(entity.Name, entity.Type)
-	ec.entityMap.Store(entityId, entity)
+	ec.entityMap.Store(entity.ToEntityID(), entity)
 }
 
 func (ec *ResourceEntityCache) _allEntities() map[string]*ResourceEntity {
@@ -125,10 +133,12 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 			return true
 		}
 		protoEntity := &chqpb.ResourceEntityProto{
-			Name:       entity.Name,
-			Type:       entity.Type,
-			Attributes: entity.Attributes,
-			Edges:      edges,
+			ClusterName: entity.ClusterName,
+			Namespace:   entity.Namespace,
+			Type:        entity.Type,
+			Name:        entity.Name,
+			Attributes:  entity.Attributes,
+			Edges:       edges,
 		}
 		serialized, err := proto.Marshal(protoEntity)
 		if err == nil {
@@ -145,14 +155,14 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 	return []byte{}
 }
 
-func (re *ResourceEntity) AddEdge(targetName, targetType, relationship string) {
+func (re *ResourceEntity) AddEdge(cluster, namespace, targetName, targetType, relationship string) {
 	if re.Edges == nil {
 		re.Edges = make(map[string]*EdgeInfo)
 	}
-	if edgeInfo, exists := re.Edges[toEntityId(targetName, targetType)]; exists {
+	if edgeInfo, exists := re.Edges[toEntityId(cluster, namespace, targetName, targetType)]; exists {
 		edgeInfo.LastSeen = now()
 	} else {
-		re.Edges[toEntityId(targetName, targetType)] = &EdgeInfo{
+		re.Edges[toEntityId(cluster, namespace, targetName, targetType)] = &EdgeInfo{
 			Relationship: relationship,
 			LastSeen:     now(),
 		}
@@ -180,6 +190,9 @@ func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Ma
 
 	ec.provisionEntities(attributes, entityMap)
 	ec.provisionRelationships(entityMap, attributes)
+	for key := range entityMap {
+		log.Printf("ProvisionResourceAttributes: key %s", key)
+	}
 	return entityMap
 }
 
@@ -189,8 +202,27 @@ func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[s
 		newEntityMap[string(semconv.ServiceNameKey)] = serviceEntity
 	}
 	if len(newEntityMap) > 0 {
+		for key := range newEntityMap {
+			log.Printf("ProvisionRecordAttributes: key %s", key)
+		}
 		ec.provisionRelationships(newEntityMap, recordAttributes)
 	}
+}
+
+func clusterFromAttributes(attributes pcommon.Map) string {
+	cluster, clusterFound := attributes.Get(string(semconv.K8SClusterNameKey))
+	if clusterFound {
+		return cluster.AsString()
+	}
+	return ""
+}
+
+func namespaceFromAttributes(attributes pcommon.Map) string {
+	namespace, namespaceFound := attributes.Get(string(semconv.K8SNamespaceNameKey))
+	if namespaceFound {
+		return namespace.AsString()
+	}
+	return ""
 }
 
 func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityMap map[string]*ResourceEntity) map[string]*ResourceEntity {
@@ -198,6 +230,8 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 	newEntities := make(map[string]*ResourceEntity)
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		entityName := v.AsString()
+		cluster := clusterFromAttributes(attributes)
+		namespace := namespaceFromAttributes(attributes)
 		if entityInfo, exists := EntityRelationships[k]; exists && entityName != "" {
 			if entityInfo.ShouldCreateCallBack != nil {
 				if !entityInfo.ShouldCreateCallBack(attributes) {
@@ -208,7 +242,7 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 			if entityInfo.NameTransformer != nil {
 				entityName = entityInfo.NameTransformer(entityName)
 			}
-			entity, isNewEntity := ec.PutEntity(k, entityName, entityInfo.Type, entityAttrs)
+			entity, isNewEntity := ec.PutEntity(k, cluster, namespace, entityName, entityInfo.Type, entityAttrs)
 			if isNewEntity {
 				newEntities[k] = entity
 			}
@@ -245,13 +279,18 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 }
 
 func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
+	for key, entity := range globalEntityMap {
+		log.Printf("provisionRelationships: incoming key %s, entity key %s", key, entity.ToEntityID())
+	}
 	for _, parentEntity := range globalEntityMap {
 		if entityInfo, exists := EntityRelationships[parentEntity.AttributeName]; exists {
-
 			parentEntity.Lock()
 			for childKey, relationship := range entityInfo.Relationships {
 				if childEntity, childExists := globalEntityMap[childKey]; childExists {
-					parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
+					parentID := parentEntity.ToEntityID()
+					childID := childEntity.ToEntityID()
+					log.Printf("Adding edge from parent %s to %s with relationship %s", parentID, childID, relationship)
+					parentEntity.AddEdge(childEntity.ClusterName, childEntity.Namespace, childEntity.Name, childEntity.Type, relationship)
 				}
 			}
 
@@ -261,7 +300,8 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 					if childEntity, childExists := globalEntityMap[childKey]; childExists {
 						relationship := deriveRelationshipCallback(recordAttributes)
 						if relationship != "" {
-							parentEntity.AddEdge(childEntity.Name, childEntity.Type, relationship)
+							log.Printf("Adding edge from %s to %s with relationship %s (via callback)", parentEntity.AttributeName, childKey, relationship)
+							parentEntity.AddEdge(childEntity.ClusterName, childEntity.Namespace, childEntity.Name, childEntity.Type, relationship)
 						}
 					}
 				}
