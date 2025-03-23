@@ -39,8 +39,9 @@ type caseData struct {
 
 // templateData holds the data passed to the generation template.
 type templateData struct {
-	PackageName string
-	Cases       []caseData
+	PackageName     string
+	BaseObjectCases []caseData
+	AllObjectCases  []caseData
 }
 
 func main() {
@@ -66,29 +67,43 @@ func main() {
 	}
 
 	// Build case data for each field (oneof case).
-	var cases []caseData
+	var baseObjectCases []caseData
+	var allObjectCases []caseData
 	for i := range oneof.Fields().Len() {
 		fd := oneof.Fields().Get(i)
 		// Assume the proto field name (e.g. "pod_summary") converts to CamelCase (e.g. "PodSummary").
 		innerFieldName := snakeToCamel(string(fd.Name()))
-		// The generated wrapper type is typically named "PackagedObject_<CamelCaseFieldName>".
-		wrapperTypeName := fmt.Sprintf("PackagedObject_%s", innerFieldName)
-		caseType := wrapperTypeName
 
-		cases = append(cases, caseData{
-			CaseType:      caseType,
+		ncase := caseData{
+			CaseType:      fmt.Sprintf("PackagedObject_%s", innerFieldName),
 			FieldSelector: innerFieldName,
-		})
+		}
+		allObjectCases = append(allObjectCases, ncase)
+
+		// If the inner message has a BaseObject field, add it to the baseObjectCases.
+		innerDesc := fd.Message()
+		if innerDesc == nil {
+			fmt.Fprintf(os.Stderr, "field %s is not a message type\n", fd.Name())
+			os.Exit(1)
+		}
+		if innerDesc.Fields().ByName("base_object") == nil {
+			continue
+		}
+		baseObjectCases = append(baseObjectCases, ncase)
 	}
 
-	slices.SortFunc(cases, func(i, j caseData) int {
+	slices.SortFunc(baseObjectCases, func(i, j caseData) int {
+		return strings.Compare(i.CaseType, j.CaseType)
+	})
+	slices.SortFunc(allObjectCases, func(i, j caseData) int {
 		return strings.Compare(i.CaseType, j.CaseType)
 	})
 
 	// Prepare the data for the template.
 	data := templateData{
-		PackageName: "graphpb",
-		Cases:       cases,
+		PackageName:     "graphpb",
+		BaseObjectCases: baseObjectCases,
+		AllObjectCases:  allObjectCases,
 	}
 
 	// Define the template.
@@ -112,7 +127,7 @@ package {{.PackageName}}
 
 func (po *PackagedObject) GetBaseObject() *BaseObject {
 	switch x := po.Object.(type) {
-	{{- range .Cases }}
+	{{- range .BaseObjectCases }}
 	case *{{.CaseType}}:
 		return x.{{.FieldSelector}}.BaseObject
 	{{- end }}
@@ -128,7 +143,7 @@ func NewPackagedObject(obj any, rla map[string]string, la map[string]string) *Pa
 	}
 
 	switch s := obj.(type) {
-	{{- range .Cases }}
+	{{- range .AllObjectCases }}
 	case *{{.FieldSelector}}:
 		result.Object = &{{.CaseType}}{ {{.FieldSelector}}: s }
 	{{- end }}
