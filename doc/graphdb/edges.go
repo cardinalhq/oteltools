@@ -19,6 +19,8 @@ const (
 	NodeTypeK8SSecret      NodeType = "k8s.secret"
 	NodeTypeK8SNamespace   NodeType = "k8s.namespace"
 	NodeTypeK8SNode        NodeType = "k8s.node"
+	NodeTypeDatabase       NodeType = "chq.database.db"
+	NodeTypeDatabaseHost   NodeType = "chq.database.host"
 	NodeTypeCHQService     NodeType = "chq.service"
 )
 
@@ -45,6 +47,9 @@ const (
 	RelationshipIsPartOf Relationship = "is part of"
 
 	RelationshipContains Relationship = "contains"
+
+	RelationshipQueriesDatabase Relationship = "queries database"
+	RelationshipIsQueriedBy     Relationship = "is queried by"
 )
 
 type DetectionType string
@@ -78,6 +83,8 @@ var NodeStyles = map[NodeType]NodeStyle{
 	NodeTypeK8SNamespace:   NodeStyleVirtual,
 	NodeTypeK8SNode:        NodeStyleReal,
 
+	NodeTypeDatabase: NodeStyleVirtual,
+
 	NodeTypeCHQService: NodeStyleVirtual,
 }
 
@@ -98,6 +105,8 @@ var Edges = []Edge{
 	{NodeTypeK8SPod, NodeTypeCHQService, RelationshipPartOf, DetectionTypeDirect},
 	{NodeTypeK8SPod, NodeTypeK8SNamespace, RelationshipPartOf, DetectionTypeDirect},
 	{NodeTypeK8SPod, NodeTypeK8SNode, RelationshipHostedOn, DetectionTypeDirect},
+	{NodeTypeK8SPod, NodeTypeDatabase, RelationshipQueriesDatabase, DetectionTypeDirect},
+	{NodeTypeK8SPod, NodeTypeDatabaseHost, RelationshipUses, DetectionTypeDirect},
 
 	{NodeTypeK8SReplicaSet, NodeTypeK8SDeployment, RelationshipManagedBy, DetectionTypeDirect},
 	{NodeTypeK8SReplicaSet, NodeTypeK8SPod, RelationshipManages, DetectionTypeCalculated},
@@ -174,6 +183,12 @@ var Edges = []Edge{
 	{NodeTypeK8SNamespace, NodeTypeK8SSecret, RelationshipContains, DetectionTypeCalculated},
 
 	{NodeTypeK8SNode, NodeTypeK8SPod, RelationshipHosts, DetectionTypeCalculated},
+
+	{NodeTypeDatabase, NodeTypeK8SPod, RelationshipIsQueriedBy, DetectionTypeCalculated},
+	{NodeTypeDatabase, NodeTypeDatabaseHost, RelationshipHostedOn, DetectionTypeDirect},
+
+	{NodeTypeDatabaseHost, NodeTypeDatabase, RelationshipHosts, DetectionTypeCalculated},
+	{NodeTypeDatabaseHost, NodeTypeK8SPod, RelationshipHostedOn, DetectionTypeCalculated},
 }
 
 type edgeKey struct {
@@ -197,7 +212,7 @@ func main() {
 	fmt.Println(`  fontname="sans-serif";`)
 	fmt.Println(`  nodesep=0.6;`)
 	fmt.Println(`  ranksep=0.8;`)
-	fmt.Println(`  node [fontname="sans-serif", width=1.5, height=0.8, fixedsize=true];`)
+	fmt.Println(`  node [fontname="sans-serif"];`)
 	fmt.Println(`  edge [fontname="sans-serif", penwidth=2, arrowsize=1.5];`)
 	fmt.Println()
 
