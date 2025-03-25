@@ -15,7 +15,6 @@
 package graph
 
 import (
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -300,7 +299,7 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 					if childEntity, childExists := globalEntityMap[childKey]; childExists {
 						relationship := deriveRelationshipCallback(recordAttributes)
 						if relationship != "" {
-							log.Printf("Adding edge from %s to %s with relationship %s (via callback)", parentEntity.AttributeName, childKey, relationship)
+							//log.Printf("Adding edge from %s to %s with relationship %s (via callback)", parentEntity.AttributeName, childKey, relationship)
 							parentEntity.AddEdge(childEntity.ClusterName, childEntity.Namespace, childEntity.Name, childEntity.Type, relationship)
 						}
 					}
