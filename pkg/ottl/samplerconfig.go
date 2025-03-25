@@ -14,6 +14,8 @@
 
 package ottl
 
+import "time"
+
 //
 // NOTE!
 // These must use YAML tags.  JSON tags are optional, but will be used if rendered/parsed as JSON.
@@ -42,6 +44,7 @@ type TenantConfig struct {
 	ExtractMetrics    map[string]*ExtractMetricsProcessorConfig `json:"extract_metrics,omitempty" yaml:"extract_metrics,omitempty"`
 	FingerprintConfig FingerprintConfig                         `json:"fingerprint_config,omitempty" yaml:"fingerprint_config,omitempty"`
 	MissingDataConfig map[string]*MissingDataConfig             `json:"missing_data_config,omitempty" yaml:"missing_data_config,omitempty"`
+	SyntheticPollings map[string]*SyntheticPollingConfig        `json:"synthetic_pollings,omitempty" yaml:"synthetic_pollings,omitempty"`
 }
 
 type PitbullProcessorConfig struct {
@@ -118,4 +121,17 @@ type MissingDataMetric struct {
 	Name               string   `json:"name,omitempty" yaml:"name,omitempty"`
 	Attributes         []string `json:"attributes,omitempty" yaml:"attributes,omitempty"`
 	ResourceAttributes []string `json:"resource_attributes,omitempty" yaml:"resource_attributes,omitempty"`
+}
+
+type SyntheticPollingConfig struct {
+	Interval time.Duration            `json:"interval,omitempty" yaml:"interval,omitempty"`
+	Timeout  time.Duration            `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	Targets  []SyntheticPollingTarget `json:"targets,omitempty" yaml:"targets,omitempty"`
+}
+
+type SyntheticPollingTarget struct {
+	Endpoint string            `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	Method   string            `json:"method,omitempty" yaml:"method,omitempty"`
+	Headers  map[string]string `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Timeout  time.Duration     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
