@@ -69,7 +69,7 @@ func (ec *ResourceEntityCache) PutEntity(attributeName, cluster, namespace, enti
 	entityId := toEntityId(cluster, namespace, entityName, entityType)
 
 	if current, replaced, _ := ec.entityMap.ReplaceFunc(entityId, func(current *ResourceEntity) (*ResourceEntity, error) {
-		log.Printf("Updating entity %s", entityId)
+		//log.Printf("Updating entity %s", entityId)
 		current.Lock()
 		current.lastSeen = now()
 		for key, value := range attributes {
@@ -82,7 +82,7 @@ func (ec *ResourceEntityCache) PutEntity(attributeName, cluster, namespace, enti
 	}
 
 	entity, created, _ := ec.entityMap.LoadOrStoreFunc(entityId, func() (*ResourceEntity, error) {
-		log.Printf("Creating entity %s", entityId)
+		//log.Printf("Creating entity %s", entityId)
 		newEntity := &ResourceEntity{
 			AttributeName: attributeName,
 			Name:          entityName,
