@@ -15,6 +15,7 @@
 package graph
 
 import (
+	"fmt"
 	"github.com/cardinalhq/oteltools/pkg/ottl/functions"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -30,6 +31,7 @@ const (
 	BelongsToZone            = "belongs to zone"
 	CallsEndpoint            = "calls endpoint"
 	ConsumesFrom             = "consumes from"
+	ExecutesQuery            = "executes query"
 	ContainsAvailabilityZone = "contains availability zone"
 	ContainsContainer        = "contains container"
 	ContainsNamespace        = "contains namespace"
@@ -249,7 +251,6 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SJobNameKey):                 IsManagedByJob,
 			string(semconv.K8SNamespaceNameKey):           BelongsToNamespace,
 			string(semconv.DBNamespaceKey):                UsesDatabase,
-			string(semconv.DBCollectionNameKey):           UsesDatabaseCollection,
 			string(semconv.MessagingConsumerGroupNameKey): ConsumesFrom,
 			string(semconv.K8SNodeNameKey):                IsHostedOnNode,
 			string(semconv.K8SClusterNameKey):             IsDeployedOnCluster,
@@ -266,6 +267,13 @@ var EntityRelationships = RelationshipMap{
 		},
 		AttributePrefixes: []string{},
 		DeriveRelationshipCallbacks: map[string]func(m pcommon.Map) string{
+			string(semconv.DBCollectionNameKey): func(m pcommon.Map) string {
+				dbQuery, dbQueryFound := m.Get(string(semconv.DBQueryTextKey))
+				if dbQueryFound {
+					return fmt.Sprintf("%s %s", ExecutesQuery, dbQuery.AsString())
+				}
+				return UsesDatabaseCollection
+			},
 			string(semconv.MessagingDestinationNameKey): func(m pcommon.Map) string {
 				_, mcgVFound := m.Get(string(semconv.MessagingConsumerGroupNameKey))
 				if mcgVFound {
