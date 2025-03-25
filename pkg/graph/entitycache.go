@@ -190,9 +190,9 @@ func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Ma
 
 	ec.provisionEntities(attributes, entityMap)
 	ec.provisionRelationships(entityMap, attributes)
-	for key := range entityMap {
-		log.Printf("ProvisionResourceAttributes: key %s", key)
-	}
+	//for key := range entityMap {
+	//	log.Printf("ProvisionResourceAttributes: key %s", key)
+	//}
 	return entityMap
 }
 
@@ -202,9 +202,9 @@ func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[s
 		newEntityMap[string(semconv.ServiceNameKey)] = serviceEntity
 	}
 	if len(newEntityMap) > 0 {
-		for key := range newEntityMap {
-			log.Printf("ProvisionRecordAttributes: key %s", key)
-		}
+		//for key := range newEntityMap {
+		//	log.Printf("ProvisionRecordAttributes: key %s", key)
+		//}
 		ec.provisionRelationships(newEntityMap, recordAttributes)
 	}
 }
@@ -279,17 +279,17 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 }
 
 func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
-	for key, entity := range globalEntityMap {
-		log.Printf("provisionRelationships: incoming key %s, entity key %s", key, entity.ToEntityID())
-	}
+	//for key, entity := range globalEntityMap {
+	//	log.Printf("provisionRelationships: incoming key %s, entity key %s", key, entity.ToEntityID())
+	//}
 	for _, parentEntity := range globalEntityMap {
 		if entityInfo, exists := EntityRelationships[parentEntity.AttributeName]; exists {
 			parentEntity.Lock()
 			for childKey, relationship := range entityInfo.Relationships {
 				if childEntity, childExists := globalEntityMap[childKey]; childExists {
-					parentID := parentEntity.ToEntityID()
-					childID := childEntity.ToEntityID()
-					log.Printf("Adding edge from parent %s to %s with relationship %s", parentID, childID, relationship)
+					//parentID := parentEntity.ToEntityID()
+					//childID := childEntity.ToEntityID()
+					//log.Printf("Adding edge from parent %s to %s with relationship %s", parentID, childID, relationship)
 					parentEntity.AddEdge(childEntity.ClusterName, childEntity.Namespace, childEntity.Name, childEntity.Type, relationship)
 				}
 			}
