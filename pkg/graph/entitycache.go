@@ -60,7 +60,7 @@ func (e *EntityId) toProto() *chqpb.ResourceEntityId {
 	}
 }
 
-func ToEntityId(resourceEntityId *chqpb.ResourceEntityId) (string, error) {
+func ComputeHash(resourceEntityId *chqpb.ResourceEntityId) (string, error) {
 	var b strings.Builder
 	b.WriteString(resourceEntityId.Name)
 	b.WriteString("|")
