@@ -37,14 +37,15 @@ func assertEntityExists(t *testing.T, entities map[string]*ResourceEntity, name,
 	for i := 0; i < len(otherAttributes); i += 2 {
 		entityId.IdAttributes[otherAttributes[i]] = otherAttributes[i+1]
 	}
-	entity, exists := entities[entityId.toKey()]
-	assert.True(t, exists, "Expected entity %s not found", entityId.toKey())
+	entityId.Hash = computeHash(&entityId)
+	entity, exists := entities[entityId.Hash]
+	assert.True(t, exists, "Expected entity %s not found", entityId.Hash)
 	return entity
 }
 
 func assertEdgeExists(t *testing.T, entity *ResourceEntity, toEntityId *EntityId, relationship string) {
-	actualRelationship, exists := entity.Edges[toEntityId.toKey()]
-	assert.True(t, exists, "Expected edge to %s not found", toEntityId.toKey())
+	actualRelationship, exists := entity.Edges[toEntityId.Hash]
+	assert.True(t, exists, "Expected edge to %s not found", toEntityId.Hash)
 	assert.Equal(t, relationship, actualRelationship.Relationship)
 }
 
@@ -269,7 +270,7 @@ func TestIfWeSkipBotTraffic(t *testing.T) {
 		Name: "robots.txt",
 		Type: Endpoint,
 	}
-	_, endpointExists := entities[endpointId.toKey()]
+	_, endpointExists := entities[endpointId.Hash]
 	assert.False(t, endpointExists, "Did not expect entity %s to exist", endpointId)
 
 	recordAttributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), 200)

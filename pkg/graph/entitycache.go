@@ -43,6 +43,7 @@ type EntityId struct {
 	Name         string
 	Type         string
 	IdAttributes map[string]string
+	Hash         string
 }
 
 func (e *EntityId) toProto() *chqpb.ResourceEntityId {
@@ -60,34 +61,7 @@ func (e *EntityId) toProto() *chqpb.ResourceEntityId {
 	}
 }
 
-func ComputeHash(resourceEntityId *chqpb.ResourceEntityId) (string, error) {
-	var b strings.Builder
-	b.WriteString(resourceEntityId.Name)
-	b.WriteString("|")
-	b.WriteString(resourceEntityId.Type)
-
-	// Sort the attributes to ensure consistent order
-	sort.Slice(resourceEntityId.AttributeTuples, func(i, j int) bool {
-		return resourceEntityId.AttributeTuples[i].Key < resourceEntityId.AttributeTuples[j].Key
-	})
-
-	for _, tuple := range resourceEntityId.AttributeTuples {
-		b.WriteString("|")
-		b.WriteString(tuple.Key)
-		b.WriteString("=")
-		b.WriteString(tuple.Value)
-	}
-
-	// Create FNV hash
-	h := fnv.New64a()
-	_, err := h.Write([]byte(b.String()))
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%x", h.Sum64()), nil
-}
-
-func (e *EntityId) toKey() string {
+func computeHash(e *EntityId) string {
 	var b strings.Builder
 
 	// Start with Name and Type
@@ -109,7 +83,9 @@ func (e *EntityId) toKey() string {
 		b.WriteString(v)
 	}
 
-	return b.String()
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(b.String()))
+	return fmt.Sprintf("%x", h.Sum64())
 }
 
 type ResourceEntity struct {
@@ -130,7 +106,7 @@ func NewResourceEntityCache() *ResourceEntityCache {
 }
 
 func (ec *ResourceEntityCache) PutEntity(attributeName string, entityId *EntityId, attributes map[string]string) (*ResourceEntity, bool) {
-	if entity, exists := ec.entityMap.Load(entityId); exists {
+	if entity, exists := ec.entityMap.Load(entityId.Hash); exists {
 		re := entity.(*ResourceEntity)
 		re.mu.Lock()
 		re.lastSeen = now()
@@ -149,7 +125,7 @@ func (ec *ResourceEntityCache) PutEntity(attributeName string, entityId *EntityI
 		lastSeen:      now(),
 	}
 
-	entity, loaded := ec.entityMap.LoadOrStore(entityId.toKey(), newEntity)
+	entity, loaded := ec.entityMap.LoadOrStore(entityId.Hash, newEntity)
 	re := entity.(*ResourceEntity)
 	re.mu.Lock()
 	for key, value := range attributes {
@@ -222,7 +198,7 @@ func (re *ResourceEntity) AddEdge(entityId *EntityId, relationship string) {
 	if re.Edges == nil {
 		re.Edges = make(map[string]*EdgeInfo)
 	}
-	key := entityId.toKey()
+	key := entityId.Hash
 	if edgeInfo, exists := re.Edges[key]; exists {
 		edgeInfo.LastSeen = now()
 	} else {
@@ -296,6 +272,7 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 					entityId.IdAttributes[otherIdAttribute] = otherAttribute.Str()
 				}
 			}
+			entityId.Hash = computeHash(entityId)
 			entity, isNewEntity := ec.PutEntity(k, entityId, entityAttrs)
 			if isNewEntity {
 				newEntities[k] = entity

@@ -25,7 +25,8 @@ message AttributeTuple {
 }
 
 message ResourceEntityId {
-  string name = 1;
-  string type = 2;
-  repeated AttributeTuple attributeTuples = 3;
+  string hash = 1;
+  string name = 2;
+  string type = 3;
+  repeated AttributeTuple attributeTuples = 4;
 }
