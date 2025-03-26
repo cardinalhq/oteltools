@@ -58,6 +58,20 @@ func (e *EntityId) toProto() *chqpb.ResourceEntityId {
 	}
 }
 
+func ToEntityId(resourceEntityId *chqpb.ResourceEntityId) string {
+	var b strings.Builder
+	b.WriteString(resourceEntityId.Name)
+	b.WriteString("|")
+	b.WriteString(resourceEntityId.Type)
+	for _, tuple := range resourceEntityId.AttributeTuples {
+		b.WriteString("|")
+		b.WriteString(tuple.Key)
+		b.WriteString("=")
+		b.WriteString(tuple.Value)
+	}
+	return b.String()
+}
+
 func (e *EntityId) toKey() string {
 	var b strings.Builder
 
