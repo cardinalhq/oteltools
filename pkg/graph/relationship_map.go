@@ -105,6 +105,11 @@ const (
 	UsesSecret               = "uses secret"
 	DataHashPrefix           = "data.hash."
 	Replicas                 = "replicas"
+	ReadyReplicas            = "ready.replicas"
+	CurrentReplicas          = "current.replicas"
+	UpdatedReplicas          = "updated.replicas"
+	AvailableReplicas        = "available.replicas"
+	UnavailableReplicas      = "unavailable.replicas"
 	Deployment               = "Deployment"
 	StatefulSet              = "StatefulSet"
 	DaemonSet                = "DaemonSet"
@@ -161,6 +166,9 @@ const (
 	Service                  = "service"
 	ContainerImageNamePrefix = "container.image.name."
 	ContainerImageIDPrefix   = "container.image.id."
+	CrashLoopBackOff         = "CrashLoopBackOff"
+	ImagePullBackOff         = "ImagePullBackOff"
+	OOMKilled                = "OOMKilled"
 )
 
 type EntityInfo struct {

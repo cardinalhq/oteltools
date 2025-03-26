@@ -421,6 +421,16 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 				if containerStatus.Image == nil {
 					continue
 				}
+				if containerStatus.IsCrashLoopBackOff {
+					entityAttributes[CrashLoopBackOff] = "true"
+				}
+				if containerStatus.IsImagePullBackOff {
+					entityAttributes[ImagePullBackOff] = "true"
+				}
+				if containerStatus.WasOomKilled {
+					entityAttributes[OOMKilled] = "true"
+				}
+
 				if containerStatus.Image.Image != "" {
 					entityAttributes[ContainerImageNamePrefix+containerStatus.Name] = containerStatus.Image.Image
 				}
@@ -468,7 +478,19 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 	case *graphpb.PackagedObject_AppsDeploymentSummary:
 		entityAttributes := make(map[string]string)
 		deploymentSummary := obj.AppsDeploymentSummary
-		entityAttributes[Replicas] = fmt.Sprintf("%d", deploymentSummary.Spec.Replicas)
+		if deploymentSummary.Spec.Replicas != 0 {
+			entityAttributes[Replicas] = fmt.Sprintf("%d", deploymentSummary.Spec.Replicas)
+		}
+		if deploymentSummary.Status.ReadyReplicas != 0 {
+			entityAttributes[ReadyReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.ReadyReplicas)
+		}
+		if deploymentSummary.Status.AvailableReplicas != 0 {
+			entityAttributes[AvailableReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.AvailableReplicas)
+		}
+		if deploymentSummary.Status.UnavailableReplicas != 0 {
+			entityAttributes[UnavailableReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.UnavailableReplicas)
+		}
+
 		deploymentId := ToKubernetesEntityId(deploymentSummary.BaseObject.Name, KubernetesDeployment, namespace, clusterName)
 		deploymentEntity, _ := ec.PutEntity(KubernetesDeployment, deploymentId, entityAttributes)
 
@@ -479,7 +501,19 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 	case *graphpb.PackagedObject_AppsStatefulSetSummary:
 		entityAttributes := make(map[string]string)
 		statefulSetSummary := obj.AppsStatefulSetSummary
-		entityAttributes[Replicas] = fmt.Sprintf("%d", statefulSetSummary.Spec.Replicas)
+		if statefulSetSummary.Spec.Replicas != 0 {
+			entityAttributes[Replicas] = fmt.Sprintf("%d", statefulSetSummary.Spec.Replicas)
+		}
+		if statefulSetSummary.Status.ReadyReplicas != 0 {
+			entityAttributes[ReadyReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.ReadyReplicas)
+		}
+		if statefulSetSummary.Status.CurrentReplicas != 0 {
+			entityAttributes[CurrentReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.CurrentReplicas)
+		}
+		if statefulSetSummary.Status.UpdatedReplicas != 0 {
+			entityAttributes[UpdatedReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.UpdatedReplicas)
+		}
+
 		statefulSetId := ToKubernetesEntityId(statefulSetSummary.BaseObject.Name, KubernetesStatefulSet, namespace, clusterName)
 		statefulSetEntity, _ := ec.PutEntity(KubernetesStatefulSet, statefulSetId, entityAttributes)
 
