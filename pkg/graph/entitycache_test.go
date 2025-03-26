@@ -25,19 +25,16 @@ import (
 )
 
 func assertEntityExists(t *testing.T, entities map[string]*ResourceEntity, name, entityType string, otherAttributes ...string) *ResourceEntity {
-	entityId := EntityId{
-		Name: name,
-		Type: entityType,
-	}
+
 	// convert otherAttributes to key/value map and then put to entityId.IdAttributes
 	if len(otherAttributes)%2 != 0 {
 		panic("otherAttributes must be key-value pairs")
 	}
-	entityId.IdAttributes = make(map[string]string)
+	attributes := make(map[string]string)
 	for i := 0; i < len(otherAttributes); i += 2 {
-		entityId.IdAttributes[otherAttributes[i]] = otherAttributes[i+1]
+		attributes[otherAttributes[i]] = otherAttributes[i+1]
 	}
-	entityId.Hash = computeHash(&entityId)
+	entityId := ToEntityId(name, entityType, attributes)
 	entity, exists := entities[entityId.Hash]
 	assert.True(t, exists, "Expected entity %s not found", entityId.Hash)
 	return entity
@@ -76,9 +73,9 @@ func TestKubernetesEntityRelationships(t *testing.T) {
 	nodeEntity := assertEntityExists(t, entities, "node-1", Node, string(semconv.K8SClusterNameKey), "cluster-1")
 	assert.Equal(t, "16", nodeEntity.Attributes[string(semconv.K8SNodeUIDKey)])
 
-	namespaceEntity := assertEntityExists(t, entities, "default", KubernetesNamespace, string(semconv.K8SClusterNameKey), "cluster-1")
+	namespaceEntity := assertEntityExists(t, entities, "default", KubernetesNamespace, string(semconv.K8SClusterNameKey), "cluster-1", string(semconv.K8SNamespaceNameKey), "default")
 
-	podEntity := assertEntityExists(t, entities, "pod-1", KubernetesPod, string(semconv.K8SClusterNameKey), "cluster-1", string(semconv.K8SNamespaceNameKey), "default")
+	podEntity := assertEntityExists(t, entities, "pod-1", KubernetesPod, string(semconv.K8SClusterNameKey), "cluster-1", string(semconv.K8SNamespaceNameKey), "default", string(semconv.K8SClusterNameKey), "cluster-1")
 	assert.Equal(t, "pod-uid-1", podEntity.Attributes[string(semconv.K8SPodUIDKey)])
 	assert.Equal(t, "127.0.0.1", podEntity.Attributes["k8s.pod.ip"])
 	assert.Equal(t, "cardinal", podEntity.Attributes["k8s.pod.label.company-name"])

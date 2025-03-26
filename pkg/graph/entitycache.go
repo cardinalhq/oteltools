@@ -16,6 +16,7 @@ package graph
 
 import (
 	"fmt"
+	"github.com/cardinalhq/oteltools/pkg/graph/graphpb"
 	"hash/fnv"
 	"sort"
 	"strings"
@@ -61,7 +62,7 @@ func (e *EntityId) toProto() *chqpb.ResourceEntityId {
 	}
 }
 
-func computeHash(e *EntityId) string {
+func (e *EntityId) computeHash() string {
 	var b strings.Builder
 
 	// Start with Name and Type
@@ -103,6 +104,23 @@ type ResourceEntityCache struct {
 
 func NewResourceEntityCache() *ResourceEntityCache {
 	return &ResourceEntityCache{}
+}
+
+func ToEntityId(name, entityType string, idAttributes map[string]string) *EntityId {
+	entityId := &EntityId{
+		Name:         name,
+		Type:         entityType,
+		IdAttributes: idAttributes,
+	}
+	entityId.Hash = entityId.computeHash()
+	return entityId
+}
+
+func ToKubernetesEntityId(name, entityType, namespace, clusterName string) *EntityId {
+	return ToEntityId(name, entityType, map[string]string{
+		string(semconv.K8SNamespaceNameKey): namespace,
+		string(semconv.K8SClusterNameKey):   clusterName,
+	})
 }
 
 func (ec *ResourceEntityCache) PutEntity(attributeName string, entityId *EntityId, attributes map[string]string) (*ResourceEntity, bool) {
@@ -259,20 +277,14 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 			if entityInfo.NameTransformer != nil {
 				entityName = entityInfo.NameTransformer(entityName)
 			}
-			entityId := &EntityId{
-				Name: entityName,
-				Type: entityInfo.Type,
-			}
+			idAttributes := make(map[string]string)
 			for _, otherIdAttribute := range entityInfo.OtherIDAttributes {
 				otherAttribute, found := attributes.Get(otherIdAttribute)
 				if found {
-					if entityId.IdAttributes == nil {
-						entityId.IdAttributes = make(map[string]string)
-					}
-					entityId.IdAttributes[otherIdAttribute] = otherAttribute.Str()
+					idAttributes[otherIdAttribute] = otherAttribute.Str()
 				}
 			}
-			entityId.Hash = computeHash(entityId)
+			entityId := ToEntityId(entityName, entityInfo.Type, idAttributes)
 			entity, isNewEntity := ec.PutEntity(k, entityId, entityAttrs)
 			if isNewEntity {
 				newEntities[k] = entity
@@ -333,5 +345,175 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 			}
 			parentEntity.mu.Unlock()
 		}
+	}
+}
+
+func ownedByRelationshipForType(kind string) string {
+	switch kind {
+	case Deployment:
+		return IsManagedByDeployment
+	case StatefulSet:
+		return IsManagedByStatefulSet
+	case DaemonSet:
+		return IsManagedByDaemonSet
+	case ReplicaSet:
+		return IsManagedByReplicaSet
+	case Job:
+		return IsManagedByCronJob
+	case CronJob:
+		return IsManagedByJob
+	}
+	return ""
+}
+
+func ownerByKind(kind string) string {
+	switch kind {
+	case Deployment:
+		return KubernetesDeployment
+	case StatefulSet:
+		return KubernetesStatefulSet
+	case DaemonSet:
+		return KubernetesDaemonSet
+	case ReplicaSet:
+		return KubernetesReplicaSet
+	case Job:
+		return KubernetesJob
+	case CronJob:
+		return KubernetesCronJob
+	}
+	return ""
+}
+
+func addEdgesFromPodSpec(entity *ResourceEntity, podSpec *graphpb.PodSpec, namespace, clusterName string) {
+	for _, container := range podSpec.Containers {
+		for _, configMapName := range container.ConfigMapNames {
+			configMapEntityId := ToKubernetesEntityId(configMapName, KubernetesConfigMap, namespace, clusterName)
+			entity.mu.Lock()
+			entity.AddEdge(configMapEntityId, UsesConfigMap)
+			entity.mu.Unlock()
+		}
+		for _, secretName := range container.SecretNames {
+			secretEntityId := ToKubernetesEntityId(secretName, KubernetesSecret, namespace, clusterName)
+			entity.mu.Lock()
+			entity.AddEdge(secretEntityId, UsesSecret)
+			entity.mu.Unlock()
+		}
+		if container.Image != "" {
+			entity.PutAttribute(ContainerImageNamePrefix+container.Name, container.Image)
+		}
+	}
+}
+
+func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObject) {
+	clusterName, found := po.GetResourceAttributes()[string(semconv.K8SClusterNameKey)]
+	if !found {
+		return
+	}
+	namespace := po.GetBaseObject().Namespace
+
+	switch obj := po.Object.(type) {
+	case *graphpb.PackagedObject_PodSummary:
+		entityAttributes := make(map[string]string)
+		podSummary := obj.PodSummary
+		if podSummary.Status != nil {
+			for _, containerStatus := range podSummary.Status.ContainerStatus {
+				if containerStatus.Image == nil {
+					continue
+				}
+				if containerStatus.Image.Image != "" {
+					entityAttributes[ContainerImageNamePrefix+containerStatus.Name] = containerStatus.Image.Image
+				}
+				if containerStatus.Image.ImageId != "" {
+					entityAttributes[ContainerImageIDPrefix+containerStatus.Name] = containerStatus.Image.ImageId
+				}
+			}
+		}
+		podEntityId := ToKubernetesEntityId(podSummary.BaseObject.Name, KubernetesPod, namespace, clusterName)
+		pe, _ := ec.PutEntity(KubernetesPod, podEntityId, entityAttributes)
+
+		// Get this pod's owner and link to it.
+		for _, owner := range podSummary.BaseObject.OwnerRef {
+			relationship := ownedByRelationshipForType(owner.Kind)
+			ownerType := ownerByKind(owner.Kind)
+			if relationship != "" && ownerType != "" {
+				ownerEntityId := ToKubernetesEntityId(owner.Name, ownerType, namespace, clusterName)
+				oe, _ := ec.PutEntity(ownerType, ownerEntityId, map[string]string{})
+				pe.mu.Lock()
+				pe.AddEdge(oe.EntityId, relationship)
+				pe.mu.Unlock()
+			}
+		}
+
+		if podSummary.Spec != nil {
+			addEdgesFromPodSpec(pe, podSummary.Spec, namespace, clusterName)
+		}
+
+	case *graphpb.PackagedObject_SecretSummary:
+		entityAttributes := make(map[string]string)
+		for name, hash := range obj.SecretSummary.Hashes {
+			entityAttributes[DataHashPrefix+name] = hash
+		}
+		secretId := ToKubernetesEntityId(obj.SecretSummary.BaseObject.Name, KubernetesSecret, namespace, clusterName)
+		ec.PutEntity(KubernetesSecret, secretId, entityAttributes)
+
+	case *graphpb.PackagedObject_ConfigMapSummary:
+		entityAttributes := make(map[string]string)
+		for name, hash := range obj.ConfigMapSummary.Hashes {
+			entityAttributes[DataHashPrefix+name] = hash
+		}
+		secretId := ToKubernetesEntityId(obj.ConfigMapSummary.BaseObject.Name, KubernetesConfigMap, namespace, clusterName)
+		ec.PutEntity(KubernetesConfigMap, secretId, entityAttributes)
+
+	case *graphpb.PackagedObject_AppsDeploymentSummary:
+		entityAttributes := make(map[string]string)
+		deploymentSummary := obj.AppsDeploymentSummary
+		entityAttributes[Replicas] = fmt.Sprintf("%d", deploymentSummary.Spec.Replicas)
+		deploymentId := ToKubernetesEntityId(deploymentSummary.BaseObject.Name, KubernetesDeployment, namespace, clusterName)
+		deploymentEntity, _ := ec.PutEntity(KubernetesDeployment, deploymentId, entityAttributes)
+
+		if deploymentSummary.Spec != nil && deploymentSummary.Spec.Template != nil && deploymentSummary.Spec.Template.PodSpec != nil {
+			addEdgesFromPodSpec(deploymentEntity, deploymentSummary.Spec.Template.PodSpec, namespace, clusterName)
+		}
+
+	case *graphpb.PackagedObject_AppsStatefulSetSummary:
+		entityAttributes := make(map[string]string)
+		statefulSetSummary := obj.AppsStatefulSetSummary
+		entityAttributes[Replicas] = fmt.Sprintf("%d", statefulSetSummary.Spec.Replicas)
+		statefulSetId := ToKubernetesEntityId(statefulSetSummary.BaseObject.Name, KubernetesStatefulSet, namespace, clusterName)
+		statefulSetEntity, _ := ec.PutEntity(KubernetesStatefulSet, statefulSetId, entityAttributes)
+
+		if statefulSetSummary.Spec != nil && statefulSetSummary.Spec.Template != nil && statefulSetSummary.Spec.Template.PodSpec != nil {
+			addEdgesFromPodSpec(statefulSetEntity, statefulSetSummary.Spec.Template.PodSpec, namespace, clusterName)
+		}
+
+	case *graphpb.PackagedObject_AppsDaemonSetSummary:
+		entityAttributes := make(map[string]string)
+		daemonSetSummary := obj.AppsDaemonSetSummary
+		entityAttributes[Replicas] = fmt.Sprintf("%d", daemonSetSummary.Spec.Replicas)
+		daemonSetId := ToKubernetesEntityId(daemonSetSummary.BaseObject.Name, KubernetesDaemonSet, namespace, clusterName)
+		daemonsetEntity, _ := ec.PutEntity(KubernetesDaemonSet, daemonSetId, entityAttributes)
+
+		if daemonSetSummary.Spec != nil && daemonSetSummary.Spec.Template != nil && daemonSetSummary.Spec.Template.PodSpec != nil {
+			addEdgesFromPodSpec(daemonsetEntity, daemonSetSummary.Spec.Template.PodSpec, namespace, clusterName)
+		}
+
+	case *graphpb.PackagedObject_AppsReplicaSetSummary:
+		entityAttributes := make(map[string]string)
+		replicaSetSummary := obj.AppsReplicaSetSummary
+		entityAttributes[Replicas] = fmt.Sprintf("%d", replicaSetSummary.Spec.Replicas)
+
+		replicaSetId := ToKubernetesEntityId(replicaSetSummary.BaseObject.Name, KubernetesReplicaSet, namespace, clusterName)
+		replicaSetEntity, _ := ec.PutEntity(KubernetesReplicaSet, replicaSetId, entityAttributes)
+		for _, ownerRef := range replicaSetSummary.GetBaseObject().GetOwnerRef() {
+			if ownerRef.Kind == Deployment {
+				deploymentEntityId := ToKubernetesEntityId(ownerRef.Name, KubernetesDeployment, namespace, clusterName)
+				replicaSetEntity.mu.Lock()
+				replicaSetEntity.AddEdge(deploymentEntityId, IsManagedByDeployment)
+				replicaSetEntity.mu.Unlock()
+			}
+		}
+
+	default:
+		slog.Info("Received unknown object", slog.Any("object", po))
 	}
 }
