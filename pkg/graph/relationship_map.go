@@ -161,6 +161,7 @@ type EntityInfo struct {
 	NameTransformer             func(string) string
 	DeriveRelationshipCallbacks map[string]func(pcommon.Map) string
 	ShouldCreateCallBack        func(p pcommon.Map) bool
+	OtherIDAttributes           []string
 }
 
 type RelationshipMap map[string]*EntityInfo
@@ -201,6 +202,9 @@ var EntityRelationships = RelationshipMap{
 		AttributeNames: []string{
 			string(semconv.K8SNodeUIDKey),
 		},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+		},
 	},
 
 	// Namespace
@@ -215,6 +219,9 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+		},
 	},
 
 	// HTTP endpoints
@@ -308,6 +315,10 @@ var EntityRelationships = RelationshipMap{
 				return ""
 			},
 		},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// DaemonSet
@@ -319,6 +330,10 @@ var EntityRelationships = RelationshipMap{
 		},
 		AttributeNames:    []string{string(semconv.K8SStatefulSetUIDKey)},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// Deployment
@@ -336,6 +351,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// ReplicaSet
@@ -354,6 +373,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// StatefulSet
@@ -371,6 +394,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// Job
@@ -388,6 +415,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// CronJob
@@ -405,6 +436,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// Pod
@@ -427,6 +462,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SPodUIDKey),
 		},
 		AttributePrefixes: []string{"k8s.pod.label.", "k8s.pod.annotation."},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// Container
@@ -446,6 +485,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// Docker Container

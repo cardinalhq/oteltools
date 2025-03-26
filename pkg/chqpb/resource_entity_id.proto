@@ -18,19 +18,14 @@ package chqpb;
 
 option go_package = ".;chqpb";
 
-import "resource_entity_id.proto";
 
-message EdgeProto {
-  ResourceEntityId id = 1;
-  string relationship = 2;
+message AttributeTuple {
+  string key = 1;
+  string value = 2;
 }
 
-message ResourceEntityProto {
-  ResourceEntityId id = 1;
-  map<string, string> attributes = 2;
-  repeated EdgeProto edges = 3;
-}
-
-message ResourceEntityProtoList {
-  repeated bytes entities = 1;
+message ResourceEntityId {
+  string name = 1;
+  string type = 2;
+  repeated AttributeTuple attributeTuples = 3;
 }

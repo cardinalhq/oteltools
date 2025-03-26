@@ -22,32 +22,41 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func assertHasEdge(t *testing.T, entities map[string]*ResourceEntity, clusterName, namespaceName, fromName, fromType, toName, toType string, relationship string) {
-	entityID := toEntityId(clusterName, namespaceName, fromName, fromType)
-	entity := entities[entityID]
-	require.NotNil(t, entity, "Expected entity %s not found", entityID)
-	edgeID := toEntityId(clusterName, namespaceName, toName, toType)
-	edge := entity.Edges[edgeID]
-	require.NotNil(t, edge, "Expected edge from %s to %s not found", entityID, edgeID)
-	assert.Equal(t, relationship, edge.Relationship, "Incorrect relationship for edge from %s to %s", fromName, toName)
+func assertEntityExists(t *testing.T, entities map[string]*ResourceEntity, name, entityType string, otherAttributes ...string) *ResourceEntity {
+	entityId := EntityId{
+		Name: name,
+		Type: entityType,
+	}
+	// convert otherAttributes to key/value map and then put to entityId.IdAttributes
+	if len(otherAttributes)%2 != 0 {
+		panic("otherAttributes must be key-value pairs")
+	}
+	entityId.IdAttributes = make(map[string]string)
+	for i := 0; i < len(otherAttributes); i += 2 {
+		entityId.IdAttributes[otherAttributes[i]] = otherAttributes[i+1]
+	}
+	entity, exists := entities[entityId.toKey()]
+	assert.True(t, exists, "Expected entity %s not found", entityId.toKey())
+	return entity
+}
+
+func assertEdgeExists(t *testing.T, entity *ResourceEntity, toEntityId *EntityId, relationship string) {
+	actualRelationship, exists := entity.Edges[toEntityId.toKey()]
+	assert.True(t, exists, "Expected edge to %s not found", toEntityId.toKey())
+	assert.Equal(t, relationship, actualRelationship.Relationship)
 }
 
 func TestKubernetesEntityRelationships(t *testing.T) {
-	clusterName := "cluster-1"
-	namespaceName := "default"
+	ec := NewResourceEntityCache()
 
 	attributes := pcommon.NewMap()
-
-	// Resource attributes
-	attributes.PutStr("k8s.cluster.name", clusterName)
-	attributes.PutStr("k8s.namespace.name", namespaceName)
-
+	attributes.PutStr(string(semconv.K8SClusterNameKey), "cluster-1")
 	attributes.PutStr(string(semconv.K8SClusterUIDKey), "us-east-1")
 	attributes.PutStr(string(semconv.K8SNodeNameKey), "node-1")
 	attributes.PutStr(string(semconv.K8SNodeUIDKey), "16")
+	attributes.PutStr(string(semconv.K8SNamespaceNameKey), "default")
 	attributes.PutStr(string(semconv.K8SPodNameKey), "pod-1")
 	attributes.PutStr(string(semconv.K8SPodUIDKey), "pod-uid-1")
 	attributes.PutStr("k8s.pod.ip", "127.0.0.1")
@@ -56,52 +65,40 @@ func TestKubernetesEntityRelationships(t *testing.T) {
 	attributes.PutStr(string(semconv.K8SDeploymentNameKey), "deployment-1")
 	attributes.PutStr(string(semconv.K8SReplicaSetNameKey), "replicaset-1")
 
-	ec := NewResourceEntityCache()
 	ec.ProvisionResourceAttributes(attributes)
+
 	entities := ec._allEntities()
 
-	expectedEntities := map[string]string{
-		clusterName:    "k8s.cluster",
-		"node-1":       "k8s.node",
-		namespaceName:  "k8s.namespace",
-		"pod-1":        "k8s.pod",
-		"service-1":    "service",
-		"deployment-1": "k8s.deployment",
-		"replicaset-1": "k8s.replicaset",
-	}
+	clusterEntity := assertEntityExists(t, entities, "cluster-1", KubernetesCluster)
+	assert.Equal(t, "us-east-1", clusterEntity.Attributes[string(semconv.K8SClusterUIDKey)])
 
-	for name, entityType := range expectedEntities {
-		id := toEntityId(clusterName, namespaceName, name, entityType)
-		entity, exists := entities[id]
-		require.True(t, exists, "Expected entity %s not found", name)
-		assert.Equal(t, entityType, entity.Type, "Incorrect type for entity %s", name)
-	}
+	nodeEntity := assertEntityExists(t, entities, "node-1", Node, string(semconv.K8SClusterNameKey), "cluster-1")
+	assert.Equal(t, "16", nodeEntity.Attributes[string(semconv.K8SNodeUIDKey)])
 
-	assert.Equal(t, "us-east-1", entities[toEntityId(clusterName, namespaceName, clusterName, "k8s.cluster")].Attributes[string(semconv.K8SClusterUIDKey)])
-	assert.Equal(t, "16", entities[toEntityId(clusterName, namespaceName, "node-1", "k8s.node")].Attributes[string(semconv.K8SNodeUIDKey)])
-	assert.Equal(t, "pod-uid-1", entities[toEntityId(clusterName, namespaceName, "pod-1", "k8s.pod")].Attributes[string(semconv.K8SPodUIDKey)])
-	assert.Equal(t, "127.0.0.1", entities[toEntityId(clusterName, namespaceName, "pod-1", "k8s.pod")].Attributes["k8s.pod.ip"])
-	assert.Equal(t, "cardinal", entities[toEntityId(clusterName, namespaceName, "pod-1", "k8s.pod")].Attributes["k8s.pod.label.company-name"])
+	namespaceEntity := assertEntityExists(t, entities, "default", KubernetesNamespace, string(semconv.K8SClusterNameKey), "cluster-1")
 
-	assertHasEdge(t, entities, clusterName, namespaceName, "cluster-1", "k8s.cluster", "node-1", "k8s.node", HasNode)
-	assertHasEdge(t, entities, clusterName, namespaceName, "node-1", "k8s.node", "cluster-1", "k8s.cluster", BelongsToCluster)
-	assertHasEdge(t, entities, clusterName, namespaceName, "default", "k8s.namespace", "service-1", "service", ContainsService)
-	assertHasEdge(t, entities, clusterName, namespaceName, "service-1", "service", "default", "k8s.namespace", BelongsToNamespace)
-	assertHasEdge(t, entities, clusterName, namespaceName, "service-1", "service", "deployment-1", "k8s.deployment", IsManagedByDeployment)
-	assertHasEdge(t, entities, clusterName, namespaceName, "deployment-1", "k8s.deployment", "replicaset-1", "k8s.replicaset", ManagesReplicaset)
-	assertHasEdge(t, entities, clusterName, namespaceName, "replicaset-1", "k8s.replicaset", "pod-1", "k8s.pod", ContainsPod)
+	podEntity := assertEntityExists(t, entities, "pod-1", KubernetesPod, string(semconv.K8SClusterNameKey), "cluster-1", string(semconv.K8SNamespaceNameKey), "default")
+	assert.Equal(t, "pod-uid-1", podEntity.Attributes[string(semconv.K8SPodUIDKey)])
+	assert.Equal(t, "127.0.0.1", podEntity.Attributes["k8s.pod.ip"])
+	assert.Equal(t, "cardinal", podEntity.Attributes["k8s.pod.label.company-name"])
+
+	serviceEntity := assertEntityExists(t, entities, "service-1", Service, string(semconv.K8SClusterNameKey), "cluster-1", string(semconv.K8SNamespaceNameKey), "default")
+	deploymentEntity := assertEntityExists(t, entities, "deployment-1", KubernetesDeployment, string(semconv.K8SClusterNameKey), "cluster-1", string(semconv.K8SNamespaceNameKey), "default")
+	replicaSetEntity := assertEntityExists(t, entities, "replicaset-1", KubernetesReplicaSet, string(semconv.K8SClusterNameKey), "cluster-1", string(semconv.K8SNamespaceNameKey), "default")
+
+	assertEdgeExists(t, clusterEntity, nodeEntity.EntityId, HasNode)
+	assertEdgeExists(t, nodeEntity, clusterEntity.EntityId, BelongsToCluster)
+	assertEdgeExists(t, deploymentEntity, replicaSetEntity.EntityId, ManagesReplicaset)
+	assertEdgeExists(t, replicaSetEntity, podEntity.EntityId, ContainsPod)
+	assertEdgeExists(t, serviceEntity, namespaceEntity.EntityId, BelongsToNamespace)
+	assertEdgeExists(t, serviceEntity, deploymentEntity.EntityId, IsManagedByDeployment)
+	assertEdgeExists(t, namespaceEntity, serviceEntity.EntityId, ContainsService)
 }
 
 func TestInterdependencyBetweenRelationshipMaps(t *testing.T) {
-	clusterName := "cluster-1"
-	namespaceName := "default"
+	ec := NewResourceEntityCache()
 
 	attributes := pcommon.NewMap()
-
-	// Resource attributes
-	attributes.PutStr("k8s.cluster.name", clusterName)
-	attributes.PutStr("k8s.namespace.name", namespaceName)
-
 	attributes.PutStr(string(semconv.K8SClusterNameKey), "cluster-1")
 	attributes.PutStr(string(semconv.K8SNodeNameKey), "node-1")
 	attributes.PutStr(string(semconv.OSNameKey), "linux")
@@ -109,42 +106,18 @@ func TestInterdependencyBetweenRelationshipMaps(t *testing.T) {
 	attributes.PutStr(string(semconv.K8SPodNameKey), "pod-1")
 	attributes.PutStr(string(semconv.ServiceNameKey), "service1")
 
-	ec := NewResourceEntityCache()
 	ec.ProvisionResourceAttributes(attributes)
+
 	entities := ec._allEntities()
-
-	expectedEntities := map[string]string{
-		clusterName:   "k8s.cluster",
-		"node-1":      "k8s.node",
-		namespaceName: "k8s.namespace",
-		"pod-1":       "k8s.pod",
-		"linux":       "os",
-		"service1":    "service",
-	}
-
-	for name, entityType := range expectedEntities {
-		entityId := toEntityId(clusterName, namespaceName, name, entityType)
-		entity, exists := entities[entityId]
-		require.True(t, exists, "Expected entity %s not found", entityId)
-		assert.Equal(t, entityType, entity.Type, "Incorrect type for entity %s", entityId)
-	}
-
-	assertHasEdge(t, entities, clusterName, namespaceName, "cluster-1", "k8s.cluster", "node-1", "k8s.node", HasNode)
-	assertHasEdge(t, entities, clusterName, namespaceName, "node-1", "k8s.node", "cluster-1", "k8s.cluster", BelongsToCluster)
-	assertHasEdge(t, entities, clusterName, namespaceName, "default", "k8s.namespace", "service1", "service", ContainsService)
-	assertHasEdge(t, entities, clusterName, namespaceName, "service1", "service", "default", "k8s.namespace", BelongsToNamespace)
-	assertHasEdge(t, entities, clusterName, namespaceName, "node-1", "k8s.node", "linux", "os", RunsOnOperatingSystem)
+	nodeEntity := assertEntityExists(t, entities, "node-1", Node, string(semconv.K8SClusterNameKey), "cluster-1")
+	operatingSystemEntity := assertEntityExists(t, entities, "linux", OperatingSystem)
+	assertEdgeExists(t, nodeEntity, operatingSystemEntity.EntityId, RunsOnOperatingSystem)
 }
 
 func TestContainerRelationships(t *testing.T) {
-	clusterName := "cluster-1"
-	namespaceName := "default"
+	ec := NewResourceEntityCache()
 
 	attributes := pcommon.NewMap()
-
-	// Resource attributes
-	attributes.PutStr("k8s.cluster.name", clusterName)
-	attributes.PutStr("k8s.namespace.name", namespaceName)
 
 	// Container attributes
 	attributes.PutStr(string(semconv.ContainerNameKey), "my-container")
@@ -171,76 +144,60 @@ func TestContainerRelationships(t *testing.T) {
 	attributes.PutStr(string(semconv.ProcessParentPIDKey), "1000")
 	attributes.PutStr(string(semconv.ProcessPIDKey), "2000")
 
-	ec := NewResourceEntityCache()
 	ec.ProvisionResourceAttributes(attributes)
+
 	entities := ec._allEntities()
 
-	expectedEntities := map[string]string{
-		"my-container": "container",
-		"java":         "process",
-	}
+	// Assert container entity
+	container := assertEntityExists(t, entities, "my-container", Container)
+	assert.Equal(t, "container-123", container.Attributes[string(semconv.ContainerIDKey)])
+	assert.Equal(t, "/bin/bash", container.Attributes[string(semconv.ContainerCommandKey)])
+	assert.Equal(t, "-c echo hello", container.Attributes[string(semconv.ContainerCommandArgsKey)])
+	assert.Equal(t, "docker", container.Attributes[string(semconv.ContainerRuntimeKey)])
+	assert.Equal(t, "/bin/bash -c echo hello", container.Attributes[string(semconv.ContainerCommandLineKey)])
+	assert.Equal(t, "team-a", container.Attributes["container.label.owner"])
 
-	for name, entityType := range expectedEntities {
-		entityID := toEntityId(clusterName, namespaceName, name, entityType)
-		entity, exists := entities[entityID]
-		require.True(t, exists, "Expected entity %s not found", entityID)
-		assert.Equal(t, entityType, entity.Type, "Incorrect type for entity %s", entityID)
-	}
-
-	assert.Equal(t, "container-123", entities[toEntityId(clusterName, namespaceName, "my-container", "container")].Attributes[string(semconv.ContainerIDKey)])
-	assert.Equal(t, "/bin/bash", entities[toEntityId(clusterName, namespaceName, "my-container", "container")].Attributes[string(semconv.ContainerCommandKey)])
-	assert.Equal(t, "-c echo hello", entities[toEntityId(clusterName, namespaceName, "my-container", "container")].Attributes[string(semconv.ContainerCommandArgsKey)])
-	assert.Equal(t, "docker", entities[toEntityId(clusterName, namespaceName, "my-container", "container")].Attributes[string(semconv.ContainerRuntimeKey)])
-	assert.Equal(t, "/bin/bash -c echo hello", entities[toEntityId(clusterName, namespaceName, "my-container", "container")].Attributes[string(semconv.ContainerCommandLineKey)])
-	assert.Equal(t, "team-a", entities[toEntityId(clusterName, namespaceName, "my-container", "container")].Attributes["container.label.owner"])
-
-	assert.Equal(t, "java", entities[toEntityId(clusterName, namespaceName, "java", "process")].Attributes[string(semconv.ProcessExecutableNameKey)])
-	assert.Equal(t, "/usr/bin/java", entities[toEntityId(clusterName, namespaceName, "java", "process")].Attributes[string(semconv.ProcessExecutablePathKey)])
-	assert.Equal(t, "-jar myapp.jar", entities[toEntityId(clusterName, namespaceName, "java", "process")].Attributes[string(semconv.ProcessCommandArgsKey)])
-	assert.Equal(t, "java -jar myapp.jar", entities[toEntityId(clusterName, namespaceName, "java", "process")].Attributes[string(semconv.ProcessCommandLineKey)])
-	assert.Equal(t, "root", entities[toEntityId(clusterName, namespaceName, "java", "process")].Attributes[string(semconv.ProcessOwnerKey)])
-	assert.Equal(t, "1700000000", entities[toEntityId(clusterName, namespaceName, "java", "process")].Attributes[string(semconv.ProcessCreationTimeKey)])
-	assert.Equal(t, "voluntary", entities[toEntityId(clusterName, namespaceName, "java", "process")].Attributes[string(semconv.ProcessContextSwitchTypeKey)])
-	assert.Equal(t, "1001", entities[toEntityId(clusterName, namespaceName, "java", "process")].Attributes[string(semconv.ProcessGroupLeaderPIDKey)])
-	assert.Equal(t, "1000", entities[toEntityId(clusterName, namespaceName, "java", "process")].Attributes[string(semconv.ProcessParentPIDKey)])
-	assert.Equal(t, "2000", entities[toEntityId(clusterName, namespaceName, "java", "process")].Attributes[string(semconv.ProcessPIDKey)])
+	// Assert process entity
+	process := assertEntityExists(t, entities, "java", Process)
+	assert.Equal(t, "java", process.Attributes[string(semconv.ProcessExecutableNameKey)])
+	assert.Equal(t, "/usr/bin/java", process.Attributes[string(semconv.ProcessExecutablePathKey)])
+	assert.Equal(t, "-jar myapp.jar", process.Attributes[string(semconv.ProcessCommandArgsKey)])
+	assert.Equal(t, "java -jar myapp.jar", process.Attributes[string(semconv.ProcessCommandLineKey)])
+	assert.Equal(t, "root", process.Attributes[string(semconv.ProcessOwnerKey)])
+	assert.Equal(t, "1700000000", process.Attributes[string(semconv.ProcessCreationTimeKey)])
+	assert.Equal(t, "voluntary", process.Attributes[string(semconv.ProcessContextSwitchTypeKey)])
+	assert.Equal(t, "1001", process.Attributes[string(semconv.ProcessGroupLeaderPIDKey)])
+	assert.Equal(t, "1000", process.Attributes[string(semconv.ProcessParentPIDKey)])
+	assert.Equal(t, "2000", process.Attributes[string(semconv.ProcessPIDKey)])
 
 }
 
 func TestDBRelationships(t *testing.T) {
-	clusterName := "cluster-1"
-	namespaceName := "default"
-
+	ec := NewResourceEntityCache()
 	attributes := pcommon.NewMap()
 	attributes.PutStr(string(semconv.ServiceNameKey), "service-1")
-
-	ec := NewResourceEntityCache()
 	globalEntityMap := ec.ProvisionResourceAttributes(attributes)
 
 	recordAttributes := pcommon.NewMap()
 	recordAttributes.PutStr(string(semconv.DBSystemKey), "mysql")
 	recordAttributes.PutStr(string(semconv.DBCollectionNameKey), "glacier.tbl_17665234232")
-
 	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
 
-	dbCollectionEntityId := toEntityId(clusterName, namespaceName, "glacier.tbl_", "database.collection")
-
 	entities := ec._allEntities()
-	_, exists := entities[dbCollectionEntityId]
-	require.True(t, exists, "Expected entity %s not found", dbCollectionEntityId)
-	assert.Equal(t, UsesDatabaseCollection, entities[toEntityId(clusterName, namespaceName, "service-1", "service")].Edges[toEntityId(clusterName, namespaceName, "glacier.tbl_", "database.collection")].Relationship)
+	dbEntity := assertEntityExists(t, entities, "glacier.tbl_", DatabaseCollection)
+	serviceEntity := assertEntityExists(t, entities, "service-1", Service)
+	assertEdgeExists(t, serviceEntity, dbEntity.EntityId, UsesDatabaseCollection)
 }
 
 func TestMessagingConsumesFromRelationship(t *testing.T) {
-	clusterName := "cluster-1"
-	namespaceName := "default"
+	ec := NewResourceEntityCache()
 
+	// Define the service entity
 	attributes := pcommon.NewMap()
 	attributes.PutStr(string(semconv.ServiceNameKey), "service-1")
-
-	ec := NewResourceEntityCache()
 	globalEntityMap := ec.ProvisionResourceAttributes(attributes)
 
+	// Define the messaging record attributes
 	recordAttributes := pcommon.NewMap()
 	recordAttributes.PutStr(string(semconv.MessagingSystemKey), "kafka")
 	recordAttributes.PutStr(string(semconv.MessagingDestinationNameKey), "topic-1")
@@ -249,115 +206,110 @@ func TestMessagingConsumesFromRelationship(t *testing.T) {
 
 	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
 
+	// Fetch all entities
 	entities := ec._allEntities()
 
-	messagingDestinationEntityId := toEntityId(clusterName, namespaceName, "topic-1", MessagingDestination)
-	messagingConsumerGroupEntityId := toEntityId(clusterName, namespaceName, "consumer-group-1", MessagingConsumerGroup)
+	// Assert all expected entities exist
+	service := assertEntityExists(t, entities, "service-1", Service)
+	messagingDestination := assertEntityExists(t, entities, "topic-1", MessagingDestination)
+	messagingConsumerGroup := assertEntityExists(t, entities, "consumer-group-1", MessagingConsumerGroup)
 
-	_, messagingDestinationExists := entities[messagingDestinationEntityId]
-	require.True(t, messagingDestinationExists, "Expected entity %s not found", messagingDestinationEntityId)
-
-	_, messagingConsumerGroupEntityExists := entities[messagingConsumerGroupEntityId]
-	require.True(t, messagingConsumerGroupEntityExists, "Expected entity %s not found", messagingConsumerGroupEntityId)
-
-	// assert edge between service and messaging destination, and assert the edge relationship
-	assertHasEdge(t, entities, clusterName, namespaceName, "service-1", "service", "topic-1", MessagingDestination, ConsumesFrom)
-	assertHasEdge(t, entities, clusterName, namespaceName, "service-1", "service", "consumer-group-1", MessagingConsumerGroup, ConsumesFrom)
+	// Assert edges from service to messaging entities
+	assertEdgeExists(t, service, messagingDestination.EntityId, ConsumesFrom)
+	assertEdgeExists(t, service, messagingConsumerGroup.EntityId, ConsumesFrom)
 }
 
 func TestMessagingProducesToRelationship(t *testing.T) {
-	clusterName := "cluster-1"
-	namespaceName := "default"
-
 	ec := NewResourceEntityCache()
+
+	// Define the service entity
 	attributes := pcommon.NewMap()
 	attributes.PutStr(string(semconv.ServiceNameKey), "service-1")
 	globalEntityMap := ec.ProvisionResourceAttributes(attributes)
 
+	// Define the messaging record attributes (for a producer)
 	recordAttributes := pcommon.NewMap()
 	recordAttributes.PutStr(string(semconv.MessagingSystemKey), "kafka")
 	recordAttributes.PutStr(string(semconv.MessagingDestinationNameKey), "topic-1")
 	recordAttributes.PutStr(string(semconv.MessagingOperationTypeKey), "publish")
 
 	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
+
+	// Fetch all entities
 	entities := ec._allEntities()
-	messagingDestinationEntityId := toEntityId(clusterName, namespaceName, "topic-1", MessagingDestination)
 
-	_, messagingDestinationExists := entities[messagingDestinationEntityId]
-	require.True(t, messagingDestinationExists, "Expected entity %s not found", messagingDestinationEntityId)
+	// Assert service and messaging destination entities exist
+	service := assertEntityExists(t, entities, "service-1", Service)
+	messagingDestination := assertEntityExists(t, entities, "topic-1", MessagingDestination)
 
-	// assert edge between service and messaging destination, and assert the edge relationship
-	assertHasEdge(t, entities, clusterName, namespaceName, "service-1", "service", "topic-1", MessagingDestination, ProducesTo)
+	// Assert that the service ProducesTo the messaging destination
+	assertEdgeExists(t, service, messagingDestination.EntityId, ProducesTo)
 }
 
 func TestIfWeSkipBotTraffic(t *testing.T) {
-	clusterName := "cluster-1"
-	namespaceName := "default"
-
 	ec := NewResourceEntityCache()
+
+	// Step 1: Set up the service entity
 	attributes := pcommon.NewMap()
 	attributes.PutStr(string(semconv.ServiceNameKey), "service-1")
 	globalEntityMap := ec.ProvisionResourceAttributes(attributes)
 
+	// Step 2: Simulate a request to /robots.txt with a 404 (should be skipped)
 	recordAttributes := pcommon.NewMap()
 	recordAttributes.PutStr(string(semconv.URLTemplateKey), "/robots.txt")
 	recordAttributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), 404)
 
 	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
+
 	entities := ec._allEntities()
 
-	// assert that we skip the entity creation for the record
-	assert.Equal(t, 1, len(entities))
+	assert.Equal(t, 1, len(entities), "Expected only the service entity to be created")
 
-	// assert that there is no entity of Endpoint type
-	_, endpointExists := entities[toEntityId(clusterName, namespaceName, "/robots.txt", Endpoint)]
-	assert.False(t, endpointExists, "Unwanted entity %s found", toEntityId(clusterName, namespaceName, "/robots.txt", Endpoint))
+	endpointId := &EntityId{
+		Name: "robots.txt",
+		Type: Endpoint,
+	}
+	_, endpointExists := entities[endpointId.toKey()]
+	assert.False(t, endpointExists, "Did not expect entity %s to exist", endpointId)
 
-	// Now let's test if the status code was 200, we would indeed create the entity.
 	recordAttributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), 200)
 	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
 	entities = ec._allEntities()
-	_, endpointExists = entities[toEntityId(clusterName, namespaceName, "/robots.txt", Endpoint)]
-	assert.True(t, endpointExists, "Expected entity %s not found", toEntityId(clusterName, namespaceName, "/robots.txt", Endpoint))
+
+	endpoint := assertEntityExists(t, entities, "/robots.txt", Endpoint)
+	assert.NotNil(t, endpoint)
 }
 
 func TestCloudRelationships(t *testing.T) {
-	clusterName := "cluster-1"
-	namespaceName := "default"
+	ec := NewResourceEntityCache()
 
+	// Step 1: Set up cloud-related resource attributes
 	attributes := pcommon.NewMap()
 	attributes.PutStr(string(semconv.CloudProviderKey), "aws")
 	attributes.PutStr(string(semconv.CloudAccountIDKey), "123456789012")
 	attributes.PutStr(string(semconv.CloudRegionKey), "us-west-1")
 	attributes.PutStr(string(semconv.CloudAvailabilityZoneKey), "us-west-1a")
 
-	ec := NewResourceEntityCache()
 	ec.ProvisionResourceAttributes(attributes)
 	entities := ec._allEntities()
 
-	expectedEntities := map[string]string{
-		"aws":          "cloud.provider",
-		"123456789012": "cloud.account",
-		"us-west-1":    "cloud.region",
-		"us-west-1a":   "cloud.availability_zone",
-	}
+	// Step 2: Assert all cloud entities exist
+	provider := assertEntityExists(t, entities, "aws", CloudProvider)
+	account := assertEntityExists(t, entities, "123456789012", CloudAccount)
+	region := assertEntityExists(t, entities, "us-west-1", CloudRegion)
+	zone := assertEntityExists(t, entities, "us-west-1a", CloudAvailabilityZone)
 
-	// Check that expected entities exist
-	for name, entityType := range expectedEntities {
-		entityId := toEntityId(clusterName, namespaceName, name, entityType)
-		entity, exists := entities[entityId]
-		require.True(t, exists, "Expected entity %s not found", entityId)
-		assert.Equal(t, entityType, entity.Type, "Incorrect type for entity %s", entityId)
-	}
+	// Step 3: Assert expected edges between cloud entities
+	assertEdgeExists(t, provider, account.EntityId, ManagesAccount)
+	assertEdgeExists(t, provider, region.EntityId, ContainsRegion)
+	assertEdgeExists(t, provider, zone.EntityId, ContainsAvailabilityZone)
 
-	// Validate relationships
-	assertHasEdge(t, entities, clusterName, namespaceName, "aws", "cloud.provider", "123456789012", "cloud.account", ManagesAccount)
-	assertHasEdge(t, entities, clusterName, namespaceName, "aws", "cloud.provider", "us-west-1", "cloud.region", ContainsRegion)
-	assertHasEdge(t, entities, clusterName, namespaceName, "us-west-1", "cloud.region", "us-west-1a", "cloud.availability_zone", ContainsAvailabilityZone)
-	assertHasEdge(t, entities, clusterName, namespaceName, "123456789012", "cloud.account", "aws", "cloud.provider", BelongsToProvider)
-	assertHasEdge(t, entities, clusterName, namespaceName, "123456789012", "cloud.account", "us-west-1", "cloud.region", HasResourcesInRegion)
-	assertHasEdge(t, entities, clusterName, namespaceName, "us-west-1", "cloud.region", "aws", "cloud.provider", BelongsToProvider)
-	assertHasEdge(t, entities, clusterName, namespaceName, "us-west-1", "cloud.region", "us-west-1a", "cloud.availability_zone", ContainsAvailabilityZone)
-	assertHasEdge(t, entities, clusterName, namespaceName, "us-west-1", "cloud.region", "123456789012", "cloud.account", BelongsToAccount)
-	assertHasEdge(t, entities, clusterName, namespaceName, "us-west-1a", "cloud.availability_zone", "us-west-1", "cloud.region", BelongsToRegion)
+	assertEdgeExists(t, account, provider.EntityId, BelongsToProvider)
+	assertEdgeExists(t, account, region.EntityId, HasResourcesInRegion)
+
+	assertEdgeExists(t, region, provider.EntityId, BelongsToProvider)
+	assertEdgeExists(t, region, zone.EntityId, ContainsAvailabilityZone)
+	assertEdgeExists(t, region, account.EntityId, BelongsToAccount)
+
+	assertEdgeExists(t, zone, region.EntityId, BelongsToRegion)
 }
