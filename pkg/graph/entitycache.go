@@ -15,6 +15,8 @@
 package graph
 
 import (
+	"fmt"
+	"hash/fnv"
 	"sort"
 	"strings"
 	"sync"
@@ -58,18 +60,31 @@ func (e *EntityId) toProto() *chqpb.ResourceEntityId {
 	}
 }
 
-func ToEntityId(resourceEntityId *chqpb.ResourceEntityId) string {
+func ToEntityId(resourceEntityId *chqpb.ResourceEntityId) (string, error) {
 	var b strings.Builder
 	b.WriteString(resourceEntityId.Name)
 	b.WriteString("|")
 	b.WriteString(resourceEntityId.Type)
+
+	// Sort the attributes to ensure consistent order
+	sort.Slice(resourceEntityId.AttributeTuples, func(i, j int) bool {
+		return resourceEntityId.AttributeTuples[i].Key < resourceEntityId.AttributeTuples[j].Key
+	})
+
 	for _, tuple := range resourceEntityId.AttributeTuples {
 		b.WriteString("|")
 		b.WriteString(tuple.Key)
 		b.WriteString("=")
 		b.WriteString(tuple.Value)
 	}
-	return b.String()
+
+	// Create FNV hash
+	h := fnv.New64a()
+	_, err := h.Write([]byte(b.String()))
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", h.Sum64()), nil
 }
 
 func (e *EntityId) toKey() string {
