@@ -56,6 +56,7 @@ func (e *EntityId) toProto() *chqpb.ResourceEntityId {
 		})
 	}
 	return &chqpb.ResourceEntityId{
+		Hash:            e.Hash,
 		Name:            e.Name,
 		Type:            e.Type,
 		AttributeTuples: tuples,
