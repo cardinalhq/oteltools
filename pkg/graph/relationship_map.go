@@ -572,6 +572,9 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.DBSystemNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.ServerAddressKey),
+		},
 	},
 
 	// Database Collection (e.g. Mongo Collection, Postgres Table)
@@ -587,6 +590,10 @@ var EntityRelationships = RelationshipMap{
 		AttributePrefixes: []string{},
 		NameTransformer: func(s string) string {
 			return functions.ScrubWord(s)
+		},
+		OtherIDAttributes: []string{
+			string(semconv.DBNamespaceKey),
+			string(semconv.ServerAddressKey),
 		},
 	},
 
