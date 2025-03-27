@@ -282,7 +282,9 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 			for _, otherIdAttribute := range entityInfo.OtherIDAttributes {
 				otherAttribute, found := attributes.Get(otherIdAttribute)
 				if found {
-					idAttributes[otherIdAttribute] = otherAttribute.Str()
+					oav := otherAttribute.Str()
+					entityAttrs[otherIdAttribute] = oav // add id attributes to the entity attributes as well.
+					idAttributes[otherIdAttribute] = oav
 				}
 			}
 			entityId := ToEntityId(entityName, entityInfo.Type, idAttributes)
