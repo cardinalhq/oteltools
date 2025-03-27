@@ -16,11 +16,11 @@ package graph
 
 import (
 	"fmt"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 
 	"github.com/cardinalhq/oteltools/pkg/ottl/functions"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
 const (
@@ -297,7 +297,7 @@ var EntityRelationships = RelationshipMap{
 		AttributePrefixes: []string{},
 		DeriveRelationshipCallbacks: map[string]func(m pcommon.Map) string{
 			string(semconv.DBCollectionNameKey): func(m pcommon.Map) string {
-				dbQuery, dbQueryFound := m.Get(string(semconv.DBQueryTextKey))
+				dbQuery, dbQueryFound := m.Get(string(semconv.DBQuerySummaryKey))
 				if dbQueryFound {
 					return fmt.Sprintf("%s %s", ExecutesQuery, dbQuery.AsString())
 				}
@@ -569,7 +569,7 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.DBCollectionNameKey): HasCollection,
 		},
 		AttributeNames: []string{
-			string(semconv.DBSystemKey),
+			string(semconv.DBSystemNameKey),
 		},
 		AttributePrefixes: []string{},
 	},
@@ -582,7 +582,7 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.DBNamespaceKey): IsPartOfDatabase,
 		},
 		AttributeNames: []string{
-			string(semconv.DBSystemKey),
+			string(semconv.DBSystemNameKey),
 		},
 		AttributePrefixes: []string{},
 		NameTransformer: func(s string) string {
