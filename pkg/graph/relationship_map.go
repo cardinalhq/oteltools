@@ -16,6 +16,7 @@ package graph
 
 import (
 	"fmt"
+
 	"github.com/cardinalhq/oteltools/pkg/ottl/functions"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -91,6 +92,8 @@ const (
 	IsUsedByStatefulSet      = "is used by statefulset"
 	ManagesAccount           = "manages account"
 	ManagesReplicaset        = "manages replicaset"
+	ManagesPod               = "manages pod"
+	ManagesJob               = "manages job"
 	ProducesTo               = "produces to"
 	RunsInPod                = "runs in pod"
 	RunsOnOperatingSystem    = "runs on operating system"
@@ -103,54 +106,72 @@ const (
 	UsesContainerImage       = "uses container image"
 	UsesMessagingDestination = "uses messaging destination"
 	UsesSecret               = "uses secret"
+	DataHashPrefix           = "data.hash."
+	Replicas                 = "replicas"
+	ReadyReplicas            = "ready.replicas"
+	CurrentReplicas          = "current.replicas"
+	UpdatedReplicas          = "updated.replicas"
+	AvailableReplicas        = "available.replicas"
+	UnavailableReplicas      = "unavailable.replicas"
+	Deployment               = "Deployment"
+	StatefulSet              = "StatefulSet"
+	DaemonSet                = "DaemonSet"
+	ReplicaSet               = "ReplicaSet"
+	Job                      = "Job"
+	CronJob                  = "CronJob"
 )
 
 const (
-	DBQuerySummary         = "db.query.summary"
-	DBStatement            = "db.statement"
-	SpanKindString         = "span.kind.string"
-	NetPeerName            = "net.peer.name"
-	AwsEcsCluster          = "aws.ecs.cluster"
-	AwsEcsContainer        = "aws.ecs.container"
-	AwsEcsTask             = "aws.ecs.task"
-	AwsEksCluster          = "aws.eks.cluster"
-	CloudAccount           = "cloud.account"
-	CloudAvailabilityZone  = "cloud.availability_zone"
-	CloudProvider          = "cloud.provider"
-	CloudRegion            = "cloud.region"
-	CloudResourceId        = "cloud.resource_id"
-	Container              = "container"
-	ContainerImage         = "container.image"
-	ContainerImageName     = string(semconv.ContainerImageNameKey)
-	ContainerImageID       = string(semconv.ContainerImageIDKey)
-	Database               = "database"
-	DatabaseCollection     = "database.collection"
-	Endpoint               = "endpoint"
-	FaasFunction           = "faas.function"
-	FaasInstance           = "faas.instance"
-	Host                   = "host"
-	HostIp                 = "host.ip"
-	K8SPodIp               = "k8s.pod.ip"
-	KubernetesCluster      = "k8s.cluster"
-	KubernetesConfigMap    = "k8s.configmap"
-	KubernetesContainer    = "k8s.container"
-	KubernetesCronJob      = "k8s.cronjob"
-	KubernetesDaemonSet    = "k8s.daemonset"
-	KubernetesDeployment   = "k8s.deployment"
-	KubernetesJob          = "k8s.job"
-	KubernetesNamespace    = "k8s.namespace"
-	KubernetesPod          = "k8s.pod"
-	KubernetesReplicaSet   = "k8s.replicaset"
-	KubernetesSecret       = "k8s.secret"
-	KubernetesStatefulSet  = "k8s.statefulset"
-	MessagingConsumerGroup = "messaging.consumer.group"
-	MessagingDestination   = "messaging.destination"
-	Node                   = "k8s.node"
-	OperatingSystem        = "os"
-	PendingReason          = "pending.reason"
-	PodPhase               = "pod.phase"
-	Process                = "process"
-	Service                = "service"
+	DBQuerySummary           = "db.query.summary"
+	DBStatement              = "db.statement"
+	SpanKindString           = "span.kind.string"
+	NetPeerName              = "net.peer.name"
+	AwsEcsCluster            = "aws.ecs.cluster"
+	AwsEcsContainer          = "aws.ecs.container"
+	AwsEcsTask               = "aws.ecs.task"
+	AwsEksCluster            = "aws.eks.cluster"
+	CloudAccount             = "cloud.account"
+	CloudAvailabilityZone    = "cloud.availability_zone"
+	CloudProvider            = "cloud.provider"
+	CloudRegion              = "cloud.region"
+	CloudResourceId          = "cloud.resource_id"
+	Container                = "container"
+	ContainerImage           = "container.image"
+	ContainerImageName       = string(semconv.ContainerImageNameKey)
+	ContainerImageID         = string(semconv.ContainerImageIDKey)
+	Database                 = "database"
+	DatabaseCollection       = "database.collection"
+	Endpoint                 = "endpoint"
+	FaasFunction             = "faas.function"
+	FaasInstance             = "faas.instance"
+	Host                     = "host"
+	HostIp                   = "host.ip"
+	K8SPodIp                 = "k8s.pod.ip"
+	KubernetesCluster        = "k8s.cluster"
+	KubernetesConfigMap      = "k8s.configmap"
+	KubernetesContainer      = "k8s.container"
+	KubernetesCronJob        = "k8s.cronjob"
+	KubernetesDaemonSet      = "k8s.daemonset"
+	KubernetesDeployment     = "k8s.deployment"
+	KubernetesJob            = "k8s.job"
+	KubernetesNamespace      = "k8s.namespace"
+	KubernetesPod            = "k8s.pod"
+	KubernetesReplicaSet     = "k8s.replicaset"
+	KubernetesSecret         = "k8s.secret"
+	KubernetesStatefulSet    = "k8s.statefulset"
+	MessagingConsumerGroup   = "messaging.consumer.group"
+	MessagingDestination     = "messaging.destination"
+	Node                     = "k8s.node"
+	OperatingSystem          = "os"
+	PendingReason            = "pending.reason"
+	PodPhase                 = "pod.phase"
+	Process                  = "process"
+	Service                  = "service"
+	ContainerImageNamePrefix = "container.image.name."
+	ContainerImageIDPrefix   = "container.image.id."
+	CrashLoopBackOff         = "CrashLoopBackOff"
+	ImagePullBackOff         = "ImagePullBackOff"
+	OOMKilled                = "OOMKilled"
 )
 
 type EntityInfo struct {
@@ -161,6 +182,7 @@ type EntityInfo struct {
 	NameTransformer             func(string) string
 	DeriveRelationshipCallbacks map[string]func(pcommon.Map) string
 	ShouldCreateCallBack        func(p pcommon.Map) bool
+	OtherIDAttributes           []string
 }
 
 type RelationshipMap map[string]*EntityInfo
@@ -201,6 +223,9 @@ var EntityRelationships = RelationshipMap{
 		AttributeNames: []string{
 			string(semconv.K8SNodeUIDKey),
 		},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+		},
 	},
 
 	// Namespace
@@ -215,6 +240,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SNamespaceNameKey),
+			string(semconv.K8SClusterNameKey),
+		},
 	},
 
 	// HTTP endpoints
@@ -308,6 +337,10 @@ var EntityRelationships = RelationshipMap{
 				return ""
 			},
 		},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// DaemonSet
@@ -319,6 +352,10 @@ var EntityRelationships = RelationshipMap{
 		},
 		AttributeNames:    []string{string(semconv.K8SStatefulSetUIDKey)},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// Deployment
@@ -336,6 +373,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// ReplicaSet
@@ -354,6 +395,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// StatefulSet
@@ -371,6 +416,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// Job
@@ -388,6 +437,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// CronJob
@@ -405,6 +458,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// Pod
@@ -427,6 +484,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SPodUIDKey),
 		},
 		AttributePrefixes: []string{"k8s.pod.label.", "k8s.pod.annotation."},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// Container
@@ -446,6 +507,10 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.K8SClusterNameKey),
 		},
 		AttributePrefixes: []string{},
+		OtherIDAttributes: []string{
+			string(semconv.K8SClusterNameKey),
+			string(semconv.K8SNamespaceNameKey),
+		},
 	},
 
 	// Docker Container
