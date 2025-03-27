@@ -405,6 +405,16 @@ func addEdgesFromPodSpec(entity *ResourceEntity, podSpec *graphpb.PodSpec, names
 	}
 }
 
+func ipv4FromList(ipList []string) string {
+	for _, ip := range ipList {
+		if strings.Contains(ip, ":") {
+			continue
+		}
+		return ip
+	}
+	return ""
+}
+
 func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObject) {
 	clusterName, found := po.GetResourceAttributes()[string(semconv.K8SClusterNameKey)]
 	if !found {
@@ -440,6 +450,12 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 			}
 		}
 		podEntityId := ToKubernetesEntityId(podSummary.BaseObject.Name, KubernetesPod, namespace, clusterName)
+		entityAttributes[PodPhase] = podSummary.Status.Phase
+		entityAttributes[K8SPodIp] = ipv4FromList(podSummary.Status.PodIps)
+		entityAttributes[HostIp] = ipv4FromList(podSummary.Status.HostIps)
+		if podSummary.Status.PhaseMessage != "" {
+			entityAttributes[PendingReason] = podSummary.Status.PhaseMessage
+		}
 		pe, _ := ec.PutEntity(KubernetesPod, podEntityId, entityAttributes)
 
 		// Get this pod's owner and link to it.
