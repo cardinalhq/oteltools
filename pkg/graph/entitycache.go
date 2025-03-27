@@ -32,7 +32,8 @@ import (
 )
 
 type EdgeInfo struct {
-	EntityId     *EntityId
+	Source       *EntityId
+	Target       *EntityId
 	Relationship string
 	LastSeen     int64
 }
@@ -188,9 +189,11 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 		}
 		var edgesProtoList []*chqpb.EdgeProto
 		for k, v := range edges {
+			edge := entity.Edges[k]
 			edgesProtoList = append(edgesProtoList, &chqpb.EdgeProto{
 				Relationship: v,
-				Id:           entity.Edges[k].EntityId.toProto(),
+				Source:       edge.Source.toProto(),
+				Target:       edge.Target.toProto(),
 			})
 		}
 		protoEntity := &chqpb.ResourceEntityProto{
@@ -214,18 +217,38 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 	return []byte{}
 }
 
-func (re *ResourceEntity) AddEdge(entityId *EntityId, relationship string) {
+// AddEdge adds an edge from this entity to the target entity with the given relationship.
+func (re *ResourceEntity) AddEdge(target *EntityId, relationship string) {
 	if re.Edges == nil {
 		re.Edges = make(map[string]*EdgeInfo)
 	}
-	key := entityId.Hash
+	key := re.EntityId.Hash + target.Hash
 	if edgeInfo, exists := re.Edges[key]; exists {
 		edgeInfo.LastSeen = now()
 	} else {
 		re.Edges[key] = &EdgeInfo{
 			Relationship: relationship,
 			LastSeen:     now(),
-			EntityId:     entityId,
+			Source:       re.EntityId,
+			Target:       target,
+		}
+	}
+}
+
+// AddEdgeBacklink adds an edge from the source entity back to this entity with the given relationship.
+func (re *ResourceEntity) AddEdgeBacklink(source *EntityId, relationship string) {
+	if re.Edges == nil {
+		re.Edges = make(map[string]*EdgeInfo)
+	}
+	key := source.Hash + re.EntityId.Hash
+	if edgeInfo, exists := re.Edges[key]; exists {
+		edgeInfo.LastSeen = now()
+	} else {
+		re.Edges[key] = &EdgeInfo{
+			Relationship: relationship,
+			LastSeen:     now(),
+			Source:       source,
+			Target:       re.EntityId,
 		}
 	}
 }
@@ -389,18 +412,21 @@ func ownerByKind(kind string) string {
 }
 
 func addEdgesFromPodSpec(entity *ResourceEntity, podSpec *graphpb.PodSpec, namespace, clusterName string) {
+	if podSpec == nil {
+		return
+	}
+	entity.mu.Lock()
+	defer entity.mu.Unlock()
 	for _, container := range podSpec.Containers {
 		for _, configMapName := range container.ConfigMapNames {
 			configMapEntityId := ToKubernetesEntityId(configMapName, KubernetesConfigMap, namespace, clusterName)
-			entity.mu.Lock()
 			entity.AddEdge(configMapEntityId, UsesConfigMap)
-			entity.mu.Unlock()
+			entity.AddEdgeBacklink(configMapEntityId, IsUsedByPod)
 		}
 		for _, secretName := range container.SecretNames {
 			secretEntityId := ToKubernetesEntityId(secretName, KubernetesSecret, namespace, clusterName)
-			entity.mu.Lock()
 			entity.AddEdge(secretEntityId, UsesSecret)
-			entity.mu.Unlock()
+			entity.AddEdgeBacklink(secretEntityId, IsUsedByPod)
 		}
 		if container.Image != "" {
 			entity.PutAttribute(ContainerImageNamePrefix+container.Name, container.Image)
@@ -416,6 +442,46 @@ func ipv4FromList(ipList []string) string {
 		return ip
 	}
 	return ""
+}
+
+func inverseOfManaged(relationship string) string {
+	switch relationship {
+	case IsManagedByDeployment:
+		return ManagesReplicaset
+	case IsManagedByStatefulSet:
+		return ManagesPod
+	case IsManagedByDaemonSet:
+		return ManagesPod
+	case IsManagedByReplicaSet:
+		return ManagesPod
+	case IsManagedByCronJob:
+		return ManagesJob
+	case IsManagedByJob:
+		return ManagesPod
+	}
+	return ""
+}
+
+func addEdgesForOwnerRefs(entity *ResourceEntity, bo *graphpb.BaseObject, clusterName string) {
+	for _, owner := range bo.OwnerRef {
+		relationship := ownedByRelationshipForType(owner.Kind)
+		if relationship == "" {
+			continue
+		}
+		ownerType := ownerByKind(owner.Kind)
+		if ownerType == "" {
+			continue
+		}
+		ownerEntityId := ToKubernetesEntityId(owner.Name, ownerType, bo.Namespace, clusterName)
+		entity.mu.Lock()
+		entity.AddEdge(ownerEntityId, relationship)
+		reverseRelationship := inverseOfManaged(relationship)
+		if reverseRelationship != "" {
+			entity.AddEdgeBacklink(ownerEntityId, reverseRelationship)
+		}
+		entity.mu.Unlock()
+	}
+
 }
 
 // ProvisionPackagedObject does the obvious.
@@ -465,20 +531,7 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 			}
 		}
 		pe, _ := ec.PutEntity(KubernetesPod, podEntityId, rattr)
-
-		// Get this pod's owner and link to it.
-		for _, owner := range podSummary.BaseObject.OwnerRef {
-			relationship := ownedByRelationshipForType(owner.Kind)
-			ownerType := ownerByKind(owner.Kind)
-			if relationship != "" && ownerType != "" {
-				ownerEntityId := ToKubernetesEntityId(owner.Name, ownerType, namespace, clusterName)
-				oe, _ := ec.PutEntity(ownerType, ownerEntityId, map[string]string{})
-				pe.mu.Lock()
-				pe.AddEdge(oe.EntityId, relationship)
-				pe.mu.Unlock()
-			}
-		}
-
+		addEdgesForOwnerRefs(pe, podSummary.BaseObject, clusterName)
 		if podSummary.Spec != nil {
 			addEdgesFromPodSpec(pe, podSummary.Spec, namespace, clusterName)
 		}
@@ -499,71 +552,57 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 
 	case *graphpb.PackagedObject_AppsDeploymentSummary:
 		deploymentSummary := obj.AppsDeploymentSummary
-		if deploymentSummary.Spec.Replicas != 0 {
+		if deploymentSummary.Spec != nil {
 			rattr[Replicas] = fmt.Sprintf("%d", deploymentSummary.Spec.Replicas)
 		}
-		if deploymentSummary.Status.ReadyReplicas != 0 {
+		if deploymentSummary.Status != nil {
 			rattr[ReadyReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.ReadyReplicas)
-		}
-		if deploymentSummary.Status.AvailableReplicas != 0 {
 			rattr[AvailableReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.AvailableReplicas)
-		}
-		if deploymentSummary.Status.UnavailableReplicas != 0 {
 			rattr[UnavailableReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.UnavailableReplicas)
 		}
-
 		deploymentId := ToKubernetesEntityId(deploymentSummary.BaseObject.Name, KubernetesDeployment, namespace, clusterName)
 		deploymentEntity, _ := ec.PutEntity(KubernetesDeployment, deploymentId, rattr)
-
 		if deploymentSummary.Spec != nil && deploymentSummary.Spec.Template != nil && deploymentSummary.Spec.Template.PodSpec != nil {
 			addEdgesFromPodSpec(deploymentEntity, deploymentSummary.Spec.Template.PodSpec, namespace, clusterName)
 		}
 
 	case *graphpb.PackagedObject_AppsStatefulSetSummary:
 		statefulSetSummary := obj.AppsStatefulSetSummary
-		if statefulSetSummary.Spec.Replicas != 0 {
+		if statefulSetSummary.Spec != nil {
 			rattr[Replicas] = fmt.Sprintf("%d", statefulSetSummary.Spec.Replicas)
 		}
-		if statefulSetSummary.Status.ReadyReplicas != 0 {
+		if statefulSetSummary.Status != nil {
 			rattr[ReadyReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.ReadyReplicas)
-		}
-		if statefulSetSummary.Status.CurrentReplicas != 0 {
 			rattr[CurrentReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.CurrentReplicas)
-		}
-		if statefulSetSummary.Status.UpdatedReplicas != 0 {
 			rattr[UpdatedReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.UpdatedReplicas)
 		}
-
 		statefulSetId := ToKubernetesEntityId(statefulSetSummary.BaseObject.Name, KubernetesStatefulSet, namespace, clusterName)
 		statefulSetEntity, _ := ec.PutEntity(KubernetesStatefulSet, statefulSetId, rattr)
-
-		if statefulSetSummary.Spec != nil && statefulSetSummary.Spec.Template != nil && statefulSetSummary.Spec.Template.PodSpec != nil {
+		if statefulSetSummary.Spec != nil && statefulSetSummary.Spec.Template != nil {
 			addEdgesFromPodSpec(statefulSetEntity, statefulSetSummary.Spec.Template.PodSpec, namespace, clusterName)
 		}
 
 	case *graphpb.PackagedObject_AppsDaemonSetSummary:
 		daemonSetSummary := obj.AppsDaemonSetSummary
-		rattr[Replicas] = fmt.Sprintf("%d", daemonSetSummary.Spec.Replicas)
 		daemonSetId := ToKubernetesEntityId(daemonSetSummary.BaseObject.Name, KubernetesDaemonSet, namespace, clusterName)
+		if daemonSetSummary.Spec != nil {
+			rattr[Replicas] = fmt.Sprintf("%d", daemonSetSummary.Spec.Replicas)
+		}
 		daemonsetEntity, _ := ec.PutEntity(KubernetesDaemonSet, daemonSetId, rattr)
-
-		if daemonSetSummary.Spec != nil && daemonSetSummary.Spec.Template != nil && daemonSetSummary.Spec.Template.PodSpec != nil {
+		if daemonSetSummary.Spec != nil && daemonSetSummary.Spec.Template != nil {
 			addEdgesFromPodSpec(daemonsetEntity, daemonSetSummary.Spec.Template.PodSpec, namespace, clusterName)
 		}
 
 	case *graphpb.PackagedObject_AppsReplicaSetSummary:
 		replicaSetSummary := obj.AppsReplicaSetSummary
-		rattr[Replicas] = fmt.Sprintf("%d", replicaSetSummary.Spec.Replicas)
-
+		if replicaSetSummary.Spec != nil {
+			rattr[Replicas] = fmt.Sprintf("%d", replicaSetSummary.Spec.Replicas)
+		}
 		replicaSetId := ToKubernetesEntityId(replicaSetSummary.BaseObject.Name, KubernetesReplicaSet, namespace, clusterName)
 		replicaSetEntity, _ := ec.PutEntity(KubernetesReplicaSet, replicaSetId, rattr)
-		for _, ownerRef := range replicaSetSummary.GetBaseObject().GetOwnerRef() {
-			if ownerRef.Kind == Deployment {
-				deploymentEntityId := ToKubernetesEntityId(ownerRef.Name, KubernetesDeployment, namespace, clusterName)
-				replicaSetEntity.mu.Lock()
-				replicaSetEntity.AddEdge(deploymentEntityId, IsManagedByDeployment)
-				replicaSetEntity.mu.Unlock()
-			}
+		addEdgesForOwnerRefs(replicaSetEntity, replicaSetSummary.BaseObject, clusterName)
+		if replicaSetSummary.Spec != nil && replicaSetSummary.Spec.Template != nil {
+			addEdgesFromPodSpec(replicaSetEntity, replicaSetSummary.Spec.Template.PodSpec, namespace, clusterName)
 		}
 
 	default:

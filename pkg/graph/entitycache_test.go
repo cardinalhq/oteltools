@@ -38,13 +38,21 @@ func assertEntityExists(t *testing.T, entities map[string]*ResourceEntity, name,
 	}
 	entityId := ToEntityId(name, entityType, attributes)
 	entity, exists := entities[entityId.Hash]
-	assert.True(t, exists, "Expected entity %s not found", entityId.Hash)
+	require.True(t, exists, "Expected entity %s not found", entityId.Hash)
 	return entity
 }
 
-func assertEdgeExists(t *testing.T, entity *ResourceEntity, toEntityId *EntityId, relationship string) {
-	actualRelationship, exists := entity.Edges[toEntityId.Hash]
-	assert.True(t, exists, "Expected edge to %s not found", toEntityId.Hash)
+func assertEdgeExists(t *testing.T, entity *ResourceEntity, target *EntityId, relationship string) {
+	key := entity.EntityId.Hash + target.Hash
+	actualRelationship, exists := entity.Edges[key]
+	require.True(t, exists, "Expected edge %s not found", key)
+	assert.Equal(t, relationship, actualRelationship.Relationship)
+}
+
+func assertEdgeFromExists(t *testing.T, entity *ResourceEntity, source *EntityId, relationship string) {
+	key := source.Hash + entity.EntityId.Hash
+	actualRelationship, exists := entity.Edges[key]
+	require.True(t, exists, "Expected edge %s not found", key)
 	assert.Equal(t, relationship, actualRelationship.Relationship)
 }
 
@@ -467,15 +475,50 @@ func TestBuildEntities_HandlesPodSummaryWithContainers(t *testing.T) {
 	assert.Equal(t, "test-image", pod.Attributes["container.image.name.test-container"])
 
 	// Expect edges linking to the config map and secret.
+	require.Len(t, pod.Edges, 4)
+	assertEdgeExists(t, pod, ToEntityId("test-configmap", KubernetesConfigMap, defaultIdentityAttributes), UsesConfigMap)
+	assertEdgeExists(t, pod, ToEntityId("test-secret", KubernetesSecret, defaultIdentityAttributes), UsesSecret)
+	assertEdgeFromExists(t, pod, ToEntityId("test-configmap", KubernetesConfigMap, defaultIdentityAttributes), IsUsedByPod)
+	assertEdgeFromExists(t, pod, ToEntityId("test-secret", KubernetesSecret, defaultIdentityAttributes), IsUsedByPod)
+}
+
+func TestBuildEntities_HandlesPodSummary_WithReplicaSetOwner(t *testing.T) {
+	attrs := map[string]string{
+		"key": "value",
+	}
+	maps.Copy(attrs, defaultIdentityAttributes)
+
+	item := &graphpb.PackagedObject{
+		ResourceAttributes: attrs,
+		Object: &graphpb.PackagedObject_PodSummary{
+			PodSummary: &graphpb.PodSummary{
+				BaseObject: &graphpb.BaseObject{
+					Namespace:  "default",
+					Kind:       "Pod",
+					ApiVersion: "v1",
+					Name:       "test-pod",
+					OwnerRef: []*graphpb.OwnerRef{
+						{
+							Kind: "ReplicaSet",
+							Name: "test-replicaset",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ec := NewResourceEntityCache()
+	ec.ProvisionPackagedObject(item)
+	entities := ec._allEntities()
+
+	pod := assertEntityExists(t, entities, "test-pod", KubernetesPod, listify(defaultIdentityAttributes)...)
+	require.NotNil(t, pod)
+	assert.Equal(t, "value", pod.Attributes["key"])
+
 	require.Len(t, pod.Edges, 2)
-	cmID := ToEntityId("test-configmap", KubernetesConfigMap, defaultIdentityAttributes).Hash
-	configmapEdge := pod.Edges[cmID]
-	require.NotNil(t, configmapEdge)
-	assert.Equal(t, UsesConfigMap, configmapEdge.Relationship)
-	secretID := ToEntityId("test-secret", KubernetesSecret, defaultIdentityAttributes).Hash
-	secretEdge := pod.Edges[secretID]
-	require.NotNil(t, secretEdge)
-	assert.Equal(t, UsesSecret, secretEdge.Relationship)
+	assertEdgeExists(t, pod, ToEntityId("test-replicaset", KubernetesReplicaSet, defaultIdentityAttributes), IsManagedByReplicaSet)
+	assertEdgeFromExists(t, pod, ToEntityId("test-replicaset", KubernetesReplicaSet, defaultIdentityAttributes), ManagesPod)
 }
 
 func TestBuildEntities_FormsEdges(t *testing.T) {
@@ -545,31 +588,152 @@ func TestBuildEntities_FormsEdges(t *testing.T) {
 		switch entity.EntityId.Name {
 		case "test-secret":
 			require.Len(t, entity.Edges, 0)
-			// require.Len(t, entity.Edges, 1)
-			// podID := ToEntityId("test-pod", KubernetesPod, defaultIdentityAttributes).Hash
-			// edge, exists := entity.Edges[podID]
-			// require.True(t, exists)
-			// assert.Equal(t, IsUsedByPod, edge.Relationship)
 		case "test-configmap":
 			require.Len(t, entity.Edges, 0)
-			// require.Len(t, entity.Edges, 1)
-			// podID := ToEntityId("test-pod", KubernetesPod, defaultIdentityAttributes).Hash
-			// edge, exists := entity.Edges[podID]
-			// require.True(t, exists)
-			// assert.Equal(t, IsUsedByPod, edge.Relationship)
 		case "test-pod":
-			require.Len(t, entity.Edges, 2)
-			cmID := ToEntityId("test-configmap", KubernetesConfigMap, defaultIdentityAttributes).Hash
-			configmapEdge, exists := entity.Edges[cmID]
-			require.True(t, exists)
-			assert.Equal(t, UsesConfigMap, configmapEdge.Relationship)
-
-			secretID := ToEntityId("test-secret", KubernetesSecret, defaultIdentityAttributes).Hash
-			secretEdge, exists := entity.Edges[secretID]
-			require.True(t, exists)
-			assert.Equal(t, UsesSecret, secretEdge.Relationship)
+			require.Len(t, entity.Edges, 4)
+			assertEdgeExists(t, entity, ToEntityId("test-configmap", KubernetesConfigMap, defaultIdentityAttributes), UsesConfigMap)
+			assertEdgeExists(t, entity, ToEntityId("test-secret", KubernetesSecret, defaultIdentityAttributes), UsesSecret)
+			assertEdgeFromExists(t, entity, ToEntityId("test-configmap", KubernetesConfigMap, defaultIdentityAttributes), IsUsedByPod)
+			assertEdgeFromExists(t, entity, ToEntityId("test-secret", KubernetesSecret, defaultIdentityAttributes), IsUsedByPod)
 		default:
 			t.Errorf("Unexpected entity: %#v", entity.EntityId)
 		}
 	}
+}
+
+func TestBuildEntities_HandlesDaemonSetSummary(t *testing.T) {
+	attrs := map[string]string{
+		"key": "value",
+	}
+	maps.Copy(attrs, defaultIdentityAttributes)
+
+	item := &graphpb.PackagedObject{
+		ResourceAttributes: attrs,
+		Object: &graphpb.PackagedObject_AppsDaemonSetSummary{
+			AppsDaemonSetSummary: &graphpb.AppsDaemonSetSummary{
+				BaseObject: &graphpb.BaseObject{
+					Namespace:  defaultIdentityAttributes[string(semconv.K8SNamespaceNameKey)],
+					Kind:       "DaemonSet",
+					ApiVersion: "apps/v1",
+					Name:       "test-daemonset",
+				},
+			},
+		},
+	}
+
+	ec := NewResourceEntityCache()
+	ec.ProvisionPackagedObject(item)
+	entities := ec._allEntities()
+
+	assert.Len(t, entities, 1)
+
+	daemonSet := assertEntityExists(t, entities, "test-daemonset", KubernetesDaemonSet, listify(defaultIdentityAttributes)...)
+	require.NotNil(t, daemonSet)
+	assert.Equal(t, attrs, daemonSet.Attributes)
+	assert.Len(t, daemonSet.Edges, 0)
+}
+
+func TestBuildEntities_HandlesDeploymentSummary(t *testing.T) {
+	attrs := map[string]string{
+		"key": "value",
+	}
+	maps.Copy(attrs, defaultIdentityAttributes)
+
+	item := &graphpb.PackagedObject{
+		ResourceAttributes: attrs,
+		Object: &graphpb.PackagedObject_AppsDeploymentSummary{
+			AppsDeploymentSummary: &graphpb.AppsDeploymentSummary{
+				BaseObject: &graphpb.BaseObject{
+					Namespace:  defaultIdentityAttributes[string(semconv.K8SNamespaceNameKey)],
+					Kind:       "Deployment",
+					ApiVersion: "apps/v1",
+					Name:       "test-deployment",
+				},
+			},
+		},
+	}
+
+	ec := NewResourceEntityCache()
+	ec.ProvisionPackagedObject(item)
+	entities := ec._allEntities()
+
+	assert.Len(t, entities, 1)
+
+	deployment := assertEntityExists(t, entities, "test-deployment", KubernetesDeployment, listify(defaultIdentityAttributes)...)
+	require.NotNil(t, deployment)
+	assert.Equal(t, attrs, deployment.Attributes)
+	assert.Len(t, deployment.Edges, 0)
+}
+
+func TestBuildEntities_HandlesReplicaSetSummary(t *testing.T) {
+	attrs := map[string]string{
+		"key": "value",
+	}
+	maps.Copy(attrs, defaultIdentityAttributes)
+
+	item := &graphpb.PackagedObject{
+		ResourceAttributes: attrs,
+		Object: &graphpb.PackagedObject_AppsReplicaSetSummary{
+			AppsReplicaSetSummary: &graphpb.AppsReplicaSetSummary{
+				BaseObject: &graphpb.BaseObject{
+					Namespace:  defaultIdentityAttributes[string(semconv.K8SNamespaceNameKey)],
+					Kind:       "ReplicaSet",
+					ApiVersion: "apps/v1",
+					Name:       "test-replicaset",
+					OwnerRef: []*graphpb.OwnerRef{
+						{
+							Kind: "Deployment",
+							Name: "test-deployment",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ec := NewResourceEntityCache()
+	ec.ProvisionPackagedObject(item)
+	entities := ec._allEntities()
+
+	assert.Len(t, entities, 1)
+
+	replicaSet := assertEntityExists(t, entities, "test-replicaset", KubernetesReplicaSet, listify(defaultIdentityAttributes)...)
+	require.NotNil(t, replicaSet)
+	assert.Equal(t, attrs, replicaSet.Attributes)
+	assert.Len(t, replicaSet.Edges, 2)
+	assertEdgeExists(t, replicaSet, ToEntityId("test-deployment", KubernetesDeployment, defaultIdentityAttributes), IsManagedByDeployment)
+	assertEdgeFromExists(t, replicaSet, ToEntityId("test-deployment", KubernetesDeployment, defaultIdentityAttributes), ManagesReplicaset)
+}
+
+func TestBuildEntities_HandlesStatefulSetSummary(t *testing.T) {
+	attrs := map[string]string{
+		"key": "value",
+	}
+	maps.Copy(attrs, defaultIdentityAttributes)
+
+	item := &graphpb.PackagedObject{
+		ResourceAttributes: attrs,
+		Object: &graphpb.PackagedObject_AppsStatefulSetSummary{
+			AppsStatefulSetSummary: &graphpb.AppsStatefulSetSummary{
+				BaseObject: &graphpb.BaseObject{
+					Namespace:  defaultIdentityAttributes[string(semconv.K8SNamespaceNameKey)],
+					Kind:       "StatefulSet",
+					ApiVersion: "apps/v1",
+					Name:       "test-statefulset",
+				},
+			},
+		},
+	}
+
+	ec := NewResourceEntityCache()
+	ec.ProvisionPackagedObject(item)
+	entities := ec._allEntities()
+
+	assert.Len(t, entities, 1)
+
+	statefulSet := assertEntityExists(t, entities, "test-statefulset", KubernetesStatefulSet, listify(defaultIdentityAttributes)...)
+	require.NotNil(t, statefulSet)
+	assert.Equal(t, attrs, statefulSet.Attributes)
+	assert.Len(t, statefulSet.Edges, 0)
 }

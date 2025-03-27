@@ -16,6 +16,7 @@ package graph
 
 import (
 	"fmt"
+
 	"github.com/cardinalhq/oteltools/pkg/ottl/functions"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -91,6 +92,8 @@ const (
 	IsUsedByStatefulSet      = "is used by statefulset"
 	ManagesAccount           = "manages account"
 	ManagesReplicaset        = "manages replicaset"
+	ManagesPod               = "manages pod"
+	ManagesJob               = "manages job"
 	ProducesTo               = "produces to"
 	RunsInPod                = "runs in pod"
 	RunsOnOperatingSystem    = "runs on operating system"

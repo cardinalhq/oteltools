@@ -21,8 +21,9 @@ option go_package = ".;chqpb";
 import "resource_entity_id.proto";
 
 message EdgeProto {
-  ResourceEntityId id = 1;
+  ResourceEntityId target = 1;
   string relationship = 2;
+  ResourceEntityId source = 3;
 }
 
 message ResourceEntityProto {
