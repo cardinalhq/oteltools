@@ -16,12 +16,13 @@ package graph
 
 import (
 	"fmt"
-	"github.com/cardinalhq/oteltools/pkg/graph/graphpb"
 	"hash/fnv"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/cardinalhq/oteltools/pkg/graph/graphpb"
 
 	"github.com/cardinalhq/oteltools/pkg/chqpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -417,8 +418,12 @@ func ipv4FromList(ipList []string) string {
 	return ""
 }
 
+// ProvisionPackagedObject does the obvious.
+// It also MODIFIES the passed in PackagedObject, specificially the ResourceAttributes,
+// so this makes the PackagedObject not safe for concurrent use.
 func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObject) {
-	clusterName, found := po.GetResourceAttributes()[string(semconv.K8SClusterNameKey)]
+	rattr := po.GetResourceAttributes()
+	clusterName, found := rattr[string(semconv.K8SClusterNameKey)]
 	if !found {
 		return
 	}
@@ -426,7 +431,6 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 
 	switch obj := po.Object.(type) {
 	case *graphpb.PackagedObject_PodSummary:
-		entityAttributes := make(map[string]string)
 		podSummary := obj.PodSummary
 		if podSummary.Status != nil {
 			for _, containerStatus := range podSummary.Status.ContainerStatus {
@@ -434,31 +438,33 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 					continue
 				}
 				if containerStatus.IsCrashLoopBackOff {
-					entityAttributes[CrashLoopBackOff] = "true"
+					rattr[CrashLoopBackOff] = "true"
 				}
 				if containerStatus.IsImagePullBackOff {
-					entityAttributes[ImagePullBackOff] = "true"
+					rattr[ImagePullBackOff] = "true"
 				}
 				if containerStatus.WasOomKilled {
-					entityAttributes[OOMKilled] = "true"
+					rattr[OOMKilled] = "true"
 				}
 
 				if containerStatus.Image.Image != "" {
-					entityAttributes[ContainerImageNamePrefix+containerStatus.Name] = containerStatus.Image.Image
+					rattr[ContainerImageNamePrefix+containerStatus.Name] = containerStatus.Image.Image
 				}
 				if containerStatus.Image.ImageId != "" {
-					entityAttributes[ContainerImageIDPrefix+containerStatus.Name] = containerStatus.Image.ImageId
+					rattr[ContainerImageIDPrefix+containerStatus.Name] = containerStatus.Image.ImageId
 				}
 			}
 		}
 		podEntityId := ToKubernetesEntityId(podSummary.BaseObject.Name, KubernetesPod, namespace, clusterName)
-		entityAttributes[PodPhase] = podSummary.Status.Phase
-		entityAttributes[K8SPodIp] = ipv4FromList(podSummary.Status.PodIps)
-		entityAttributes[HostIp] = ipv4FromList(podSummary.Status.HostIps)
-		if podSummary.Status.PhaseMessage != "" {
-			entityAttributes[PendingReason] = podSummary.Status.PhaseMessage
+		if podSummary.Status != nil {
+			rattr[PodPhase] = podSummary.Status.Phase
+			rattr[K8SPodIp] = ipv4FromList(podSummary.Status.PodIps)
+			rattr[HostIp] = ipv4FromList(podSummary.Status.HostIps)
+			if podSummary.Status.PhaseMessage != "" {
+				rattr[PendingReason] = podSummary.Status.PhaseMessage
+			}
 		}
-		pe, _ := ec.PutEntity(KubernetesPod, podEntityId, entityAttributes)
+		pe, _ := ec.PutEntity(KubernetesPod, podEntityId, rattr)
 
 		// Get this pod's owner and link to it.
 		for _, owner := range podSummary.BaseObject.OwnerRef {
@@ -478,85 +484,79 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 		}
 
 	case *graphpb.PackagedObject_SecretSummary:
-		entityAttributes := make(map[string]string)
 		for name, hash := range obj.SecretSummary.Hashes {
-			entityAttributes[DataHashPrefix+name] = hash
+			rattr[DataHashPrefix+name] = hash
 		}
 		secretId := ToKubernetesEntityId(obj.SecretSummary.BaseObject.Name, KubernetesSecret, namespace, clusterName)
-		ec.PutEntity(KubernetesSecret, secretId, entityAttributes)
+		ec.PutEntity(KubernetesSecret, secretId, rattr)
 
 	case *graphpb.PackagedObject_ConfigMapSummary:
-		entityAttributes := make(map[string]string)
 		for name, hash := range obj.ConfigMapSummary.Hashes {
-			entityAttributes[DataHashPrefix+name] = hash
+			rattr[DataHashPrefix+name] = hash
 		}
 		secretId := ToKubernetesEntityId(obj.ConfigMapSummary.BaseObject.Name, KubernetesConfigMap, namespace, clusterName)
-		ec.PutEntity(KubernetesConfigMap, secretId, entityAttributes)
+		ec.PutEntity(KubernetesConfigMap, secretId, rattr)
 
 	case *graphpb.PackagedObject_AppsDeploymentSummary:
-		entityAttributes := make(map[string]string)
 		deploymentSummary := obj.AppsDeploymentSummary
 		if deploymentSummary.Spec.Replicas != 0 {
-			entityAttributes[Replicas] = fmt.Sprintf("%d", deploymentSummary.Spec.Replicas)
+			rattr[Replicas] = fmt.Sprintf("%d", deploymentSummary.Spec.Replicas)
 		}
 		if deploymentSummary.Status.ReadyReplicas != 0 {
-			entityAttributes[ReadyReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.ReadyReplicas)
+			rattr[ReadyReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.ReadyReplicas)
 		}
 		if deploymentSummary.Status.AvailableReplicas != 0 {
-			entityAttributes[AvailableReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.AvailableReplicas)
+			rattr[AvailableReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.AvailableReplicas)
 		}
 		if deploymentSummary.Status.UnavailableReplicas != 0 {
-			entityAttributes[UnavailableReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.UnavailableReplicas)
+			rattr[UnavailableReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.UnavailableReplicas)
 		}
 
 		deploymentId := ToKubernetesEntityId(deploymentSummary.BaseObject.Name, KubernetesDeployment, namespace, clusterName)
-		deploymentEntity, _ := ec.PutEntity(KubernetesDeployment, deploymentId, entityAttributes)
+		deploymentEntity, _ := ec.PutEntity(KubernetesDeployment, deploymentId, rattr)
 
 		if deploymentSummary.Spec != nil && deploymentSummary.Spec.Template != nil && deploymentSummary.Spec.Template.PodSpec != nil {
 			addEdgesFromPodSpec(deploymentEntity, deploymentSummary.Spec.Template.PodSpec, namespace, clusterName)
 		}
 
 	case *graphpb.PackagedObject_AppsStatefulSetSummary:
-		entityAttributes := make(map[string]string)
 		statefulSetSummary := obj.AppsStatefulSetSummary
 		if statefulSetSummary.Spec.Replicas != 0 {
-			entityAttributes[Replicas] = fmt.Sprintf("%d", statefulSetSummary.Spec.Replicas)
+			rattr[Replicas] = fmt.Sprintf("%d", statefulSetSummary.Spec.Replicas)
 		}
 		if statefulSetSummary.Status.ReadyReplicas != 0 {
-			entityAttributes[ReadyReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.ReadyReplicas)
+			rattr[ReadyReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.ReadyReplicas)
 		}
 		if statefulSetSummary.Status.CurrentReplicas != 0 {
-			entityAttributes[CurrentReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.CurrentReplicas)
+			rattr[CurrentReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.CurrentReplicas)
 		}
 		if statefulSetSummary.Status.UpdatedReplicas != 0 {
-			entityAttributes[UpdatedReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.UpdatedReplicas)
+			rattr[UpdatedReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.UpdatedReplicas)
 		}
 
 		statefulSetId := ToKubernetesEntityId(statefulSetSummary.BaseObject.Name, KubernetesStatefulSet, namespace, clusterName)
-		statefulSetEntity, _ := ec.PutEntity(KubernetesStatefulSet, statefulSetId, entityAttributes)
+		statefulSetEntity, _ := ec.PutEntity(KubernetesStatefulSet, statefulSetId, rattr)
 
 		if statefulSetSummary.Spec != nil && statefulSetSummary.Spec.Template != nil && statefulSetSummary.Spec.Template.PodSpec != nil {
 			addEdgesFromPodSpec(statefulSetEntity, statefulSetSummary.Spec.Template.PodSpec, namespace, clusterName)
 		}
 
 	case *graphpb.PackagedObject_AppsDaemonSetSummary:
-		entityAttributes := make(map[string]string)
 		daemonSetSummary := obj.AppsDaemonSetSummary
-		entityAttributes[Replicas] = fmt.Sprintf("%d", daemonSetSummary.Spec.Replicas)
+		rattr[Replicas] = fmt.Sprintf("%d", daemonSetSummary.Spec.Replicas)
 		daemonSetId := ToKubernetesEntityId(daemonSetSummary.BaseObject.Name, KubernetesDaemonSet, namespace, clusterName)
-		daemonsetEntity, _ := ec.PutEntity(KubernetesDaemonSet, daemonSetId, entityAttributes)
+		daemonsetEntity, _ := ec.PutEntity(KubernetesDaemonSet, daemonSetId, rattr)
 
 		if daemonSetSummary.Spec != nil && daemonSetSummary.Spec.Template != nil && daemonSetSummary.Spec.Template.PodSpec != nil {
 			addEdgesFromPodSpec(daemonsetEntity, daemonSetSummary.Spec.Template.PodSpec, namespace, clusterName)
 		}
 
 	case *graphpb.PackagedObject_AppsReplicaSetSummary:
-		entityAttributes := make(map[string]string)
 		replicaSetSummary := obj.AppsReplicaSetSummary
-		entityAttributes[Replicas] = fmt.Sprintf("%d", replicaSetSummary.Spec.Replicas)
+		rattr[Replicas] = fmt.Sprintf("%d", replicaSetSummary.Spec.Replicas)
 
 		replicaSetId := ToKubernetesEntityId(replicaSetSummary.BaseObject.Name, KubernetesReplicaSet, namespace, clusterName)
-		replicaSetEntity, _ := ec.PutEntity(KubernetesReplicaSet, replicaSetId, entityAttributes)
+		replicaSetEntity, _ := ec.PutEntity(KubernetesReplicaSet, replicaSetId, rattr)
 		for _, ownerRef := range replicaSetSummary.GetBaseObject().GetOwnerRef() {
 			if ownerRef.Kind == Deployment {
 				deploymentEntityId := ToKubernetesEntityId(ownerRef.Name, KubernetesDeployment, namespace, clusterName)

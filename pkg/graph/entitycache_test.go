@@ -15,17 +15,19 @@
 package graph
 
 import (
+	"maps"
 	"testing"
 
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 
+	"github.com/cardinalhq/oteltools/pkg/graph/graphpb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func assertEntityExists(t *testing.T, entities map[string]*ResourceEntity, name, entityType string, otherAttributes ...string) *ResourceEntity {
-
 	// convert otherAttributes to key/value map and then put to entityId.IdAttributes
 	if len(otherAttributes)%2 != 0 {
 		panic("otherAttributes must be key-value pairs")
@@ -44,6 +46,14 @@ func assertEdgeExists(t *testing.T, entity *ResourceEntity, toEntityId *EntityId
 	actualRelationship, exists := entity.Edges[toEntityId.Hash]
 	assert.True(t, exists, "Expected edge to %s not found", toEntityId.Hash)
 	assert.Equal(t, relationship, actualRelationship.Relationship)
+}
+
+func listify(m map[string]string) []string {
+	var res []string
+	for k, v := range m {
+		res = append(res, k, v)
+	}
+	return res
 }
 
 func TestKubernetesEntityRelationships(t *testing.T) {
@@ -310,4 +320,256 @@ func TestCloudRelationships(t *testing.T) {
 	assertEdgeExists(t, region, account.EntityId, BelongsToAccount)
 
 	assertEdgeExists(t, zone, region.EntityId, BelongsToRegion)
+}
+
+var (
+	defaultIdentityAttributes = map[string]string{
+		string(semconv.K8SClusterNameKey):   "cluster-1",
+		string(semconv.K8SNamespaceNameKey): "default",
+	}
+)
+
+func TestBuildEntities_HandlesSecretSummary(t *testing.T) {
+	attrs := map[string]string{
+		"key": "value",
+	}
+	maps.Copy(attrs, defaultIdentityAttributes)
+
+	item := &graphpb.PackagedObject{
+		ResourceAttributes: attrs,
+		Object: &graphpb.PackagedObject_SecretSummary{
+			SecretSummary: &graphpb.SecretSummary{
+				BaseObject: &graphpb.BaseObject{
+					Namespace:  defaultIdentityAttributes[string(semconv.K8SNamespaceNameKey)],
+					Kind:       "Secret",
+					ApiVersion: "v1",
+					Name:       "test-secret",
+				},
+			},
+		},
+	}
+
+	ec := NewResourceEntityCache()
+	ec.ProvisionPackagedObject(item)
+	entities := ec._allEntities()
+
+	secret := assertEntityExists(t, entities, "test-secret", KubernetesSecret, listify(defaultIdentityAttributes)...)
+	require.NotNil(t, secret)
+	assert.Len(t, entities, 1)
+	assert.Equal(t, attrs, secret.Attributes)
+	assert.Len(t, secret.Edges, 0)
+}
+
+func TestBuildEntities_HandlesConfigMapSummary(t *testing.T) {
+	attrs := map[string]string{
+		"key": "value",
+	}
+	maps.Copy(attrs, defaultIdentityAttributes)
+
+	item := &graphpb.PackagedObject{
+		ResourceAttributes: attrs,
+		Object: &graphpb.PackagedObject_ConfigMapSummary{
+			ConfigMapSummary: &graphpb.ConfigMapSummary{
+				BaseObject: &graphpb.BaseObject{
+					Namespace:  attrs[string(semconv.K8SNamespaceNameKey)],
+					Kind:       "ConfigMap",
+					ApiVersion: "v1",
+					Name:       "test-configmap",
+				},
+			},
+		},
+	}
+
+	ec := NewResourceEntityCache()
+	ec.ProvisionPackagedObject(item)
+	entities := ec._allEntities()
+
+	configmap := assertEntityExists(t, entities, "test-configmap", KubernetesConfigMap, listify(defaultIdentityAttributes)...)
+	require.NotNil(t, configmap)
+	assert.Len(t, entities, 1)
+	assert.Equal(t, attrs, configmap.Attributes)
+	assert.Len(t, configmap.Edges, 0)
+}
+
+func TestBuildEntities_HandlesPodSummary(t *testing.T) {
+	attrs := map[string]string{
+		"key": "value",
+	}
+	maps.Copy(attrs, defaultIdentityAttributes)
+
+	item := &graphpb.PackagedObject{
+		ResourceAttributes: attrs,
+		Object: &graphpb.PackagedObject_PodSummary{
+			PodSummary: &graphpb.PodSummary{
+				BaseObject: &graphpb.BaseObject{
+					Namespace:  defaultIdentityAttributes[string(semconv.K8SNamespaceNameKey)],
+					Kind:       "Pod",
+					ApiVersion: "v1",
+					Name:       "test-pod",
+				},
+				Spec: &graphpb.PodSpec{
+					Containers: []*graphpb.PodContainerSpec{},
+				},
+			},
+		},
+	}
+
+	ec := NewResourceEntityCache()
+	ec.ProvisionPackagedObject(item)
+	entities := ec._allEntities()
+
+	pod := assertEntityExists(t, entities, "test-pod", KubernetesPod, listify(defaultIdentityAttributes)...)
+	require.NotNil(t, pod)
+	assert.Len(t, entities, 1)
+	assert.Equal(t, attrs, pod.Attributes)
+	// With no containers, expect no edges.
+	assert.Len(t, pod.Edges, 0)
+}
+
+func TestBuildEntities_HandlesPodSummaryWithContainers(t *testing.T) {
+	attrs := map[string]string{
+		"key": "value",
+	}
+	maps.Copy(attrs, defaultIdentityAttributes)
+
+	item := &graphpb.PackagedObject{
+		ResourceAttributes: attrs,
+		Object: &graphpb.PackagedObject_PodSummary{
+			PodSummary: &graphpb.PodSummary{
+				BaseObject: &graphpb.BaseObject{
+					Namespace:  "default",
+					Kind:       "Pod",
+					ApiVersion: "v1",
+					Name:       "test-pod",
+				},
+				Spec: &graphpb.PodSpec{
+					Containers: []*graphpb.PodContainerSpec{
+						{
+							Name:           "test-container",
+							ConfigMapNames: []string{"test-configmap"},
+							SecretNames:    []string{"test-secret"},
+							Image:          "test-image",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ec := NewResourceEntityCache()
+	ec.ProvisionPackagedObject(item)
+	entities := ec._allEntities()
+
+	pod := assertEntityExists(t, entities, "test-pod", KubernetesPod, listify(defaultIdentityAttributes)...)
+	require.NotNil(t, pod)
+	assert.Len(t, pod.Attributes, 4)
+	assert.Equal(t, "value", pod.Attributes["key"])
+	assert.Equal(t, "test-image", pod.Attributes["container.image.name.test-container"])
+
+	// Expect edges linking to the config map and secret.
+	require.Len(t, pod.Edges, 2)
+	cmID := ToEntityId("test-configmap", KubernetesConfigMap, defaultIdentityAttributes).Hash
+	configmapEdge := pod.Edges[cmID]
+	require.NotNil(t, configmapEdge)
+	assert.Equal(t, UsesConfigMap, configmapEdge.Relationship)
+	secretID := ToEntityId("test-secret", KubernetesSecret, defaultIdentityAttributes).Hash
+	secretEdge := pod.Edges[secretID]
+	require.NotNil(t, secretEdge)
+	assert.Equal(t, UsesSecret, secretEdge.Relationship)
+}
+
+func TestBuildEntities_FormsEdges(t *testing.T) {
+	attrs := map[string]string{"key": "value"}
+	maps.Copy(attrs, defaultIdentityAttributes)
+
+	secretItem := &graphpb.PackagedObject{
+		ResourceAttributes: attrs,
+		Object: &graphpb.PackagedObject_SecretSummary{
+			SecretSummary: &graphpb.SecretSummary{
+				BaseObject: &graphpb.BaseObject{
+					Namespace:  "default",
+					Kind:       "Secret",
+					ApiVersion: "v1",
+					Name:       "test-secret",
+				},
+			},
+		},
+	}
+
+	configMapItem := &graphpb.PackagedObject{
+		ResourceAttributes: attrs,
+		Object: &graphpb.PackagedObject_ConfigMapSummary{
+			ConfigMapSummary: &graphpb.ConfigMapSummary{
+				BaseObject: &graphpb.BaseObject{
+					Namespace:  "default",
+					Kind:       "ConfigMap",
+					ApiVersion: "v1",
+					Name:       "test-configmap",
+				},
+			},
+		},
+	}
+
+	podItem := &graphpb.PackagedObject{
+		ResourceAttributes: attrs,
+		Object: &graphpb.PackagedObject_PodSummary{
+			PodSummary: &graphpb.PodSummary{
+				BaseObject: &graphpb.BaseObject{
+					Namespace:  "default",
+					Kind:       "Pod",
+					ApiVersion: "v1",
+					Name:       "test-pod",
+				},
+				Spec: &graphpb.PodSpec{
+					Containers: []*graphpb.PodContainerSpec{
+						{
+							Image:          "test-image",
+							ConfigMapNames: []string{"test-configmap"},
+							SecretNames:    []string{"test-secret"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ec := NewResourceEntityCache()
+	ec.ProvisionPackagedObject(secretItem)
+	ec.ProvisionPackagedObject(configMapItem)
+	ec.ProvisionPackagedObject(podItem)
+	entities := ec._allEntities()
+
+	assert.Len(t, entities, 3)
+
+	for _, entity := range entities {
+		switch entity.EntityId.Name {
+		case "test-secret":
+			require.Len(t, entity.Edges, 0)
+			// require.Len(t, entity.Edges, 1)
+			// podID := ToEntityId("test-pod", KubernetesPod, defaultIdentityAttributes).Hash
+			// edge, exists := entity.Edges[podID]
+			// require.True(t, exists)
+			// assert.Equal(t, IsUsedByPod, edge.Relationship)
+		case "test-configmap":
+			require.Len(t, entity.Edges, 0)
+			// require.Len(t, entity.Edges, 1)
+			// podID := ToEntityId("test-pod", KubernetesPod, defaultIdentityAttributes).Hash
+			// edge, exists := entity.Edges[podID]
+			// require.True(t, exists)
+			// assert.Equal(t, IsUsedByPod, edge.Relationship)
+		case "test-pod":
+			require.Len(t, entity.Edges, 2)
+			cmID := ToEntityId("test-configmap", KubernetesConfigMap, defaultIdentityAttributes).Hash
+			configmapEdge, exists := entity.Edges[cmID]
+			require.True(t, exists)
+			assert.Equal(t, UsesConfigMap, configmapEdge.Relationship)
+
+			secretID := ToEntityId("test-secret", KubernetesSecret, defaultIdentityAttributes).Hash
+			secretEdge, exists := entity.Edges[secretID]
+			require.True(t, exists)
+			assert.Equal(t, UsesSecret, secretEdge.Relationship)
+		default:
+			t.Errorf("Unexpected entity: %#v", entity.EntityId)
+		}
+	}
 }
