@@ -504,7 +504,14 @@ func addEdgesForOwnerRefs(entity *ResourceEntity, bo *graphpb.BaseObject, cluste
 		}
 		entity.mu.Unlock()
 	}
+}
 
+// trueFalse returns "true" if the value is true, otherwise "false".
+func trueFalse(value bool) string {
+	if value {
+		return "true"
+	}
+	return "false"
 }
 
 // ProvisionPackagedObject does the obvious.
@@ -521,24 +528,14 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 	switch obj := po.Object.(type) {
 	case *graphpb.PackagedObject_PodSummary:
 		podSummary := obj.PodSummary
+		crashLoopBackoff := false
+		imagePullBackoff := false
+		oomKilled := false
 		if podSummary.Status != nil {
 			for _, containerStatus := range podSummary.Status.ContainerStatus {
-				if containerStatus.IsCrashLoopBackOff {
-					rattr[CrashLoopBackOff] = "true"
-				} else {
-					rattr[CrashLoopBackOff] = "false"
-				}
-				if containerStatus.IsImagePullBackOff {
-					rattr[ImagePullBackOff] = "true"
-				} else {
-					rattr[ImagePullBackOff] = "false"
-				}
-				if containerStatus.WasOomKilled {
-					rattr[OOMKilled] = "true"
-				} else {
-					rattr[OOMKilled] = "false"
-				}
-
+				crashLoopBackoff = crashLoopBackoff || containerStatus.IsCrashLoopBackOff
+				imagePullBackoff = imagePullBackoff || containerStatus.IsImagePullBackOff
+				oomKilled = oomKilled || containerStatus.WasOomKilled
 				if containerStatus.Image != nil {
 					if containerStatus.Image.Image != "" {
 						rattr[ContainerImageNamePrefix+containerStatus.Name] = containerStatus.Image.Image
@@ -549,6 +546,9 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 				}
 			}
 		}
+		rattr[CrashLoopBackOff] = trueFalse(crashLoopBackoff)
+		rattr[ImagePullBackOff] = trueFalse(imagePullBackoff)
+		rattr[OOMKilled] = trueFalse(oomKilled)
 		podEntityId := ToKubernetesEntityId(podSummary.BaseObject.Name, KubernetesPod, namespace, clusterName)
 		if podSummary.Status != nil {
 			rattr[PodPhase] = podSummary.Status.Phase
