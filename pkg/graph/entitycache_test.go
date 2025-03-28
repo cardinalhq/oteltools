@@ -205,6 +205,24 @@ func TestDBRelationships(t *testing.T) {
 	assertEdgeExists(t, serviceEntity, dbEntity.EntityId, UsesDatabaseCollection)
 }
 
+func TestEndpointRelationships(t *testing.T) {
+	ec := NewResourceEntityCache()
+	attributes := pcommon.NewMap()
+	attributes.PutStr(string(semconv.ServiceNameKey), "service-1")
+	globalEntityMap := ec.ProvisionResourceAttributes(attributes)
+
+	recordAttributes := pcommon.NewMap()
+	recordAttributes.PutStr(string(semconv.URLTemplateKey), "/api/v1/hello")
+	recordAttributes.PutStr(SpanKindString, "Server")
+	recordAttributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), 200)
+	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
+
+	entities := ec._allEntities()
+	endpointEntity := assertEntityExists(t, entities, "/api/v1/hello", Endpoint)
+	serviceEntity := assertEntityExists(t, entities, "service-1", Service)
+	assertEdgeExists(t, serviceEntity, endpointEntity.EntityId, ServesEndpoint)
+}
+
 func TestMessagingConsumesFromRelationship(t *testing.T) {
 	ec := NewResourceEntityCache()
 
