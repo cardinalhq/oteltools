@@ -126,11 +126,34 @@ func ToKubernetesEntityId(name, entityType, namespace, clusterName string) *Enti
 	})
 }
 
+func clearAttributes(attributes map[string]string, prefix string) {
+	for key := range attributes {
+		if strings.HasPrefix(key, prefix) {
+			delete(attributes, key)
+		}
+	}
+}
+
 func (ec *ResourceEntityCache) PutEntity(attributeName string, entityId *EntityId, attributes map[string]string) (*ResourceEntity, bool) {
 	if entity, exists := ec.entityMap.Load(entityId.Hash); exists {
 		re := entity.(*ResourceEntity)
 		re.mu.Lock()
 		re.lastSeen = now()
+		switch re.EntityId.Type {
+		case KubernetesPod:
+			clearAttributes(re.Attributes, ContainerImageNamePrefix)
+			clearAttributes(re.Attributes, ContainerImageIDPrefix)
+		case KubernetesDeployment:
+			clearAttributes(re.Attributes, ContainerImageNamePrefix)
+		case KubernetesStatefulSet:
+			clearAttributes(re.Attributes, ContainerImageNamePrefix)
+		case KubernetesDaemonSet:
+			clearAttributes(re.Attributes, ContainerImageNamePrefix)
+		case KubernetesReplicaSet:
+			clearAttributes(re.Attributes, ContainerImageNamePrefix)
+		case KubernetesSecret, KubernetesConfigMap:
+			clearAttributes(re.Attributes, DataHashPrefix)
+		}
 		for key, value := range attributes {
 			re.PutAttribute(key, value)
 		}
@@ -500,24 +523,29 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 		podSummary := obj.PodSummary
 		if podSummary.Status != nil {
 			for _, containerStatus := range podSummary.Status.ContainerStatus {
-				if containerStatus.Image == nil {
-					continue
-				}
 				if containerStatus.IsCrashLoopBackOff {
 					rattr[CrashLoopBackOff] = "true"
+				} else {
+					rattr[CrashLoopBackOff] = "false"
 				}
 				if containerStatus.IsImagePullBackOff {
 					rattr[ImagePullBackOff] = "true"
+				} else {
+					rattr[ImagePullBackOff] = "false"
 				}
 				if containerStatus.WasOomKilled {
 					rattr[OOMKilled] = "true"
+				} else {
+					rattr[OOMKilled] = "false"
 				}
 
-				if containerStatus.Image.Image != "" {
-					rattr[ContainerImageNamePrefix+containerStatus.Name] = containerStatus.Image.Image
-				}
-				if containerStatus.Image.ImageId != "" {
-					rattr[ContainerImageIDPrefix+containerStatus.Name] = containerStatus.Image.ImageId
+				if containerStatus.Image != nil {
+					if containerStatus.Image.Image != "" {
+						rattr[ContainerImageNamePrefix+containerStatus.Name] = containerStatus.Image.Image
+					}
+					if containerStatus.Image.ImageId != "" {
+						rattr[ContainerImageIDPrefix+containerStatus.Name] = containerStatus.Image.ImageId
+					}
 				}
 			}
 		}
