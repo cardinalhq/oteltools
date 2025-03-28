@@ -109,8 +109,8 @@ type FingerprintConfig struct {
 }
 
 type FingerprintMapping struct {
-	Primary int64   `json:"primary,omitempty" yaml:"primary,omitempty"`
-	Aliases []int64 `json:"aliases,omitempty" yaml:"aliases,omitempty"`
+	Primary string   `json:"primary,omitempty" yaml:"primary,omitempty"`
+	Aliases []string `json:"aliases,omitempty" yaml:"aliases,omitempty"`
 }
 
 type MissingDataConfig struct {
