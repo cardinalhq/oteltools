@@ -301,18 +301,18 @@ func (ec *ResourceEntityCache) ProvisionResourceAttributes(attributes pcommon.Ma
 }
 
 func (ec *ResourceEntityCache) ProvisionRecordAttributes(resourceEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
-	newEntityMap := ec.provisionEntities(recordAttributes, resourceEntityMap)
+	provisionedEntities := ec.provisionEntities(recordAttributes, resourceEntityMap)
 	if serviceEntity, exists := resourceEntityMap[string(semconv.ServiceNameKey)]; exists {
-		newEntityMap[string(semconv.ServiceNameKey)] = serviceEntity
+		provisionedEntities[string(semconv.ServiceNameKey)] = serviceEntity
 	}
-	if len(newEntityMap) > 0 {
-		ec.provisionRelationships(newEntityMap, recordAttributes)
+	if len(provisionedEntities) > 0 {
+		ec.provisionRelationships(provisionedEntities, recordAttributes)
 	}
 }
 
 func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityMap map[string]*ResourceEntity) map[string]*ResourceEntity {
 	matches := make(map[*EntityInfo]*ResourceEntity)
-	newEntities := make(map[string]*ResourceEntity)
+	provisionedEntities := make(map[string]*ResourceEntity)
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		entityName := v.AsString()
 		if entityInfo, exists := EntityRelationships[k]; exists && entityName != "" {
@@ -335,10 +335,8 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 				}
 			}
 			entityId := ToEntityId(entityName, entityInfo.Type, idAttributes)
-			entity, isNewEntity := ec.PutEntity(k, entityId, entityAttrs)
-			if isNewEntity {
-				newEntities[k] = entity
-			}
+			entity, _ := ec.PutEntity(k, entityId, entityAttrs)
+			provisionedEntities[k] = entity
 			matches[entityInfo] = entity
 			entityMap[k] = entity
 		}
@@ -368,7 +366,7 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 			})
 		}
 	}
-	return newEntities
+	return provisionedEntities
 }
 
 func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string]*ResourceEntity, recordAttributes pcommon.Map) {
