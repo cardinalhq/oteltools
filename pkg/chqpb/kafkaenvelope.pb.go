@@ -23,6 +23,7 @@ package chqpb
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -131,6 +132,7 @@ type KafkaEnvelope struct {
 	//
 	//	*KafkaEnvelope_PartitionValue
 	Partition     isKafkaEnvelope_Partition `protobuf_oneof:"partition"`
+	PublishedAt   *timestamppb.Timestamp    `protobuf:"bytes,7,opt,name=publishedAt,proto3" json:"publishedAt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -216,6 +218,13 @@ func (x *KafkaEnvelope) GetPartitionValue() int32 {
 	return 0
 }
 
+func (x *KafkaEnvelope) GetPublishedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return nil
+}
+
 type isKafkaEnvelope_Partition interface {
 	isKafkaEnvelope_Partition()
 }
@@ -230,7 +239,7 @@ var File_kafkaenvelope_proto protoreflect.FileDescriptor
 
 const file_kafkaenvelope_proto_rawDesc = "" +
 	"\n" +
-	"\x13kafkaenvelope.proto\x12\x05chqpb\"\xc4\x01\n" +
+	"\x13kafkaenvelope.proto\x12\x05chqpb\x1a\x1fgoogle/protobuf/timestamp.proto\"\x82\x02\n" +
 	"\rKafkaEnvelope\x12\x1e\n" +
 	"\n" +
 	"customerId\x18\x01 \x01(\tR\n" +
@@ -239,7 +248,8 @@ const file_kafkaenvelope_proto_rawDesc = "" +
 	"\vpublishType\x18\x03 \x01(\x05R\vpublishType\x12\x0e\n" +
 	"\x02ts\x18\x04 \x01(\x03R\x02ts\x12\x18\n" +
 	"\apayload\x18\x05 \x01(\fR\apayload\x12(\n" +
-	"\x0epartitionValue\x18\x06 \x01(\x05H\x00R\x0epartitionValueB\v\n" +
+	"\x0epartitionValue\x18\x06 \x01(\x05H\x00R\x0epartitionValue\x12<\n" +
+	"\vpublishedAt\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\vpublishedAtB\v\n" +
 	"\tpartition*\xe4\x03\n" +
 	"\x18KafkaEnvelopePublishType\x12\x1b\n" +
 	"\x17PUBLISH_TYPE_SPAN_STATS\x10\x00\x12\x19\n" +
@@ -276,13 +286,15 @@ var file_kafkaenvelope_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_kafkaenvelope_proto_goTypes = []any{
 	(KafkaEnvelopePublishType)(0), // 0: chqpb.KafkaEnvelopePublishType
 	(*KafkaEnvelope)(nil),         // 1: chqpb.KafkaEnvelope
+	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
 }
 var file_kafkaenvelope_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: chqpb.KafkaEnvelope.publishedAt:type_name -> google.protobuf.Timestamp
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_kafkaenvelope_proto_init() }

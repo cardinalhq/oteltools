@@ -18,6 +18,8 @@ package chqpb;
 
 option go_package = ".;chqpb";
 
+import "google/protobuf/timestamp.proto";
+
 message KafkaEnvelope {
   string customerId = 1;
   string key = 2;
@@ -27,6 +29,7 @@ message KafkaEnvelope {
   oneof partition {
     int32 partitionValue = 6;
   }
+  google.protobuf.Timestamp publishedAt = 7;
 }
 
 enum KafkaEnvelopePublishType {
