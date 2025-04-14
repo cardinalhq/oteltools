@@ -290,6 +290,7 @@ type PodContainerSpec struct {
 	Resources      map[string]string      `protobuf:"bytes,3,rep,name=resources,proto3" json:"resources,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	ConfigMapNames []string               `protobuf:"bytes,4,rep,name=config_map_names,json=configMapNames,proto3" json:"config_map_names,omitempty"`
 	SecretNames    []string               `protobuf:"bytes,5,rep,name=secret_names,json=secretNames,proto3" json:"secret_names,omitempty"`
+	Ports          []*ContainerPortSpec   `protobuf:"bytes,6,rep,name=ports,proto3" json:"ports,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -355,6 +356,13 @@ func (x *PodContainerSpec) GetConfigMapNames() []string {
 func (x *PodContainerSpec) GetSecretNames() []string {
 	if x != nil {
 		return x.SecretNames
+	}
+	return nil
+}
+
+func (x *PodContainerSpec) GetPorts() []*ContainerPortSpec {
+	if x != nil {
+		return x.Ports
 	}
 	return nil
 }
@@ -445,6 +453,67 @@ func (x *PodContainerStatus) GetImage() *ImageSummary {
 	return nil
 }
 
+// ContainerPortSpec is the spec of a container port.
+type ContainerPortSpec struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ContainerPort int32                  `protobuf:"varint,1,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Protocol      string                 `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ContainerPortSpec) Reset() {
+	*x = ContainerPortSpec{}
+	mi := &file_pod_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContainerPortSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContainerPortSpec) ProtoMessage() {}
+
+func (x *ContainerPortSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_pod_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContainerPortSpec.ProtoReflect.Descriptor instead.
+func (*ContainerPortSpec) Descriptor() ([]byte, []int) {
+	return file_pod_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ContainerPortSpec) GetContainerPort() int32 {
+	if x != nil {
+		return x.ContainerPort
+	}
+	return 0
+}
+
+func (x *ContainerPortSpec) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ContainerPortSpec) GetProtocol() string {
+	if x != nil {
+		return x.Protocol
+	}
+	return ""
+}
+
 var File_pod_proto protoreflect.FileDescriptor
 
 const file_pod_proto_rawDesc = "" +
@@ -471,13 +540,14 @@ const file_pod_proto_rawDesc = "" +
 	"\rphase_message\x18\x05 \x01(\tR\fphaseMessage\x12F\n" +
 	"\x10container_status\x18\x06 \x03(\v2\x1b.graphpb.PodContainerStatusR\x0fcontainerStatus\"D\n" +
 	"\x13PodContainerSummary\x12-\n" +
-	"\x04spec\x18\x01 \x01(\v2\x19.graphpb.PodContainerSpecR\x04spec\"\x8f\x02\n" +
+	"\x04spec\x18\x01 \x01(\v2\x19.graphpb.PodContainerSpecR\x04spec\"\xc1\x02\n" +
 	"\x10PodContainerSpec\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12F\n" +
 	"\tresources\x18\x03 \x03(\v2(.graphpb.PodContainerSpec.ResourcesEntryR\tresources\x12(\n" +
 	"\x10config_map_names\x18\x04 \x03(\tR\x0econfigMapNames\x12!\n" +
-	"\fsecret_names\x18\x05 \x03(\tR\vsecretNames\x1a<\n" +
+	"\fsecret_names\x18\x05 \x03(\tR\vsecretNames\x120\n" +
+	"\x05ports\x18\x06 \x03(\v2\x1a.graphpb.ContainerPortSpecR\x05ports\x1a<\n" +
 	"\x0eResourcesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf9\x01\n" +
@@ -487,7 +557,11 @@ const file_pod_proto_rawDesc = "" +
 	"\x16is_image_pull_back_off\x18\x03 \x01(\bR\x12isImagePullBackOff\x122\n" +
 	"\x16is_crash_loop_back_off\x18\x04 \x01(\bR\x12isCrashLoopBackOff\x12$\n" +
 	"\x0ewas_oom_killed\x18\x05 \x01(\bR\fwasOomKilled\x12+\n" +
-	"\x05image\x18\x06 \x01(\v2\x15.graphpb.ImageSummaryR\x05imageB3Z1github.com/cardinalhq/oteltools/pkg/graph/graphpbb\x06proto3"
+	"\x05image\x18\x06 \x01(\v2\x15.graphpb.ImageSummaryR\x05image\"j\n" +
+	"\x11ContainerPortSpec\x12%\n" +
+	"\x0econtainer_port\x18\x01 \x01(\x05R\rcontainerPort\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
+	"\bprotocol\x18\x03 \x01(\tR\bprotocolB3Z1github.com/cardinalhq/oteltools/pkg/graph/graphpbb\x06proto3"
 
 var (
 	file_pod_proto_rawDescOnce sync.Once
@@ -501,7 +575,7 @@ func file_pod_proto_rawDescGZIP() []byte {
 	return file_pod_proto_rawDescData
 }
 
-var file_pod_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_pod_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_pod_proto_goTypes = []any{
 	(*PodSummary)(nil),            // 0: graphpb.PodSummary
 	(*PodSpec)(nil),               // 1: graphpb.PodSpec
@@ -509,26 +583,28 @@ var file_pod_proto_goTypes = []any{
 	(*PodContainerSummary)(nil),   // 3: graphpb.PodContainerSummary
 	(*PodContainerSpec)(nil),      // 4: graphpb.PodContainerSpec
 	(*PodContainerStatus)(nil),    // 5: graphpb.PodContainerStatus
-	nil,                           // 6: graphpb.PodContainerSpec.ResourcesEntry
-	(*BaseObject)(nil),            // 7: graphpb.BaseObject
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
-	(*ImageSummary)(nil),          // 9: graphpb.ImageSummary
+	(*ContainerPortSpec)(nil),     // 6: graphpb.ContainerPortSpec
+	nil,                           // 7: graphpb.PodContainerSpec.ResourcesEntry
+	(*BaseObject)(nil),            // 8: graphpb.BaseObject
+	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
+	(*ImageSummary)(nil),          // 10: graphpb.ImageSummary
 }
 var file_pod_proto_depIdxs = []int32{
-	7, // 0: graphpb.PodSummary.base_object:type_name -> graphpb.BaseObject
-	1, // 1: graphpb.PodSummary.spec:type_name -> graphpb.PodSpec
-	2, // 2: graphpb.PodSummary.status:type_name -> graphpb.PodStatus
-	4, // 3: graphpb.PodSpec.containers:type_name -> graphpb.PodContainerSpec
-	8, // 4: graphpb.PodStatus.started_at:type_name -> google.protobuf.Timestamp
-	5, // 5: graphpb.PodStatus.container_status:type_name -> graphpb.PodContainerStatus
-	4, // 6: graphpb.PodContainerSummary.spec:type_name -> graphpb.PodContainerSpec
-	6, // 7: graphpb.PodContainerSpec.resources:type_name -> graphpb.PodContainerSpec.ResourcesEntry
-	9, // 8: graphpb.PodContainerStatus.image:type_name -> graphpb.ImageSummary
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	8,  // 0: graphpb.PodSummary.base_object:type_name -> graphpb.BaseObject
+	1,  // 1: graphpb.PodSummary.spec:type_name -> graphpb.PodSpec
+	2,  // 2: graphpb.PodSummary.status:type_name -> graphpb.PodStatus
+	4,  // 3: graphpb.PodSpec.containers:type_name -> graphpb.PodContainerSpec
+	9,  // 4: graphpb.PodStatus.started_at:type_name -> google.protobuf.Timestamp
+	5,  // 5: graphpb.PodStatus.container_status:type_name -> graphpb.PodContainerStatus
+	4,  // 6: graphpb.PodContainerSummary.spec:type_name -> graphpb.PodContainerSpec
+	7,  // 7: graphpb.PodContainerSpec.resources:type_name -> graphpb.PodContainerSpec.ResourcesEntry
+	6,  // 8: graphpb.PodContainerSpec.ports:type_name -> graphpb.ContainerPortSpec
+	10, // 9: graphpb.PodContainerStatus.image:type_name -> graphpb.ImageSummary
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_pod_proto_init() }
@@ -544,7 +620,7 @@ func file_pod_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pod_proto_rawDesc), len(file_pod_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
