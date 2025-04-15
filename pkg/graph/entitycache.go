@@ -532,6 +532,7 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 		crashLoopBackoff := false
 		imagePullBackoff := false
 		oomKilled := false
+		restartCount := 0
 		if podSummary.Status != nil {
 			for _, containerStatus := range podSummary.Status.ContainerStatus {
 				crashLoopBackoff = crashLoopBackoff || containerStatus.IsCrashLoopBackOff
@@ -545,11 +546,15 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 						rattr[ContainerImageIDPrefix+containerStatus.Name] = containerStatus.Image.ImageId
 					}
 				}
+				if containerStatus.RestartCount != 0 {
+					restartCount += int(containerStatus.RestartCount)
+				}
 			}
 		}
 		rattr[CrashLoopBackOff] = trueFalse(crashLoopBackoff)
 		rattr[ImagePullBackOff] = trueFalse(imagePullBackoff)
 		rattr[OOMKilled] = trueFalse(oomKilled)
+		rattr[RestartCount] = fmt.Sprintf("%d", restartCount)
 
 		// port handling
 		if podSummary.Spec != nil && podSummary.Spec.Containers != nil {

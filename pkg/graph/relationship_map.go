@@ -174,6 +174,7 @@ const (
 	CrashLoopBackOff         = "CrashLoopBackOff"
 	ImagePullBackOff         = "ImagePullBackOff"
 	OOMKilled                = "OOMKilled"
+	RestartCount             = "restart_count"
 )
 
 type EntityInfo struct {
