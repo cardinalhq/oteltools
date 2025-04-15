@@ -93,6 +93,11 @@ func Test_SqlQueryScrub(t *testing.T) {
 			input:    `CREATE TABLE test (? VARCHAR, ? VARCHAR, ? BIGINT, ? BIGINT, ? VARCHAR)`,
 			expected: `CREATE TABLE test ()`,
 		},
+		{
+			name:     "ALTER TABLE de-duplicates ? VARCHAR",
+			input:    `ALTER TABLE my_table ADD COLUMN ? VARCHAR, ? VARCHAR, ? VARCHAR, ? BIGINT, ? BIGINT, ? VARCHAR`,
+			expected: `ALTER TABLE my_table ADD COLUMN`,
+		},
 	}
 
 	for _, tt := range tests {

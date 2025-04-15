@@ -96,7 +96,7 @@ func collapsePlaceholders(s string) string {
 func normalizeQuery(query string) string {
 	query = sqlScrubRegex.ReplaceAllString(query, "?")
 	query = doUpdateSetRegex.ReplaceAllString(query, "UPDATE SET ?=?")
-	if strings.HasPrefix(query, "CREATE") {
+	if strings.HasPrefix(query, "CREATE") || strings.HasPrefix(query, "ALTER") {
 		query = repeatingTypeRegex.ReplaceAllString(query, "")
 	}
 
