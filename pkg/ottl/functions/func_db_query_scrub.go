@@ -52,6 +52,7 @@ func dbQueryScrub[K any](queryGetter ottl.StringGetter[K]) ottl.ExprFunc[K] {
 
 var sqlScrubRegex = regexp.MustCompile(`\b\d+\.\d+\b|\b\d+\b|'[^']*'|"[^"]*"`)
 var doUpdateSetRegex = regexp.MustCompile(`UPDATE SET\s+(\?=\?(\.\?)?,?)*`)
+var repeatingTypeRegex = regexp.MustCompile(`(?:\? \w+,?\s*)+`)
 
 var specialChars = map[uint8]bool{
 	'*': true,
@@ -94,8 +95,11 @@ func collapsePlaceholders(s string) string {
 
 func normalizeQuery(query string) string {
 	query = sqlScrubRegex.ReplaceAllString(query, "?")
-
 	query = doUpdateSetRegex.ReplaceAllString(query, "UPDATE SET ?=?")
+	if strings.HasPrefix(query, "CREATE") {
+		query = repeatingTypeRegex.ReplaceAllString(query, "")
+	}
+
 	tokens := strings.Fields(query)
 	for i, token := range tokens {
 		tokens[i] = ScrubWord(collapsePlaceholders(token))
