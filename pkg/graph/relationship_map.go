@@ -16,6 +16,7 @@ package graph
 
 import (
 	"fmt"
+
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 
 	"github.com/cardinalhq/oteltools/pkg/ottl/functions"
@@ -169,6 +170,7 @@ const (
 	Service                  = "service"
 	ContainerImageNamePrefix = "container.image.name."
 	ContainerImageIDPrefix   = "container.image.id."
+	ContainerPortPrefix      = "container.port."
 	CrashLoopBackOff         = "CrashLoopBackOff"
 	ImagePullBackOff         = "ImagePullBackOff"
 	OOMKilled                = "OOMKilled"

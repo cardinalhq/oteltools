@@ -550,6 +550,22 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 		rattr[CrashLoopBackOff] = trueFalse(crashLoopBackoff)
 		rattr[ImagePullBackOff] = trueFalse(imagePullBackoff)
 		rattr[OOMKilled] = trueFalse(oomKilled)
+
+		// port handling
+		if podSummary.Spec != nil && podSummary.Spec.Containers != nil {
+			for _, containerSpec := range podSummary.Spec.Containers {
+				for _, port := range containerSpec.Ports {
+					if port.ContainerPort != 0 {
+						portName := port.Name
+						if portName == "" {
+							portName = fmt.Sprintf("%d", port.ContainerPort)
+						}
+						rattr[ContainerPortPrefix+portName] = fmt.Sprintf("%d", port.ContainerPort)
+					}
+				}
+			}
+		}
+
 		podEntityId := ToKubernetesEntityId(podSummary.BaseObject.Name, KubernetesPod, namespace, clusterName)
 		if podSummary.Status != nil {
 			rattr[PodPhase] = podSummary.Status.Phase
