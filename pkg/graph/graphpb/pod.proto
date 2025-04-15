@@ -74,6 +74,7 @@ message PodContainerStatus {
   bool is_crash_loop_back_off = 4;
   bool was_oom_killed = 5;
   ImageSummary image = 6;
+  int32 restart_count = 7;
 }
 
 // ContainerPortSpec is the spec of a container port.
