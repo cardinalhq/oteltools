@@ -388,9 +388,6 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 						if relationship != "" {
 							parentEntity.AddEdge(childEntity.EntityId, relationship)
 						}
-						if childKey == string(semconv.URLTemplateKey) {
-							slog.Info("Found URLTemplate key in entity relationships", slog.String("parentEntity", parentEntity.EntityId.Name), slog.String("relationship", relationship))
-						}
 					}
 				}
 			}
