@@ -88,6 +88,11 @@ func Test_SqlQueryScrub(t *testing.T) {
 			input:    `SELECT * FROM 'c_organization_api_keys' WHERE api_key = 'demo-app-api-key' AND enabled = true ORDER BY 'c_organization_api_keys'.'id' LIMIT 1`,
 			expected: `SELECT * FROM ? WHERE api_key = ? AND enabled = true ORDER BY ?.? LIMIT ?`,
 		},
+		{
+			name:     "De-dupe repeating ? VARCHAR",
+			input:    `CREATE TABLE test (? VARCHAR, ? VARCHAR, ? BIGINT, ? BIGINT, ? VARCHAR)`,
+			expected: `CREATE TABLE test ()`,
+		},
 	}
 
 	for _, tt := range tests {
