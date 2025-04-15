@@ -554,19 +554,7 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 		rattr[RestartCount] = fmt.Sprintf("%d", restartCount)
 
 		// port handling
-		if podSummary.Spec != nil && podSummary.Spec.Containers != nil {
-			for _, containerSpec := range podSummary.Spec.Containers {
-				for _, port := range containerSpec.Ports {
-					if port.ContainerPort != 0 {
-						portName := port.Name
-						if portName == "" {
-							portName = fmt.Sprintf("%d", port.ContainerPort)
-						}
-						rattr[ContainerPortPrefix+portName] = fmt.Sprintf("%d", port.ContainerPort)
-					}
-				}
-			}
-		}
+		addContainerPorts(rattr, podSummary.Spec)
 
 		podEntityId := ToKubernetesEntityId(podSummary.BaseObject.Name, KubernetesPod, namespace, clusterName)
 		if podSummary.Status != nil {
@@ -607,6 +595,11 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 			rattr[AvailableReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.AvailableReplicas)
 			rattr[UnavailableReplicas] = fmt.Sprintf("%d", deploymentSummary.Status.UnavailableReplicas)
 		}
+
+		if deploymentSummary.Spec != nil && deploymentSummary.Spec.Template != nil && deploymentSummary.Spec.Template.PodSpec != nil {
+			addContainerPorts(rattr, deploymentSummary.Spec.Template.PodSpec)
+		}
+
 		deploymentId := ToKubernetesEntityId(deploymentSummary.BaseObject.Name, KubernetesDeployment, namespace, clusterName)
 		deploymentEntity, _ := ec.PutEntity(KubernetesDeployment, deploymentId, rattr)
 		if deploymentSummary.Spec != nil && deploymentSummary.Spec.Template != nil && deploymentSummary.Spec.Template.PodSpec != nil {
@@ -623,6 +616,11 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 			rattr[CurrentReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.CurrentReplicas)
 			rattr[UpdatedReplicas] = fmt.Sprintf("%d", statefulSetSummary.Status.UpdatedReplicas)
 		}
+
+		if statefulSetSummary.Spec != nil && statefulSetSummary.Spec.Template != nil && statefulSetSummary.Spec.Template.PodSpec != nil {
+			addContainerPorts(rattr, statefulSetSummary.Spec.Template.PodSpec)
+		}
+
 		statefulSetId := ToKubernetesEntityId(statefulSetSummary.BaseObject.Name, KubernetesStatefulSet, namespace, clusterName)
 		statefulSetEntity, _ := ec.PutEntity(KubernetesStatefulSet, statefulSetId, rattr)
 		if statefulSetSummary.Spec != nil && statefulSetSummary.Spec.Template != nil {
@@ -631,6 +629,11 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 
 	case *graphpb.PackagedObject_AppsDaemonSetSummary:
 		daemonSetSummary := obj.AppsDaemonSetSummary
+
+		if daemonSetSummary.Spec != nil && daemonSetSummary.Spec.Template != nil && daemonSetSummary.Spec.Template.PodSpec != nil {
+			addContainerPorts(rattr, daemonSetSummary.Spec.Template.PodSpec)
+		}
+
 		daemonSetId := ToKubernetesEntityId(daemonSetSummary.BaseObject.Name, KubernetesDaemonSet, namespace, clusterName)
 		if daemonSetSummary.Spec != nil {
 			rattr[Replicas] = fmt.Sprintf("%d", daemonSetSummary.Spec.Replicas)
@@ -645,6 +648,9 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 		if replicaSetSummary.Spec != nil {
 			rattr[Replicas] = fmt.Sprintf("%d", replicaSetSummary.Spec.Replicas)
 		}
+		if replicaSetSummary.Spec != nil && replicaSetSummary.Spec.Template != nil && replicaSetSummary.Spec.Template.PodSpec != nil {
+			addContainerPorts(rattr, replicaSetSummary.Spec.Template.PodSpec)
+		}
 		replicaSetId := ToKubernetesEntityId(replicaSetSummary.BaseObject.Name, KubernetesReplicaSet, namespace, clusterName)
 		replicaSetEntity, _ := ec.PutEntity(KubernetesReplicaSet, replicaSetId, rattr)
 		addEdgesForOwnerRefs(replicaSetEntity, replicaSetSummary.BaseObject, clusterName)
@@ -654,5 +660,22 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 
 	default:
 		slog.Info("Received unknown object", slog.Any("object", po))
+	}
+}
+
+func addContainerPorts(rattr map[string]string, podSpec *graphpb.PodSpec) {
+	if podSpec == nil || podSpec.Containers == nil {
+		return
+	}
+	for _, container := range podSpec.Containers {
+		for _, port := range container.Ports {
+			if port.ContainerPort != 0 {
+				portName := port.Name
+				if portName == "" {
+					portName = fmt.Sprintf("%d", port.ContainerPort)
+				}
+				rattr[ContainerPortPrefix+portName] = fmt.Sprintf("%d", port.ContainerPort)
+			}
+		}
 	}
 }
