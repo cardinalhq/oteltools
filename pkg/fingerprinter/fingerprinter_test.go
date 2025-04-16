@@ -741,6 +741,17 @@ func TestFingerprintIdenticality(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"specified key does not exist",
+			[]string{
+				`The specified key does not exist. (Service: Amazon S3; Status Code: 404; Error Code: NoSuchKey; Request ID: GQNDT8W5ZT2MDCXY; S3 Extended Request ID: DoEXTB+nKImWcRc2OW/xR6fNVvaaMzaGPpAedeS0qUoYnRXlWAfadnGF/XNqn3N1CqjYL2d2yDk=; Proxy: null)`,
+				`The specified key does not exist. (Service: Amazon S3; Status Code: 404; Error Code: NoSuchKey; Request ID: 35RM8V8QXF53KQG4; S3 Extended Request ID: HDPgTMmPswV376FyTJyJwwHWrqWNxbTBWZJ8PB4P2GKoFuz7kMeuWImFJ0d45aivnfgPmdx4kqEGgv0uEGvGVWQB0JUeGMDq9rok1+l/IUA=; Proxy: null)`,
+			},
+			[]string{
+				"the", "specified", "key", "does", "not", "service", "amazon", "s3", "status", "code", "<Number>", "<Loglevel>", "code", "nosuchkey", "request", "id", "<Identifier>", "s3", "extended", "request", "id", "<Identifier>", "<Path>", "proxy", "null",
+			},
+			false,
+		},
 	}
 
 	fp := NewFingerprinter(WithMaxTokens(25))
