@@ -488,12 +488,13 @@ func TestBuildEntities_HandlesPodSummaryWithContainers(t *testing.T) {
 
 	pod := assertEntityExists(t, entities, "test-pod", KubernetesPod, listify(defaultIdentityAttributes)...)
 	require.NotNil(t, pod)
-	assert.Len(t, pod.Attributes, 7)
+	assert.Len(t, pod.Attributes, 8)
 	assert.Equal(t, "value", pod.Attributes["key"])
 	assert.Equal(t, "test-image", pod.Attributes["container.image.name.test-container"])
 	assert.Equal(t, "false", pod.Attributes[CrashLoopBackOff])
 	assert.Equal(t, "false", pod.Attributes[OOMKilled])
 	assert.Equal(t, "false", pod.Attributes[ImagePullBackOff])
+	assert.Equal(t, "0", pod.Attributes["restart_count"])
 
 	// Expect edges linking to the config map and secret.
 	require.Len(t, pod.Edges, 4)
