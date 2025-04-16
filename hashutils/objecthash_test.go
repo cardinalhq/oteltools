@@ -77,6 +77,31 @@ func TestHashStrings(t *testing.T) {
 	}
 }
 
+func TestHashUnexported(t *testing.T) {
+	type unexported struct {
+		A int
+		b string
+	}
+
+	tests := []struct {
+		name  string
+		value any
+		want  uint64
+	}{
+		{"unexported struct", unexported{1, "test"}, 15276513887743359300},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hasher := fnv.New64a()
+			got := HashAny(hasher, tt.value)
+			if got != tt.want {
+				t.Errorf("HashAny() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func BenchmarkHashAnyFNV(b *testing.B) {
 	value := map[string]any{"one": 1, "two": "two"}
 	for b.Loop() {

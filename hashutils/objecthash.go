@@ -108,7 +108,7 @@ func writeHash(h Hasher, value any) {
 		_, _ = h.Write([]byte(v.String()))
 	case reflect.Slice, reflect.Array:
 		_, _ = h.Write([]byte("slice:"))
-		for i := 0; i < v.Len(); i++ {
+		for i := range v.Len() {
 			writeHash(h, v.Index(i).Interface())
 		}
 	case reflect.Map:
@@ -127,7 +127,10 @@ func writeHash(h Hasher, value any) {
 	case reflect.Struct:
 		_, _ = h.Write([]byte("struct:"))
 		t := v.Type()
-		for i := 0; i < v.NumField(); i++ {
+		for i := range v.NumField() {
+			if !t.Field(i).IsExported() {
+				continue
+			}
 			_, _ = h.Write([]byte(t.Field(i).Name + ":"))
 			writeHash(h, v.Field(i).Interface())
 		}
