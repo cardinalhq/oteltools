@@ -78,6 +78,7 @@ func iplocation[K any](db *geoip2.Reader, ipGetter ottl.StringGetter[K]) ottl.Ex
 
 		city := record.City.Names["en"]
 		country := record.Country.Names["en"]
+		zipCode := record.Postal.Code
 
 		if city == "" {
 			city = "Unknown"
@@ -90,6 +91,7 @@ func iplocation[K any](db *geoip2.Reader, ipGetter ottl.StringGetter[K]) ottl.Ex
 		location := map[string]any{
 			"city":      city,
 			"country":   country,
+			"zip_code":  zipCode,
 			"latitude":  record.Location.Latitude,
 			"longitude": record.Location.Longitude,
 		}

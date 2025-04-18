@@ -54,6 +54,7 @@ func Test_IpLocation_ValidIP(t *testing.T) {
 	expected := map[string]any{
 		"city":      "Walnut Creek",
 		"country":   "United States",
+		"zip_code":  "94597",
 		"latitude":  37.9164,
 		"longitude": -122.0668,
 	}
