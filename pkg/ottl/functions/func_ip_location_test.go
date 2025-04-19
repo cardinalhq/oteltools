@@ -16,31 +16,22 @@ package functions
 
 import (
 	"context"
+	"github.com/oschwald/geoip2-golang"
 	"path/filepath"
 	"testing"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
-	"github.com/oschwald/geoip2-golang"
 	"github.com/stretchr/testify/assert"
 )
 
 // City is the mock implementation of geoip2.Reader's City method
-func createMockGeoIP2DB() *geoip2.Reader {
-	dbPath := testFile("GeoLite2-City.mmdb")
-	db, err := geoip2.Open(dbPath)
-	if err != nil {
-		println(err.Error())
-		panic(err)
-	}
-	return db
-}
 
 func testFile(file string) string {
 	return filepath.Join("metadata", file)
 }
 
 func Test_IpLocation_ValidIP(t *testing.T) {
-	db := createMockGeoIP2DB()
+	db, err := geoip2.Open(initDb()) // Open the GeoLite2 database
 
 	exprFunc := iplocation[any](db, &ottl.StandardStringGetter[any]{
 		Getter: func(context.Context, any) (any, error) {
@@ -52,11 +43,11 @@ func Test_IpLocation_ValidIP(t *testing.T) {
 	assert.NoError(t, err)
 
 	expected := map[string]any{
-		"city":      "Walnut Creek",
+		"city":      "Danville",
 		"country":   "United States",
-		"zip_code":  "94597",
-		"latitude":  37.9164,
-		"longitude": -122.0668,
+		"zip_code":  "94506",
+		"latitude":  37.8333,
+		"longitude": -121.9209,
 	}
 
 	assert.Equal(t, expected, result)

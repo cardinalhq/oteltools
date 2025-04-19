@@ -15,9 +15,13 @@
 package functions
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -38,13 +42,84 @@ func NewIpLocationFactory[K any]() ottl.Factory[K] {
 			return nil, fmt.Errorf("iplocation args must be of type *IpLocationArguments[K]")
 		}
 
-		dir, err := os.Getwd()
-		if err != nil {
-			return nil, fmt.Errorf("error getting working directory: %v", err)
-		}
-		dbPath := filepath.Join(dir, "functions", "metadata", "GeoLite2-City.mmdb")
+		dbPath := initDb()
 		return createIpLocationFunction[K](dbPath, ipArgs.Target)
 	})
+}
+
+func initDb() string {
+	dest := "/tmp/GeoLite2-City.mmdb"
+	licenseKey := os.Getenv("MAXMIND_LICENSE_KEY")
+	err := downloadGeoIPDb(dest, licenseKey)
+	if err != nil {
+		panic(fmt.Sprintf("GeoIP DB fetch failed: %v", err))
+	}
+	return dest
+}
+
+func downloadGeoIPDb(destPath string, licenseKey string) error {
+	url := fmt.Sprintf(
+		"https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=%s&suffix=tar.gz",
+		licenseKey,
+	)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("failed to download GeoIP DB: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("GeoIP DB download failed with status: %s", resp.Status)
+	}
+
+	gzr, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+	defer func(gzr *gzip.Reader) {
+		err := gzr.Close()
+		if err != nil {
+
+		}
+	}(gzr)
+
+	tr := tar.NewReader(gzr)
+
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("error reading tar: %w", err)
+		}
+
+		if filepath.Ext(hdr.Name) == ".mmdb" {
+			outFile, err := os.Create(destPath)
+			if err != nil {
+				return fmt.Errorf("failed to create mmdb file: %w", err)
+			}
+			defer func(outFile *os.File) {
+				err := outFile.Close()
+				if err != nil {
+
+				}
+			}(outFile)
+
+			if _, err := io.Copy(outFile, tr); err != nil {
+				return fmt.Errorf("failed to write mmdb file: %w", err)
+			}
+			return nil
+		}
+	}
+
+	return fmt.Errorf("no .mmdb file found in archive")
 }
 
 // createIpLocationFunction initializes the GeoIP reader and defines the geolocation logic
