@@ -48,7 +48,8 @@ func NewIpLocationFactory[K any]() ottl.Factory[K] {
 }
 
 func initDb() string {
-	dest := "/tmp/GeoLite2-City.mmdb"
+	maxMindDbPath := os.Getenv("MAXMIND_DB_PATH")
+	dest := maxMindDbPath + "/GeoLite2-City.mmdb"
 	licenseKey := os.Getenv("MAXMIND_LICENSE_KEY")
 	err := downloadGeoIPDb(dest, licenseKey)
 	if err != nil {
