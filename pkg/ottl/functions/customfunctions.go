@@ -22,7 +22,6 @@ func factories[K any]() []ottl.Factory[K] {
 		NewIpLocationFactory[K](),
 		NewIsInFactory[K](),
 		NewExistsFactory[K](),
-		NewDeriveSourceTypeFactory[K](),
 		NewLookupFactory[K](),
 		NewUrlScrubFactory[K](),
 		NewDbQueryScrubFactory[K](),

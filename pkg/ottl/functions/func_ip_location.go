@@ -43,7 +43,7 @@ func NewIpLocationFactory[K any]() ottl.Factory[K] {
 		}
 
 		dbPath := initDb()
-		return createIpLocationFunction[K](dbPath, ipArgs.Target)
+		return createIpLocationFunction(dbPath, ipArgs.Target)
 	})
 }
 
