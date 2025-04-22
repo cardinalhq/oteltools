@@ -16,38 +16,35 @@ package functions
 
 import (
 	"context"
-	"github.com/oschwald/geoip2-golang"
-	"path/filepath"
 	"testing"
+
+	"github.com/oschwald/geoip2-golang"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// City is the mock implementation of geoip2.Reader's City method
-
-func testFile(file string) string {
-	return filepath.Join("metadata", file)
-}
-
 func Test_IpLocation_ValidIP(t *testing.T) {
-	db, err := geoip2.Open(initDb()) // Open the GeoLite2 database
+	db, err := geoip2.Open("../testdata/GeoIP2-Country-Test.mmdb")
+	require.NoError(t, err)
+	defer db.Close()
 
-	exprFunc := iplocation[any](db, &ottl.StandardStringGetter[any]{
+	exprFunc := iplocation(db, &ottl.StandardStringGetter[any]{
 		Getter: func(context.Context, any) (any, error) {
-			return "73.202.180.160", nil
+			return "2a02:d300::1", nil
 		},
 	})
 
 	result, err := exprFunc(context.Background(), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expected := map[string]any{
-		"city":      "Danville",
-		"country":   "United States",
-		"zip_code":  "94506",
-		"latitude":  37.8333,
-		"longitude": -121.9209,
+		"city":      "Unknown",
+		"country":   "Ukraine",
+		"zip_code":  "",
+		"latitude":  0.0,
+		"longitude": 0.0,
 	}
 
 	assert.Equal(t, expected, result)
