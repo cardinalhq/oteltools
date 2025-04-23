@@ -49,6 +49,7 @@ type PackagedObject struct {
 	//	*PackagedObject_AppsStatefulSetSummary
 	//	*PackagedObject_AppsDaemonSetSummary
 	//	*PackagedObject_AppsReplicaSetSummary
+	//	*PackagedObject_AutoscalingHpaSummary
 	Object        isPackagedObject_Object `protobuf_oneof:"object"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -168,6 +169,15 @@ func (x *PackagedObject) GetAppsReplicaSetSummary() *AppsReplicaSetSummary {
 	return nil
 }
 
+func (x *PackagedObject) GetAutoscalingHpaSummary() *AutoscalingHpaSummary {
+	if x != nil {
+		if x, ok := x.Object.(*PackagedObject_AutoscalingHpaSummary); ok {
+			return x.AutoscalingHpaSummary
+		}
+	}
+	return nil
+}
+
 type isPackagedObject_Object interface {
 	isPackagedObject_Object()
 }
@@ -200,6 +210,10 @@ type PackagedObject_AppsReplicaSetSummary struct {
 	AppsReplicaSetSummary *AppsReplicaSetSummary `protobuf:"bytes,9,opt,name=apps_replica_set_summary,json=appsReplicaSetSummary,proto3,oneof"`
 }
 
+type PackagedObject_AutoscalingHpaSummary struct {
+	AutoscalingHpaSummary *AutoscalingHpaSummary `protobuf:"bytes,10,opt,name=autoscaling_hpa_summary,json=autoscalingHpaSummary,proto3,oneof"`
+}
+
 func (*PackagedObject_PodSummary) isPackagedObject_Object() {}
 
 func (*PackagedObject_SecretSummary) isPackagedObject_Object() {}
@@ -213,6 +227,8 @@ func (*PackagedObject_AppsStatefulSetSummary) isPackagedObject_Object() {}
 func (*PackagedObject_AppsDaemonSetSummary) isPackagedObject_Object() {}
 
 func (*PackagedObject_AppsReplicaSetSummary) isPackagedObject_Object() {}
+
+func (*PackagedObject_AutoscalingHpaSummary) isPackagedObject_Object() {}
 
 type PackagedObjectList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -262,7 +278,7 @@ var File_packaged_object_proto protoreflect.FileDescriptor
 
 const file_packaged_object_proto_rawDesc = "" +
 	"\n" +
-	"\x15packaged_object.proto\x12\agraphpb\x1a\x14apps_daemonset.proto\x1a\x15apps_deployment.proto\x1a\x15apps_replicaset.proto\x1a\x16apps_statefulset.proto\x1a\x0fconfigmap.proto\x1a\tpod.proto\x1a\fsecret.proto\"\x93\a\n" +
+	"\x15packaged_object.proto\x12\agraphpb\x1a\x14apps_daemonset.proto\x1a\x15apps_deployment.proto\x1a\x15apps_replicaset.proto\x1a\x16apps_statefulset.proto\x1a\x15autoscaling_hpa.proto\x1a\x0fconfigmap.proto\x1a\tpod.proto\x1a\fsecret.proto\"\xed\a\n" +
 	"\x0ePackagedObject\x12`\n" +
 	"\x13resource_attributes\x18\x01 \x03(\v2/.graphpb.PackagedObject.ResourceAttributesEntryR\x12resourceAttributes\x12Z\n" +
 	"\x11record_attributes\x18\x02 \x03(\v2-.graphpb.PackagedObject.RecordAttributesEntryR\x10recordAttributes\x126\n" +
@@ -273,7 +289,9 @@ const file_packaged_object_proto_rawDesc = "" +
 	"\x17apps_deployment_summary\x18\x06 \x01(\v2\x1e.graphpb.AppsDeploymentSummaryH\x00R\x15appsDeploymentSummary\x12\\\n" +
 	"\x19apps_stateful_set_summary\x18\a \x01(\v2\x1f.graphpb.AppsStatefulSetSummaryH\x00R\x16appsStatefulSetSummary\x12V\n" +
 	"\x17apps_daemon_set_summary\x18\b \x01(\v2\x1d.graphpb.AppsDaemonSetSummaryH\x00R\x14appsDaemonSetSummary\x12Y\n" +
-	"\x18apps_replica_set_summary\x18\t \x01(\v2\x1e.graphpb.AppsReplicaSetSummaryH\x00R\x15appsReplicaSetSummary\x1aE\n" +
+	"\x18apps_replica_set_summary\x18\t \x01(\v2\x1e.graphpb.AppsReplicaSetSummaryH\x00R\x15appsReplicaSetSummary\x12X\n" +
+	"\x17autoscaling_hpa_summary\x18\n" +
+	" \x01(\v2\x1e.graphpb.AutoscalingHpaSummaryH\x00R\x15autoscalingHpaSummary\x1aE\n" +
 	"\x17ResourceAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aC\n" +
@@ -309,6 +327,7 @@ var file_packaged_object_proto_goTypes = []any{
 	(*AppsStatefulSetSummary)(nil), // 8: graphpb.AppsStatefulSetSummary
 	(*AppsDaemonSetSummary)(nil),   // 9: graphpb.AppsDaemonSetSummary
 	(*AppsReplicaSetSummary)(nil),  // 10: graphpb.AppsReplicaSetSummary
+	(*AutoscalingHpaSummary)(nil),  // 11: graphpb.AutoscalingHpaSummary
 }
 var file_packaged_object_proto_depIdxs = []int32{
 	2,  // 0: graphpb.PackagedObject.resource_attributes:type_name -> graphpb.PackagedObject.ResourceAttributesEntry
@@ -320,12 +339,13 @@ var file_packaged_object_proto_depIdxs = []int32{
 	8,  // 6: graphpb.PackagedObject.apps_stateful_set_summary:type_name -> graphpb.AppsStatefulSetSummary
 	9,  // 7: graphpb.PackagedObject.apps_daemon_set_summary:type_name -> graphpb.AppsDaemonSetSummary
 	10, // 8: graphpb.PackagedObject.apps_replica_set_summary:type_name -> graphpb.AppsReplicaSetSummary
-	0,  // 9: graphpb.PackagedObjectList.items:type_name -> graphpb.PackagedObject
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	11, // 9: graphpb.PackagedObject.autoscaling_hpa_summary:type_name -> graphpb.AutoscalingHpaSummary
+	0,  // 10: graphpb.PackagedObjectList.items:type_name -> graphpb.PackagedObject
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_packaged_object_proto_init() }
@@ -337,6 +357,7 @@ func file_packaged_object_proto_init() {
 	file_apps_deployment_proto_init()
 	file_apps_replicaset_proto_init()
 	file_apps_statefulset_proto_init()
+	file_autoscaling_hpa_proto_init()
 	file_configmap_proto_init()
 	file_pod_proto_init()
 	file_secret_proto_init()
@@ -348,6 +369,7 @@ func file_packaged_object_proto_init() {
 		(*PackagedObject_AppsStatefulSetSummary)(nil),
 		(*PackagedObject_AppsDaemonSetSummary)(nil),
 		(*PackagedObject_AppsReplicaSetSummary)(nil),
+		(*PackagedObject_AutoscalingHpaSummary)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

@@ -26,6 +26,8 @@ func (po *PackagedObject) GetBaseObject() *BaseObject {
 		return x.AppsReplicaSetSummary.BaseObject
 	case *PackagedObject_AppsStatefulSetSummary:
 		return x.AppsStatefulSetSummary.BaseObject
+	case *PackagedObject_AutoscalingHpaSummary:
+		return x.AutoscalingHpaSummary.BaseObject
 	case *PackagedObject_ConfigMapSummary:
 		return x.ConfigMapSummary.BaseObject
 	case *PackagedObject_PodSummary:
@@ -52,6 +54,8 @@ func NewPackagedObject(obj any, rla map[string]string, la map[string]string) *Pa
 		result.Object = &PackagedObject_AppsReplicaSetSummary{ AppsReplicaSetSummary: s }
 	case *AppsStatefulSetSummary:
 		result.Object = &PackagedObject_AppsStatefulSetSummary{ AppsStatefulSetSummary: s }
+	case *AutoscalingHpaSummary:
+		result.Object = &PackagedObject_AutoscalingHpaSummary{ AutoscalingHpaSummary: s }
 	case *ConfigMapSummary:
 		result.Object = &PackagedObject_ConfigMapSummary{ ConfigMapSummary: s }
 	case *PodSummary:

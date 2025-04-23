@@ -22,6 +22,7 @@ import "apps_daemonset.proto";
 import "apps_deployment.proto";
 import "apps_replicaset.proto";
 import "apps_statefulset.proto";
+import "autoscaling_hpa.proto";
 import "configmap.proto";
 import "pod.proto";
 import "secret.proto";
@@ -39,6 +40,7 @@ message PackagedObject {
     AppsStatefulSetSummary apps_stateful_set_summary = 7;
     AppsDaemonSetSummary apps_daemon_set_summary = 8;
     AppsReplicaSetSummary apps_replica_set_summary = 9;
+    AutoscalingHpaSummary autoscaling_hpa_summary = 10;
   }
 }
 
