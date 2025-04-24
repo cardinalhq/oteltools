@@ -713,7 +713,7 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 			}
 			if graphTargetKind != "" {
 				targetId := ToKubernetesEntityId(targetName, graphTargetKind, namespace, clusterName)
-				hpaEntity.AddEdge(hpaEntity.EntityId, HorizontallyScales)
+				hpaEntity.AddEdge(targetId, HorizontallyScales)
 				hpaEntity.AddEdgeBacklink(targetId, IsHorizontallyScaledBy)
 			}
 		}
