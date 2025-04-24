@@ -111,7 +111,10 @@ const (
 	Replicas                 = "replicas"
 	ReadyReplicas            = "ready.replicas"
 	CurrentReplicas          = "current.replicas"
+	DesiredReplicas          = "desired.replicas"
 	UpdatedReplicas          = "updated.replicas"
+	MinReplicas              = "min.replicas"
+	MaxReplicas              = "max.replicas"
 	AvailableReplicas        = "available.replicas"
 	UnavailableReplicas      = "unavailable.replicas"
 	Deployment               = "Deployment"
@@ -120,6 +123,8 @@ const (
 	ReplicaSet               = "ReplicaSet"
 	Job                      = "Job"
 	CronJob                  = "CronJob"
+	IsHorizontallyScaledBy   = "is horizontally scaled by"
+	HorizontallyScales       = "horizontally scales"
 )
 
 const (
@@ -179,6 +184,9 @@ const (
 	ScalingLimitedMessageAttribute = "scaling.limited.message"
 	ScalingLimitedReasonAttribute  = "scaling.limited.reason"
 	ScalingLimitedStatusAttribute  = "scaling.limited.status"
+	ScalingTargetName              = "scaling.target.name"
+	ScalingTargetKind              = "scaling.target.kind"
+	ScalingTargetAPIVersion        = "scaling.target.api_version"
 )
 
 type EntityInfo struct {

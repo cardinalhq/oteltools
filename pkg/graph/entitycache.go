@@ -633,11 +633,11 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 		if daemonSetSummary.Spec != nil && daemonSetSummary.Spec.Template != nil && daemonSetSummary.Spec.Template.PodSpec != nil {
 			addContainerPorts(rattr, daemonSetSummary.Spec.Template.PodSpec)
 		}
-
-		daemonSetId := ToKubernetesEntityId(daemonSetSummary.BaseObject.Name, KubernetesDaemonSet, namespace, clusterName)
 		if daemonSetSummary.Spec != nil {
 			rattr[Replicas] = fmt.Sprintf("%d", daemonSetSummary.Spec.Replicas)
 		}
+
+		daemonSetId := ToKubernetesEntityId(daemonSetSummary.BaseObject.Name, KubernetesDaemonSet, namespace, clusterName)
 		daemonsetEntity, _ := ec.PutEntity(KubernetesDaemonSet, daemonSetId, rattr)
 		if daemonSetSummary.Spec != nil && daemonSetSummary.Spec.Template != nil {
 			addEdgesFromPodSpec(daemonsetEntity, daemonSetSummary.Spec.Template.PodSpec, namespace, clusterName)
@@ -656,6 +656,66 @@ func (ec *ResourceEntityCache) ProvisionPackagedObject(po *graphpb.PackagedObjec
 		addEdgesForOwnerRefs(replicaSetEntity, replicaSetSummary.BaseObject, clusterName)
 		if replicaSetSummary.Spec != nil && replicaSetSummary.Spec.Template != nil {
 			addEdgesFromPodSpec(replicaSetEntity, replicaSetSummary.Spec.Template.PodSpec, namespace, clusterName)
+		}
+
+	case *graphpb.PackagedObject_AutoscalingHpaSummary:
+		hpaSummary := obj.AutoscalingHpaSummary
+		if hpaSummary.Status != nil {
+			rattr[CurrentReplicas] = fmt.Sprintf("%d", hpaSummary.Status.CurrentReplicas)
+			rattr[DesiredReplicas] = fmt.Sprintf("%d", hpaSummary.Status.DesiredReplicas)
+
+			for _, condition := range hpaSummary.Status.Conditions {
+				if condition.Type == "ScalingLimited" {
+					rattr[ScalingLimitedStatusAttribute] = trueFalse(condition.Status == "True")
+					rattr[ScalingLimitedReasonAttribute] = condition.Reason
+					rattr[ScalingLimitedMessageAttribute] = condition.Message
+				}
+			}
+		}
+		if hpaSummary.Spec != nil {
+			rattr[MinReplicas] = fmt.Sprintf("%d", hpaSummary.Spec.MinReplicas)
+			rattr[MaxReplicas] = fmt.Sprintf("%d", hpaSummary.Spec.MaxReplicas)
+			if hpaSummary.Spec.Target != nil {
+				targetKind := hpaSummary.Spec.Target.Kind
+				targetApiVersion := hpaSummary.Spec.Target.ApiVersion
+				switch targetApiVersion + "/" + targetKind {
+				case "apps/v1/Deployment":
+					rattr[ScalingTargetName] = hpaSummary.Spec.Target.Name
+					rattr[ScalingTargetKind] = KubernetesDeployment
+					rattr[ScalingTargetAPIVersion] = targetApiVersion
+				case "apps/v1/StatefulSet":
+					rattr[ScalingTargetName] = hpaSummary.Spec.Target.Name
+					rattr[ScalingTargetKind] = KubernetesStatefulSet
+					rattr[ScalingTargetAPIVersion] = targetApiVersion
+				case "apps/v1/ReplicaSet":
+					rattr[ScalingTargetName] = hpaSummary.Spec.Target.Name
+					rattr[ScalingTargetKind] = KubernetesReplicaSet
+					rattr[ScalingTargetAPIVersion] = targetApiVersion
+				}
+			}
+		}
+
+		hpaId := ToKubernetesEntityId(hpaSummary.BaseObject.Name, KubernetesHPA, namespace, clusterName)
+		hpaEntity, _ := ec.PutEntity(KubernetesHPA, hpaId, rattr)
+		addEdgesForOwnerRefs(hpaEntity, hpaSummary.BaseObject, clusterName)
+		if hpaSummary.Spec != nil && hpaSummary.Spec.Target != nil {
+			targetName := hpaSummary.Spec.Target.Name
+			targetApiVersion := hpaSummary.Spec.Target.ApiVersion
+			targetKind := hpaSummary.Spec.Target.Kind
+			var graphTargetKind string
+			switch targetApiVersion + "/" + targetKind {
+			case "apps/v1/Deployment":
+				graphTargetKind = KubernetesDeployment
+			case "apps/v1/StatefulSet":
+				graphTargetKind = KubernetesStatefulSet
+			default:
+				graphTargetKind = ""
+			}
+			if graphTargetKind != "" {
+				targetId := ToKubernetesEntityId(targetName, graphTargetKind, namespace, clusterName)
+				hpaEntity.AddEdge(hpaEntity.EntityId, HorizontallyScales)
+				hpaEntity.AddEdgeBacklink(targetId, IsHorizontallyScaledBy)
+			}
 		}
 
 	default:
