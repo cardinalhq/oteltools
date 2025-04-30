@@ -16,6 +16,7 @@ package graph
 
 import (
 	"fmt"
+	"strings"
 
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 
@@ -125,6 +126,7 @@ const (
 	CronJob                  = "CronJob"
 	IsHorizontallyScaledBy   = "is horizontally scaled by"
 	HorizontallyScales       = "horizontally scales"
+	UsesDataBaseHostedOn     = "uses database hosted on"
 )
 
 const (
@@ -139,6 +141,8 @@ const (
 	CloudAccount                   = "cloud.account"
 	CloudAvailabilityZone          = "cloud.availability_zone"
 	CloudProvider                  = "cloud.provider"
+	IsDatabaseHost                 = "is.database.host"
+	CloudService                   = "cloud.service"
 	CloudRegion                    = "cloud.region"
 	CloudResourceId                = "cloud.resource_id"
 	Container                      = "container"
@@ -187,17 +191,26 @@ const (
 	ScalingTargetName              = "scaling.target.name"
 	ScalingTargetKind              = "scaling.target.kind"
 	ScalingTargetAPIVersion        = "scaling.target.api_version"
+	RDSSuffix                      = ".rds.amazonaws.com"
 )
 
 type EntityInfo struct {
-	Type                        string
-	Relationships               map[string]string
-	AttributeNames              []string
-	AttributePrefixes           []string
-	NameTransformer             func(string) string
-	DeriveRelationshipCallbacks map[string]func(pcommon.Map) string
-	ShouldCreateCallBack        func(p pcommon.Map) bool
-	OtherIDAttributes           []string
+	Type                              string
+	Relationships                     map[string]string
+	AttributeNames                    []string
+	AttributePrefixes                 []string
+	NameTransformer                   func(string) string
+	CreateEntityRelationshipsCallback func(m pcommon.Map) []EntityRelationship
+	DeriveRelationshipCallbacks       map[string]func(pcommon.Map) string
+	ShouldCreateCallBack              func(p pcommon.Map) bool
+	OtherIDAttributes                 []string
+}
+
+type EntityRelationship struct {
+	EntityName       string
+	EntityType       string
+	EntityAttributes map[string]string
+	Relationship     string
 }
 
 type RelationshipMap map[string]*EntityInfo
@@ -310,6 +323,39 @@ var EntityRelationships = RelationshipMap{
 			string(semconv.ContainerImageNameKey),
 		},
 		AttributePrefixes: []string{},
+		CreateEntityRelationshipsCallback: func(m pcommon.Map) []EntityRelationship {
+			relationships := make([]EntityRelationship, 0)
+			serverAddressVal, found := m.Get(string(semconv.ServerAddressKey))
+			if !found {
+				return nil
+			}
+			serverAddressStr := serverAddressVal.AsString()
+			if !strings.HasSuffix(serverAddressStr, RDSSuffix) {
+				return nil
+			}
+			parts := strings.Split(serverAddressStr, ".")
+			if len(parts) < 2 {
+				return nil
+			}
+			clusterName := parts[0]
+			if !strings.HasPrefix(parts[1], "cluster-") {
+				// set clusterName to parts[0] but after taking out the -{number} at the end
+				// e.g. abc-goo-1234 -> abc-goo
+				clusterName = parts[0][:strings.LastIndex(parts[0], "-")]
+			}
+
+			relationships = append(relationships, EntityRelationship{
+				EntityName:   clusterName,
+				EntityType:   Service,
+				Relationship: UsesDataBaseHostedOn,
+				EntityAttributes: map[string]string{
+					IsDatabaseHost: "true",
+					CloudProvider:  "aws",
+					CloudService:   "rds",
+				},
+			})
+			return relationships
+		},
 		DeriveRelationshipCallbacks: map[string]func(m pcommon.Map) string{
 			string(semconv.DBCollectionNameKey): func(m pcommon.Map) string {
 				dbQuery, dbQueryFound := m.Get(string(semconv.DBQuerySummaryKey))

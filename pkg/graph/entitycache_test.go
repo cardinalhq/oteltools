@@ -205,6 +205,22 @@ func TestDBRelationships(t *testing.T) {
 	assertEdgeExists(t, serviceEntity, dbEntity.EntityId, UsesDatabaseCollection)
 }
 
+func TestExtractEntityCallback(t *testing.T) {
+	ec := NewResourceEntityCache()
+	attributes := pcommon.NewMap()
+	attributes.PutStr(string(semconv.ServiceNameKey), "service-1")
+	globalEntityMap := ec.ProvisionResourceAttributes(attributes)
+
+	recordAttributes := pcommon.NewMap()
+	recordAttributes.PutStr(string(semconv.ServerAddressKey), "test-us-east-2-global-0.cryyasaiu1g7.us-east-2.rds.amazonaws.com")
+	ec.ProvisionRecordAttributes(globalEntityMap, recordAttributes)
+
+	entities := ec._allEntities()
+	dbEntity := assertEntityExists(t, entities, "test-us-east-2-global", Service)
+	serviceEntity := assertEntityExists(t, entities, "service-1", Service)
+	assertEdgeExists(t, serviceEntity, dbEntity.EntityId, UsesDataBaseHostedOn)
+}
+
 func TestEndpointRelationships(t *testing.T) {
 	ec := NewResourceEntityCache()
 	attributes := pcommon.NewMap()

@@ -391,6 +391,15 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 					}
 				}
 			}
+
+			if entityInfo.CreateEntityRelationshipsCallback != nil {
+				entityRelationships := entityInfo.CreateEntityRelationshipsCallback(recordAttributes)
+				for _, entityRelationship := range entityRelationships {
+					targetEntityId := ToEntityId(entityRelationship.EntityName, entityRelationship.EntityType, nil)
+					ec.PutEntity(entityRelationship.EntityType, targetEntityId, entityRelationship.EntityAttributes)
+					parentEntity.AddEdge(targetEntityId, entityRelationship.Relationship)
+				}
+			}
 			parentEntity.mu.Unlock()
 		}
 	}
