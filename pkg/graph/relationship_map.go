@@ -151,6 +151,7 @@ const (
 	ContainerImageID               = string(semconv.ContainerImageIDKey)
 	Database                       = "database"
 	DatabaseCollection             = "database.collection"
+	DatabaseHost                   = "database.host"
 	Endpoint                       = "endpoint"
 	FaasFunction                   = "faas.function"
 	FaasInstance                   = "faas.instance"
@@ -346,7 +347,7 @@ var EntityRelationships = RelationshipMap{
 
 			relationships = append(relationships, EntityRelationship{
 				EntityName:   clusterName,
-				EntityType:   Service,
+				EntityType:   DatabaseHost,
 				Relationship: UsesDataBaseHostedOn,
 				EntityAttributes: map[string]string{
 					IsDatabaseHost: "true",
