@@ -398,6 +398,9 @@ func (ec *ResourceEntityCache) provisionRelationships(globalEntityMap map[string
 					targetEntityId := ToEntityId(entityRelationship.EntityName, entityRelationship.EntityType, nil)
 					ec.PutEntity(entityRelationship.EntityType, targetEntityId, entityRelationship.EntityAttributes)
 					parentEntity.AddEdge(targetEntityId, entityRelationship.Relationship)
+					if entityRelationship.ReverseRelationship != "" {
+						parentEntity.AddEdgeBacklink(targetEntityId, entityRelationship.ReverseRelationship)
+					}
 				}
 			}
 			parentEntity.mu.Unlock()

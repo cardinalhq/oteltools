@@ -127,6 +127,7 @@ const (
 	IsHorizontallyScaledBy   = "is horizontally scaled by"
 	HorizontallyScales       = "horizontally scales"
 	UsesDataBaseHostedOn     = "uses database hosted on"
+	HostsDatabaseFor         = "hosts database for"
 )
 
 const (
@@ -208,10 +209,11 @@ type EntityInfo struct {
 }
 
 type EntityRelationship struct {
-	EntityName       string
-	EntityType       string
-	EntityAttributes map[string]string
-	Relationship     string
+	EntityName          string
+	EntityType          string
+	EntityAttributes    map[string]string
+	Relationship        string
+	ReverseRelationship string
 }
 
 type RelationshipMap map[string]*EntityInfo
@@ -325,7 +327,6 @@ var EntityRelationships = RelationshipMap{
 		},
 		AttributePrefixes: []string{},
 		CreateEntityRelationshipsCallback: func(m pcommon.Map) []EntityRelationship {
-			relationships := make([]EntityRelationship, 0)
 			serverAddressVal, found := m.Get(string(semconv.ServerAddressKey))
 			if !found {
 				return nil
@@ -345,10 +346,12 @@ var EntityRelationships = RelationshipMap{
 				clusterName = parts[0][:strings.LastIndex(parts[0], "-")]
 			}
 
+			relationships := []EntityRelationship{}
 			relationships = append(relationships, EntityRelationship{
-				EntityName:   clusterName,
-				EntityType:   DatabaseHost,
-				Relationship: UsesDataBaseHostedOn,
+				EntityName:          clusterName,
+				EntityType:          Service,
+				Relationship:        UsesDataBaseHostedOn,
+				ReverseRelationship: HostsDatabaseFor,
 				EntityAttributes: map[string]string{
 					IsDatabaseHost: "true",
 					CloudProvider:  "aws",
