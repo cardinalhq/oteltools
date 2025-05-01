@@ -219,6 +219,7 @@ func TestExtractEntityCallback(t *testing.T) {
 	dbEntity := assertEntityExists(t, entities, "test-us-east-2-global", Service)
 	serviceEntity := assertEntityExists(t, entities, "service-1", Service)
 	assertEdgeExists(t, serviceEntity, dbEntity.EntityId, UsesDataBaseHostedOn)
+	assertEdgeFromExists(t, serviceEntity, dbEntity.EntityId, HostsDatabaseFor)
 }
 
 func TestEndpointRelationships(t *testing.T) {
