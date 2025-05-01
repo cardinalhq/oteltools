@@ -17,11 +17,11 @@ package functions
 import (
 	"context"
 	"fmt"
-	"net"
+	"net/netip"
 	"os"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
-	"github.com/oschwald/geoip2-golang"
+	"github.com/oschwald/maxminddb-golang/v2"
 )
 
 // IpLocationArguments holds the target IP
@@ -31,66 +31,86 @@ type IpLocationArguments[K any] struct {
 
 // NewIpLocationFactory Create the factory for the iplocation function
 func NewIpLocationFactory[K any]() ottl.Factory[K] {
+	// This is done here to avoid opening the database for every function call.
+	// Any database errors will be returned when the factory is created.
+	dbPath := os.Getenv("GEOIP_DB_PATH")
+	if dbPath == "" {
+		dbPath = "/app/geoip/GeoOpen-Country.mmdb"
+	}
+	db, dbopenError := maxminddb.Open(dbPath)
+
 	return ottl.NewFactory("IpLocation", &IpLocationArguments[K]{}, func(ctx ottl.FunctionContext, args ottl.Arguments) (ottl.ExprFunc[K], error) {
+		if dbopenError != nil {
+			return nil, fmt.Errorf("failed to open database: %v", dbopenError)
+		}
 		ipArgs, ok := args.(*IpLocationArguments[K])
 		if !ok {
 			return nil, fmt.Errorf("iplocation args must be of type *IpLocationArguments[K]")
 		}
 
-		dbPath := os.Getenv("GEOIP_DB_PATH")
-		if dbPath == "" {
-			dbPath = "/app/geoip/GeoOpen-Country.mmdb"
-		}
-		return createIpLocationFunction(dbPath, ipArgs.Target)
+		return createIpLocationFunction(db, ipArgs.Target)
 	})
 }
 
-func createIpLocationFunction[K any](dbPath string, ipGetter ottl.StringGetter[K]) (ottl.ExprFunc[K], error) {
-	db, err := geoip2.Open(dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open GeoIP database: %v", err)
-	}
+func createIpLocationFunction[K any](db *maxminddb.Reader, ipGetter ottl.StringGetter[K]) (ottl.ExprFunc[K], error) {
 
 	return iplocation(db, ipGetter), nil
 }
 
+type IPLocationLookup struct {
+	Country struct {
+		ISOCode string            `maxminddb:"iso_code"`
+		Names   map[string]string `maxminddb:"names"`
+	} `maxminddb:"country"`
+	City struct {
+		Names map[string]string `maxminddb:"names"`
+	} `maxminddb:"city"`
+	Location struct {
+		Latitude  float64 `maxminddb:"latitude"`
+		Longitude float64 `maxminddb:"longitude"`
+	} `maxminddb:"location"`
+	Postal struct {
+		Code string `maxminddb:"code"`
+	} `maxminddb:"postal"`
+}
+
 // iplocation function performs the geolocation lookup
-func iplocation[K any](db *geoip2.Reader, ipGetter ottl.StringGetter[K]) ottl.ExprFunc[K] {
+func iplocation[K any](db *maxminddb.Reader, ipGetter ottl.StringGetter[K]) ottl.ExprFunc[K] {
 	return func(ctx context.Context, tCtx K) (any, error) {
-		// Get the IP address from the target
 		ip, err := ipGetter.Get(ctx, tCtx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get IP address: %v", err)
 		}
 
-		parsedIP := net.ParseIP(ip)
-		if parsedIP == nil {
-			return nil, fmt.Errorf("invalid IP address: %s", ip)
+		parsedIP, err := netip.ParseAddr(ip)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse IP address: %v", err)
 		}
 
-		record, err := db.City(parsedIP)
+		var record IPLocationLookup
+		err = db.Lookup(parsedIP).Decode(&record)
+
 		if err != nil {
 			return nil, fmt.Errorf("error looking up IP: %v", err)
 		}
 
 		city := record.City.Names["en"]
-		country := record.Country.Names["en"]
-		zipCode := record.Postal.Code
-
 		if city == "" {
 			city = "Unknown"
 		}
 
+		country := record.Country.Names["en"]
 		if country == "" {
 			country = "Unknown"
 		}
 
 		location := map[string]any{
-			"city":      city,
-			"country":   country,
-			"zip_code":  zipCode,
-			"latitude":  record.Location.Latitude,
-			"longitude": record.Location.Longitude,
+			"city":        city,
+			"country":     country,
+			"country_iso": record.Country.ISOCode,
+			"zip_code":    record.Postal.Code,
+			"latitude":    record.Location.Latitude,
+			"longitude":   record.Location.Longitude,
 		}
 
 		return location, nil

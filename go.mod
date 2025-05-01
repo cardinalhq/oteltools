@@ -10,6 +10,7 @@ require (
 	github.com/db47h/ragel/v2 v2.2.4
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.123.0
 	github.com/oschwald/geoip2-golang v1.11.0
+	github.com/oschwald/maxminddb-golang/v2 v2.0.0-beta.3
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/collector/client v1.29.0
 	go.opentelemetry.io/collector/component v1.29.0
