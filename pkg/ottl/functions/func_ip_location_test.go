@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/oschwald/geoip2-golang"
+	"github.com/oschwald/maxminddb-golang/v2"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +26,7 @@ import (
 )
 
 func Test_IpLocation_ValidIP(t *testing.T) {
-	db, err := geoip2.Open("../testdata/GeoIP2-Country-Test.mmdb")
+	db, err := maxminddb.Open("../testdata/GeoIP2-Country-Test.mmdb")
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -40,11 +40,12 @@ func Test_IpLocation_ValidIP(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := map[string]any{
-		"city":      "Unknown",
-		"country":   "Ukraine",
-		"zip_code":  "",
-		"latitude":  0.0,
-		"longitude": 0.0,
+		"city":        "Unknown",
+		"country":     "Ukraine",
+		"zip_code":    "",
+		"country_iso": "UA",
+		"latitude":    0.0,
+		"longitude":   0.0,
 	}
 
 	assert.Equal(t, expected, result)

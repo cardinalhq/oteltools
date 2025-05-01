@@ -9,7 +9,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/db47h/ragel/v2 v2.2.4
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.123.0
-	github.com/oschwald/geoip2-golang v1.11.0
+	github.com/oschwald/maxminddb-golang/v2 v2.0.0-beta.3
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/collector/client v1.29.0
 	go.opentelemetry.io/collector/component v1.29.0
@@ -175,7 +175,6 @@ require (
 	github.com/nunnatsa/ginkgolinter v0.19.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.123.0 // indirect
-	github.com/oschwald/maxminddb-golang v1.13.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
