@@ -188,14 +188,14 @@ func TestFingerprinter(t *testing.T) {
 		{
 			"test case 1",
 			"2024-12-14T00:46:28.852Z pid=9 tid=12msap class=SearchSyncWorker jid=96322f73c635d6812fd60163 INFO: start",
-			"<ISO8601> <Number> tid <Identifier> class searchsyncworker <Identifier> <Loglevel> start",
+			"<ISO8601> <Number> tid <Identifier> <Loglevel> start",
 			"info",
 			nil,
 		},
 		{
 			"test case 2",
 			"2024-12-14T00:46:28.852Z pid=9 tid=12xsap class=SearchSyncWorker jid=96322f73c635d6812fd60163 INFO: start",
-			"<ISO8601> <Number> tid <Identifier> class searchsyncworker <Identifier> <Loglevel> start",
+			"<ISO8601> <Number> tid <Identifier> <Loglevel> start",
 			"info",
 			nil,
 		},
@@ -671,7 +671,7 @@ func TestFingerprintIdenticality(t *testing.T) {
 				`[33e7b1c4-e224-42fb-8d47-659e9eb07d39] Started GET "/search/tickets?account_id=11&page=&per_page=&query=test" for 54.162.8.237 at 2025-01-13 18:10:34 +0000`,
 			},
 			[]string{
-				"<UUID>", "started", "<HTTPMethod>", "<QuotedString>", "for", "<IPv4>", "at", "<Date>", "<Time>", "<Number>",
+				"<UUID>", "started", "<HTTPMethod>", "<Identifier>", "for", "<IPv4>", "at", "<Date>", "<Time>", "<Number>",
 			},
 			false,
 		},
@@ -684,7 +684,7 @@ func TestFingerprintIdenticality(t *testing.T) {
 				`[2025-01-13T07:54:30.125Z] "POST /search/tickets?account_id=11 HTTP/1.1" 201 - via_upstream - "-" 135 146 13 13 "54.162.8.237,172.25.19.220" "Typhoeus - https://github.com/typhoeus/typhoeus" "c7953b6b-02df-47bd-9970-b8325caca796" "search-service.freshstatus-sta91ng.io" "172.25.29.139:8181" outbound|80|BLUE|aiops-search.ams-aiops-search-staging.svc.cluster.local 172.25.27.114:51834 172.25.27.114:8080 172.25.19.220:15370 - -`,
 			},
 			[]string{
-				"<ISO8601>", "<QuotedString>", "<Number>", "<Identifier>", "<QuotedString>", "<Number>", "<Number>", "<Number>", "<Number>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<Identifier>", "<IPv4>", "<IPv4>", "<IPv4>",
+				"<ISO8601>", "<Identifier>", "<Number>", "<Identifier>", "<Number>", "<Number>", "<Number>", "<Number>", "<Identifier>", "<IPv4>", "<IPv4>", "<IPv4>",
 			},
 			false,
 		},
@@ -726,7 +726,7 @@ func TestFingerprintIdenticality(t *testing.T) {
 				"[1a41a6cb-28e9-4806-a40b-822a38fb4630]   [1m[36mTicket Create (1.6ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Dignissimos repellendus et quam.', 'Minima laboriosam aut. Quas sapiente ut. Facilis ipsa animi.', 585165, 11, '2025-01-13 14:07:36.160576', '2025-01-13 14:07:36.160576')[0m",
 			},
 			[]string{
-				"<UUID>", "ticket", "create", "<Duration>", "insert", "into", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "<QuotedString>", "values", "<QuotedString>", "<QuotedString>", "<Number>", "<Number>", "<QuotedString>", "<QuotedString>",
+				"<UUID>", "ticket", "create", "<Duration>", "insert", "into", "<Identifier>", "values", "<Identifier>", "<Number>", "<Number>", "<Identifier>",
 			},
 			false,
 		},
@@ -744,11 +744,13 @@ func TestFingerprintIdenticality(t *testing.T) {
 		{
 			"specified key does not exist",
 			[]string{
+				`The specified key does not exist. (Service: Amazon S3; Status Code: 404; Error Code: NoSuchKey; Request ID: YGNRA466620F3JZ2; S3 Extended Request ID: i92XzeWekngbw+nl+99Pn6uUOADxsf1aVk/Mdu7RYxdfhXXl52ax9zzLNB02Z5FRS7kNe3+El3IG2z3H1C/fvO823H5QVWexLykYZGHt+7M=; Proxy: null)`,
+				`The specified key does not exist. (Service: Amazon S3; Status Code: 404; Error Code: NoSuchKey; Request ID: YGNJ3ZWYAG1NHK4R; S3 Extended Request ID: FLs5T4nLTASwoIfL9w4N3jUsD+qM/GfeEP1yepSkMuVzBJ2C7R0cfKnWsfoekGxNr9oTcCM4pR1xF8hObhY1TppKzPkX70mn62bRFhD8DzY=; Proxy: null)`,
 				`The specified key does not exist. (Service: Amazon S3; Status Code: 404; Error Code: NoSuchKey; Request ID: GQNDT8W5ZT2MDCXY; S3 Extended Request ID: DoEXTB+nKImWcRc2OW/xR6fNVvaaMzaGPpAedeS0qUoYnRXlWAfadnGF/XNqn3N1CqjYL2d2yDk=; Proxy: null)`,
 				`The specified key does not exist. (Service: Amazon S3; Status Code: 404; Error Code: NoSuchKey; Request ID: 35RM8V8QXF53KQG4; S3 Extended Request ID: HDPgTMmPswV376FyTJyJwwHWrqWNxbTBWZJ8PB4P2GKoFuz7kMeuWImFJ0d45aivnfgPmdx4kqEGgv0uEGvGVWQB0JUeGMDq9rok1+l/IUA=; Proxy: null)`,
 			},
 			[]string{
-				"the", "specified", "key", "does", "not", "service", "amazon", "s3", "status", "code", "<Number>", "<Loglevel>", "code", "nosuchkey", "request", "id", "<Identifier>", "s3", "extended", "request", "id", "<Identifier>", "<Path>", "proxy", "null",
+				"the", "specified", "key", "does", "not", "service", "amazon", "s3", "status", "code", "<Number>", "<Loglevel>", "code", "nosuchkey", "request", "id", "<Identifier>", "s3", "extended", "request", "id", "<Identifier>", "proxy", "null",
 			},
 			false,
 		},

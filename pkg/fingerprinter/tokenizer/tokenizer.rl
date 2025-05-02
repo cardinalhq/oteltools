@@ -101,12 +101,23 @@ func (*FingerprintTokenizer) TokenString(t ragel.Token) string {
 %%{
     machine tokenizer;
 
+    base64 =
+        ( 'A'..'Z'
+        | 'a'..'z'
+        | '0'..'9'
+        | '+'
+        | '/'
+        | '='
+        ){20,}
+        ;
+
     # utf-8 support
     include UTF8 "utf8.rl";
 
     newline = '\n' @{ s.Newline(p) };
 
     main := |*
+        base64 { s.Emit(ts, TokenIdentifier, string(data[ts:te])); };
         alpha_u = uletter | '_';
         alnum_u = alpha_u | digit;
 
