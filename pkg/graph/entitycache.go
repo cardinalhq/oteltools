@@ -315,7 +315,10 @@ func (ec *ResourceEntityCache) provisionEntities(attributes pcommon.Map, entityM
 	provisionedEntities := make(map[string]*ResourceEntity)
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		entityName := v.AsString()
-		if entityInfo, exists := EntityRelationships[k]; exists && entityName != "" {
+		if entityName == "" {
+			return true
+		}
+		if entityInfo, exists := EntityRelationships[k]; exists {
 			if entityInfo.ShouldCreateCallBack != nil {
 				if !entityInfo.ShouldCreateCallBack(attributes) {
 					return true
