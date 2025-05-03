@@ -51,7 +51,7 @@ func CalculateSpanFingerprint(sr ptrace.Span, fpr Fingerprinter) int64 {
 		}
 	}
 	if exceptionMessage != "" {
-		computedFp, _, _, _, err := fpr.Fingerprint(exceptionMessage)
+		computedFp, _, _, err := fpr.Fingerprint(exceptionMessage)
 		if err == nil {
 			fingerprintAttributes = append(fingerprintAttributes, strconv.FormatInt(computedFp, 10))
 		}
