@@ -38,7 +38,7 @@ const (
 
 type Fingerprinter interface {
 	IsWord(word string) bool
-	Fingerprint(input string) (fingerprint int64, tokens *TokenSeq, level string, js map[string]any, err error)
+	Fingerprint(input string) (fingerprint int64, level string, js map[string]any, err error)
 	TokenizeInput(input string) (*TokenSeq, string, map[string]any, error)
 	Tokenize(input string) (*TokenSeq, string, error)
 }
@@ -48,6 +48,8 @@ type fingerprinterImpl struct {
 	maxTokens      int
 	wordlist       map[string]struct{}
 }
+
+var _ Fingerprinter = (*fingerprinterImpl)(nil)
 
 // Use a pattern where options can be passed into the constructor as a series of functional options.
 
