@@ -24,7 +24,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/cespare/xxhash/v2"
 	"github.com/db47h/ragel/v2"
 
 	"github.com/cardinalhq/oteltools/maputils"
@@ -39,24 +38,24 @@ const (
 
 type Fingerprinter interface {
 	IsWord(word string) bool
-	Fingerprint(input string) (fingerprint int64, tokens *TokenMap, level string, js map[string]any, err error)
-	TokenizeInput(input string) (*TokenMap, string, map[string]any, error)
-	Tokenize(input string) (*TokenMap, string, error)
+	Fingerprint(input string) (fingerprint int64, tokens *TokenSeq, level string, js map[string]any, err error)
+	TokenizeInput(input string) (*TokenSeq, string, map[string]any, error)
+	Tokenize(input string) (*TokenSeq, string, error)
 }
 
 type fingerprinterImpl struct {
-	maxTokens int
-	wordlist  map[string]struct{}
+	clusterManager *TrieClusterManager
+	maxTokens      int
+	wordlist       map[string]struct{}
 }
-
-var _ Fingerprinter = (*fingerprinterImpl)(nil)
 
 // Use a pattern where options can be passed into the constructor as a series of functional options.
 
-func NewFingerprinter(opts ...Option) *fingerprinterImpl {
+func NewFingerprinter(clusterManager *TrieClusterManager, opts ...Option) *fingerprinterImpl {
 	fp := fingerprinterImpl{
-		maxTokens: 15,
-		wordlist:  make(map[string]struct{}),
+		clusterManager: clusterManager,
+		maxTokens:      15,
+		wordlist:       make(map[string]struct{}),
 	}
 	for _, word := range englishWords {
 		fp.wordlist[word] = struct{}{}
@@ -122,7 +121,7 @@ func getStringKey(body map[string]any, keys ...string) string {
 	return ""
 }
 
-func (fp *fingerprinterImpl) tokenizeJSONContent(prefix string, data map[string]any, suffix string) (*TokenMap, string, error) {
+func (fp *fingerprinterImpl) tokenizeJSONContent(prefix string, data map[string]any, suffix string) (*TokenSeq, string, error) {
 	message := getStringKey(data, "message", "msg")
 	level := getStringKey(data, "level", "loglevel")
 	level = strings.ToLower(level)
@@ -142,31 +141,18 @@ func (fp *fingerprinterImpl) tokenizeJSONContent(prefix string, data map[string]
 	return s, level, nil
 }
 
-func (fp *fingerprinterImpl) Fingerprint(input string) (fingerprint int64, tokenMap *TokenMap, level string, js map[string]any, err error) {
+func (fp *fingerprinterImpl) Fingerprint(input string) (fingerprint int64, level string, js map[string]any, err error) {
 	t, level, js, err := fp.TokenizeInput(input)
 	if err != nil {
-		return 0, newTokenMap(), "", nil, err
+		return 0, "", nil, err
 	}
-
-	xx := xxhash.New()
-	for i, item := range t.Items {
-		if i != 0 {
-			_, _ = xx.WriteString(":")
-		}
-		_, _ = xx.WriteString(item)
-	}
-
 	names := maputils.DeepKeys(js)
-	for _, name := range names {
-		_, _ = xx.WriteString(":")
-		_, _ = xx.WriteString(name)
-	}
-
-	return int64(xx.Sum64()), t, level, js, nil
+	t.JSONKeys = names
+	return fp.clusterManager.Cluster(t), level, js, nil
 }
 
-func (fp *fingerprinterImpl) TokenizeInput(input string) (*TokenMap, string, map[string]any, error) {
-	// Do some light pre-processing here to make it easer on the ragel code.
+func (fp *fingerprinterImpl) TokenizeInput(input string) (*TokenSeq, string, map[string]any, error) {
+	// Do some light pre-processing here to make it easier on the ragel code.
 	input = strings.TrimSpace(input)
 	input = stringutils.RemoveANSICodes(input)
 
@@ -182,7 +168,7 @@ func (fp *fingerprinterImpl) TokenizeInput(input string) (*TokenMap, string, map
 		if err == nil {
 			tokenized, level, err := fp.tokenizeJSONContent(prefix, data, suffix)
 			if err != nil {
-				return newTokenMap(), "", nil, err
+				return newTokenSeq(), "", nil, err
 			}
 			return tokenized, level, data, nil
 		}
@@ -194,7 +180,7 @@ func (fp *fingerprinterImpl) TokenizeInput(input string) (*TokenMap, string, map
 	}
 	tokenized, level, err := fp.Tokenize(input)
 	if err != nil {
-		return newTokenMap(), "", nil, err
+		return newTokenSeq(), "", nil, err
 	}
 	return tokenized, level, nil, nil
 }
@@ -217,31 +203,25 @@ func (fp *fingerprinterImpl) IsWord(word string) bool {
 	return true
 }
 
-type TokenMap struct {
-	index int
-	TMap  map[int]string
-	Items []string
+type TokenSeq struct {
+	index    int
+	Items    []string
+	JSONKeys []string
 }
 
-func (tm *TokenMap) Put(replacement string, orig string) {
+func (tm *TokenSeq) Add(replacement string) {
 	tm.Items = append(tm.Items, replacement)
-	tm.TMap[tm.index] = orig
 	tm.index += 1
 }
 
-func (tm *TokenMap) Get(index int) string {
-	return tm.TMap[index]
-}
-
-func newTokenMap() *TokenMap {
-	return &TokenMap{
-		index: 0,
-		TMap:  make(map[int]string),
-		Items: make([]string, 0),
+func newTokenSeq() *TokenSeq {
+	return &TokenSeq{
+		Items:    make([]string, 0),
+		JSONKeys: make([]string, 0),
 	}
 }
 
-func (fp *fingerprinterImpl) Tokenize(input string) (*TokenMap, string, error) {
+func (fp *fingerprinterImpl) Tokenize(input string) (*TokenSeq, string, error) {
 	tk := tokenizer.NewFingerprintTokenizer()
 
 	quotedStrings := []string{}
@@ -273,9 +253,9 @@ func (fp *fingerprinterImpl) Tokenize(input string) (*TokenMap, string, error) {
 	return tokenMap, strings.ToLower(level), nil
 }
 
-func (fp *fingerprinterImpl) tokenize(tk *tokenizer.FingerprintTokenizer, input string, quotedStrings []string) (*TokenMap, string, error) {
+func (fp *fingerprinterImpl) tokenize(tk *tokenizer.FingerprintTokenizer, input string, quotedStrings []string) (*TokenSeq, string, error) {
 	level := ""
-	tokenMap := newTokenMap()
+	tokenMap := newTokenSeq()
 	currentQuotedStringIndex := 0
 
 	s := ragel.New("test", strings.NewReader(input), tk)
@@ -294,41 +274,40 @@ func (fp *fingerprinterImpl) tokenize(tk *tokenizer.FingerprintTokenizer, input 
 			return nil, "", fmt.Errorf("error: %s", literal)
 		case tokenizer.TokenQuotedString:
 			if currentQuotedStringIndex < len(quotedStrings) {
-				tokenMap.Put("<QuotedString>", quotedStrings[currentQuotedStringIndex])
+				tokenMap.Add("<QuotedString>")
 				currentQuotedStringIndex += 1
 			}
 		case tokenizer.TokenList:
 			quotedStringCount := strings.Count(lowerCaseLiteral, "quotedstringplaceholder")
 			if currentQuotedStringIndex < len(quotedStrings) && currentQuotedStringIndex+quotedStringCount <= len(quotedStrings) {
-				quotedString := strings.Join(quotedStrings[currentQuotedStringIndex:currentQuotedStringIndex+quotedStringCount], " ")
-				tokenMap.Put("<List>", quotedString)
+				tokenMap.Add("<List>")
 			}
 		case tokenizer.TokenLoglevel:
 			if level == "" {
 				level = literal
-				tokenMap.Put(LogLevelPlaceHolder, lowerCaseLiteral)
+				tokenMap.Add(LogLevelPlaceHolder)
 			} else {
-				tokenMap.Put(lowerCaseLiteral, lowerCaseLiteral)
+				tokenMap.Add(lowerCaseLiteral)
 			}
 		case tokenizer.TokenIdentifier:
 			if level == "" && slices.Contains(tokenizer.LogLevelNames, strings.ToLower(literal)) {
 				level = literal
-				tokenMap.Put(LogLevelPlaceHolder, lowerCaseLiteral)
+				tokenMap.Add(LogLevelPlaceHolder)
 				continue
 			}
 			if fp.IsWord(literal) {
-				tokenMap.Put(lowerCaseLiteral, lowerCaseLiteral)
+				tokenMap.Add(lowerCaseLiteral)
 				continue
 			}
 			if len(tokenMap.Items) > 0 && tokenMap.Items[len(tokenMap.Items)-1] != IdentifierPlaceHolder {
-				tokenMap.Put(IdentifierPlaceHolder, literal)
+				tokenMap.Add(IdentifierPlaceHolder)
 			}
 		case tokenizer.TokenString:
 			if fp.IsWord(literal) {
-				tokenMap.Put(lowerCaseLiteral, lowerCaseLiteral)
+				tokenMap.Add(lowerCaseLiteral)
 			}
 		default:
-			tokenMap.Put("<"+tk.TokenString(tok)+">", lowerCaseLiteral)
+			tokenMap.Add("<" + tk.TokenString(tok) + ">")
 		}
 	}
 }

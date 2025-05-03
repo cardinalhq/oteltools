@@ -34,7 +34,8 @@ func TestFingerprinterWithKafkaBroker0(t *testing.T) {
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
-	fp := NewFingerprinter()
+	clusterManager := NewTrieClusterManager(0.5)
+	fp := NewFingerprinter(clusterManager)
 	for scanner.Scan() {
 		input := scanner.Text()
 		t.Run(input, func(t *testing.T) {
@@ -333,8 +334,9 @@ func TestFingerprinter(t *testing.T) {
 		},
 	}
 
+	clusterManager := NewTrieClusterManager(0.5)
 	for _, tt := range tests {
-		fp := NewFingerprinter()
+		fp := NewFingerprinter(clusterManager)
 		t.Run(tt.name, func(t *testing.T) {
 			tokenMap, level, js, err := fp.TokenizeInput(tt.input)
 			assert.NoError(t, err, "input: %s", tt.input)
@@ -363,7 +365,8 @@ func TestFingerprinterWithLineLimit(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		fp := NewFingerprinter(WithMaxTokens(5))
+		clusterManager := NewTrieClusterManager(0.5)
+		fp := NewFingerprinter(clusterManager, WithMaxTokens(5))
 		t.Run(tt.name, func(t *testing.T) {
 			tokenMap, _, js, err := fp.TokenizeInput(tt.input)
 			assert.NoError(t, err)
@@ -375,10 +378,11 @@ func TestFingerprinterWithLineLimit(t *testing.T) {
 
 func BenchmarkFingerprinter1(b *testing.B) {
 	input := "[2024-04-06 21:23:32,742] INFO [GroupCoordinator 100]: Preparing to rebalance group metadata.ingest.stats.consumer in state PreparingRebalance with old generation 14 (__consumer_offsets-14) (reason: Adding new member metadata.ingest.stats.consumer-0-e78065b6-0f83-4397-92ae-965997f4b1a2 with group instance id Some(metadata.ingest.stats.consumer-0); client reason: not provided) (kafka.coordinator.group.GroupCoordinator)"
-	fp := NewFingerprinter()
+	clusterManager := NewTrieClusterManager(0.5)
+	fp := NewFingerprinter(clusterManager)
 	log.Printf("Running loop for %d times", b.N)
 	for b.Loop() {
-		_, _, _, _, err := fp.Fingerprint(input)
+		_, _, _, err := fp.Fingerprint(input)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -441,7 +445,8 @@ func TestSplitWords(t *testing.T) {
 }
 
 func TestIsWord(t *testing.T) {
-	fp := NewFingerprinter()
+	clusterManager := NewTrieClusterManager(0.5)
+	fp := NewFingerprinter(clusterManager)
 	fp.wordlist = map[string]struct{}{
 		"hello": {},
 		"world": {},
@@ -599,7 +604,8 @@ func TestGetStringKey(t *testing.T) {
 }
 
 func BenchmarkIsWord(b *testing.B) {
-	fp := NewFingerprinter()
+	clusterManager := NewTrieClusterManager(0.5)
+	fp := NewFingerprinter(clusterManager)
 	fp.wordlist = map[string]struct{}{
 		"hello": {},
 		"world": {},
@@ -613,15 +619,12 @@ func BenchmarkIsWord(b *testing.B) {
 }
 
 func TestTokenMapConstruction(t *testing.T) {
-	fp := NewFingerprinter()
-	fingerprint, tMap, s, js, err := fp.Fingerprint("INFO Received request for /api/v1/endpoint from userId=12345")
+	clusterManager := NewTrieClusterManager(0.5)
+	fp := NewFingerprinter(clusterManager)
+	fingerprint, s, js, err := fp.Fingerprint("INFO Received request for /api/v1/endpoint from userId=12345")
 	assert.NoError(t, err)
 	assert.NotEqual(t, 0, fingerprint)
 	assert.Equal(t, s, "info")
-	assert.NotEmpty(t, tMap.Items)
-	assert.Equal(t, "/api/v1/endpoint", tMap.Get(4))
-	assert.Equal(t, "userid", tMap.Get(6))
-	assert.Equal(t, "12345", tMap.Get(7))
 	assert.Empty(t, js)
 }
 
@@ -634,11 +637,11 @@ func TestJSONBodyFingerprint(t *testing.T) {
 	require.NoError(t, err)
 	lr := logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
 	msg := lr.Body().AsString()
-	fp := NewFingerprinter()
-	fingerprint, tMap, _, js, err := fp.Fingerprint(msg)
+	clusterManager := NewTrieClusterManager(0.5)
+	fp := NewFingerprinter(clusterManager)
+	fingerprint, _, js, err := fp.Fingerprint(msg)
 	assert.NoError(t, err)
 	assert.NotEqual(t, 0, fingerprint)
-	assert.NotEmpty(t, tMap.Items)
 	assert.NotEmpty(t, js)
 }
 
@@ -756,20 +759,19 @@ func TestFingerprintIdenticality(t *testing.T) {
 		},
 	}
 
-	fp := NewFingerprinter(WithMaxTokens(25))
+	clusterManager := NewTrieClusterManager(0.5)
+	fp := NewFingerprinter(clusterManager, WithMaxTokens(25))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fingerprint1, tokenMap1, _, js, err := fp.Fingerprint(tt.inputs[0])
+			fingerprint1, _, js, err := fp.Fingerprint(tt.inputs[0])
 			require.NoError(t, err)
-			require.Equal(t, tt.tokens, tokenMap1.Items, "input: %s", tt.inputs[0])
 			if tt.expectJSON {
 				require.NotNil(t, js)
 			}
 			for i := 1; i < len(tt.inputs); i++ {
-				fingerprint2, tokenMap2, _, js, err := fp.Fingerprint(tt.inputs[i])
+				fingerprint2, _, js, err := fp.Fingerprint(tt.inputs[i])
 				require.NoError(t, err)
-				require.Equal(t, tt.tokens, tokenMap2.Items, "input: %s", tt.inputs[i])
 				require.Equal(t, fingerprint1, fingerprint2)
 				if tt.expectJSON {
 					require.NotNil(t, js)
