@@ -15,49 +15,56 @@
 package fingerprinter
 
 import (
+	"encoding/json"
+	"sort"
 	"sync"
 	"time"
 
 	"github.com/cespare/xxhash/v2"
 )
 
-// cluster holds one bucket of previously-seen TokenSeq.Items
-// and maintains Jaccard statistics over time.
+// ----------------------------------------------------------------------------
+// internal cluster & leaf clusterer
+// ----------------------------------------------------------------------------
+
 type cluster struct {
-	fingerprint int64
-	tokenSet    map[string]struct{}
-	matchCount  int
-	total       int
-	matchRate   float64
-	lastUpdated time.Time
+	Fingerprint int64               `json:"fp"`
+	TokenSet    map[string]struct{} `json:"tokens"`
+	MatchCount  int                 `json:"mc"`
+	Total       int                 `json:"tot"`
+	LastUpdated time.Time           `json:"upd"`
 }
 
-// record updates this cluster’s stats with a new incoming set.
-// If matched==true, it also intersects tokenSet to common tokens.
+func (c *cluster) matchRate() float64 {
+	if c.Total == 0 {
+		return 0
+	}
+	return float64(c.MatchCount) / float64(c.Total)
+}
+
 func (c *cluster) record(incoming map[string]struct{}, matched bool) {
 	if matched {
-		common := make(map[string]struct{}, len(c.tokenSet))
-		for tok := range c.tokenSet {
+		// intersect token set
+		common := make(map[string]struct{}, len(c.TokenSet))
+		for tok := range c.TokenSet {
 			if _, ok := incoming[tok]; ok {
 				common[tok] = struct{}{}
 			}
 		}
-		c.tokenSet = common
-		c.matchCount++
+		c.TokenSet = common
+		c.MatchCount++
 	}
-	c.total++
-	c.matchRate = float64(c.matchCount) / float64(c.total)
-	c.lastUpdated = time.Now()
+	c.Total++
+	c.LastUpdated = time.Now()
 }
 
-// LeafClusterer maintains ordered clusters for one token sequence.
+// LeafClusterer keeps ordered clusters for one token-prefix node.
 type LeafClusterer struct {
 	threshold float64
 	mu        sync.Mutex
-	clusters  []*cluster // sorted descending by matchRate
+	clusters  []*cluster // descending by match rate
 }
 
-// NewLeafClusterer creates a clusterer with the given Jaccard threshold.
 func NewLeafClusterer(threshold float64) *LeafClusterer {
 	return &LeafClusterer{
 		threshold: threshold,
@@ -65,91 +72,87 @@ func NewLeafClusterer(threshold float64) *LeafClusterer {
 	}
 }
 
-// Add processes the TokenSeq and returns the canonical fingerprint.
-// It matches against existing clusters by Jaccard, updates stats,
-// and only computes a new hash if no cluster matches.
+// Add returns either an existing cluster fingerprint (if jaccard >= threshold)
+// or computes & returns a new one.
 func (lc *LeafClusterer) Add(ts *TokenSeq) int64 {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	// Build incoming set
+	// build incoming set
 	incoming := make(map[string]struct{}, len(ts.Items))
 	for _, tok := range ts.Items {
 		incoming[tok] = struct{}{}
 	}
 
-	// Try to match existing clusters
+	// try to match
 	for idx, cl := range lc.clusters {
+		// Jaccard
 		inter := 0
-		for tok := range cl.tokenSet {
+		for tok := range cl.TokenSet {
 			if _, ok := incoming[tok]; ok {
 				inter++
 			}
 		}
-		union := len(cl.tokenSet) + len(incoming) - inter
-		var score float64
+		union := len(cl.TokenSet) + len(incoming) - inter
+		score := 0.0
 		if union > 0 {
 			score = float64(inter) / float64(union)
 		}
-		matched := score >= lc.threshold
 
-		cl.record(incoming, matched)
-		if matched {
+		cl.record(incoming, score >= lc.threshold)
+		if score >= lc.threshold {
 			// bubble up
-			for i := idx; i > 0 && lc.clusters[i].matchRate > lc.clusters[i-1].matchRate; i-- {
+			for i := idx; i > 0 && lc.clusters[i].matchRate() > lc.clusters[i-1].matchRate(); i-- {
 				lc.clusters[i], lc.clusters[i-1] = lc.clusters[i-1], lc.clusters[i]
 			}
-			return cl.fingerprint
+			return cl.Fingerprint
 		}
 	}
 
-	// No match: compute new fingerprint
+	// no match → new fingerprint
 	h := xxhash.New()
 	for i, item := range ts.Items {
 		if i > 0 {
-			_, _ = h.WriteString(":")
+			_, _ = h.Write([]byte(":"))
 		}
 		_, _ = h.WriteString(item)
 	}
 	for _, key := range ts.JSONKeys {
-		_, _ = h.WriteString(":")
+		_, _ = h.Write([]byte(":"))
 		_, _ = h.WriteString(key)
 	}
 	newFP := int64(h.Sum64())
 
-	// prepend new cluster
-	newCl := &cluster{
-		fingerprint: newFP,
-		tokenSet:    incoming,
-		matchCount:  1,
-		total:       1,
-		matchRate:   1.0,
-		lastUpdated: time.Now(),
+	cl := &cluster{
+		Fingerprint: newFP,
+		TokenSet:    incoming,
+		MatchCount:  1,
+		Total:       1,
+		LastUpdated: time.Now(),
 	}
-	lc.clusters = append([]*cluster{newCl}, lc.clusters...)
+	lc.clusters = append([]*cluster{cl}, lc.clusters...)
 	return newFP
 }
 
-// -----------------------------------------------------------------------------
-//  Sequence-trie mapping token sequences -> LeafClusterer
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// trie + manager + serialization
+// ----------------------------------------------------------------------------
 
 type seqNode struct {
 	children map[string]*seqNode
-	cluster  *LeafClusterer
+	leaf     *LeafClusterer
 }
 
 func newSeqNode() *seqNode {
 	return &seqNode{children: make(map[string]*seqNode)}
 }
 
-// TrieClusterManager maps full token prefixes to LeafClusterers.
+// TrieClusterManager maps full token-prefixes to per-node LeafClusterers.
 type TrieClusterManager struct {
 	root      *seqNode
 	threshold float64
 }
 
-// NewTrieClusterManager initializes a manager with the given threshold.
 func NewTrieClusterManager(threshold float64) *TrieClusterManager {
 	return &TrieClusterManager{
 		root:      newSeqNode(),
@@ -157,73 +160,68 @@ func NewTrieClusterManager(threshold float64) *TrieClusterManager {
 	}
 }
 
-// getOrCreateLeaf ensures a cluster exists at the current node.
-func (m *TrieClusterManager) getOrCreateLeaf(node *seqNode) *LeafClusterer {
-	if node.cluster == nil {
-		node.cluster = NewLeafClusterer(m.threshold)
+func (m *TrieClusterManager) getOrCreateLeaf(n *seqNode) *LeafClusterer {
+	if n.leaf == nil {
+		n.leaf = NewLeafClusterer(m.threshold)
 	}
-	return node.cluster
+	return n.leaf
 }
 
-// collectLeafClustersUnder returns every LeafClusterer in the subtree.
-func collectLeafClustersUnder(node *seqNode) []*LeafClusterer {
+func collectLeafers(n *seqNode) []*LeafClusterer {
 	var out []*LeafClusterer
-	var dfs func(n *seqNode)
-	dfs = func(n *seqNode) {
-		if n.cluster != nil {
-			out = append(out, n.cluster)
+	var dfs func(x *seqNode)
+	dfs = func(x *seqNode) {
+		if x.leaf != nil {
+			out = append(out, x.leaf)
 		}
-		for _, c := range n.children {
+		for _, c := range x.children {
 			dfs(c)
 		}
 	}
-	dfs(node)
+	dfs(n)
 	return out
 }
 
-// Cluster walks as far as it can down the trie of ts.Items, then
-// either exact-adds at leaf, or on divergence Jaccard-scans that subtree.
+// Cluster walks as far down ts.Items as possible in the trie.
+// If it consumes all tokens → exact leaf.Add.
+// On divergence, it Jaccard-scans every cluster under the current subtree,
+// picks the best above threshold, or else creates a new branch + leaf.
 func (m *TrieClusterManager) Cluster(ts *TokenSeq) int64 {
 	cur := m.root
-	// 1) walk existing prefix
-	var i int
-	for i = 0; i < len(ts.Items); i++ {
-		tok := ts.Items[i]
-		nxt, ok := cur.children[tok]
-		if !ok {
+	i := 0
+	for ; i < len(ts.Items); i++ {
+		if nxt, ok := cur.children[ts.Items[i]]; ok {
+			cur = nxt
+		} else {
 			break
 		}
-		cur = nxt
 	}
 
-	// 2) exact match
+	// exact
 	if i == len(ts.Items) {
-		leaf := m.getOrCreateLeaf(cur)
-		return leaf.Add(ts)
+		return m.getOrCreateLeaf(cur).Add(ts)
 	}
 
-	// 3) divergence: collect clusters under 'cur'
+	// divergence → scan under cur
 	incoming := make(map[string]struct{}, len(ts.Items))
 	for _, tok := range ts.Items {
 		incoming[tok] = struct{}{}
 	}
+
 	bestScore := -1.0
 	var bestCl *cluster
 	var bestLeaf *LeafClusterer
-
-	candidates := collectLeafClustersUnder(cur)
-	for _, leaf := range candidates {
+	for _, leaf := range collectLeafers(cur) {
 		leaf.mu.Lock()
 		for _, cl := range leaf.clusters {
-			// run Jaccard Similarity on leaf.clusters
 			inter := 0
-			for tok := range cl.tokenSet {
+			for tok := range cl.TokenSet {
 				if _, ok := incoming[tok]; ok {
 					inter++
 				}
 			}
-			union := len(cl.tokenSet) + len(incoming) - inter
-			var score float64
+			union := len(cl.TokenSet) + len(incoming) - inter
+			score := 0.0
 			if union > 0 {
 				score = float64(inter) / float64(union)
 			}
@@ -236,21 +234,137 @@ func (m *TrieClusterManager) Cluster(ts *TokenSeq) int64 {
 		leaf.mu.Unlock()
 	}
 
-	// 4) if a match was found, record & return
-	if bestCl != nil && bestLeaf != nil {
+	if bestLeaf != nil && bestCl != nil {
 		bestLeaf.mu.Lock()
 		bestCl.record(incoming, true)
 		bestLeaf.mu.Unlock()
-		return bestCl.fingerprint
+		return bestCl.Fingerprint
 	}
 
-	// 5) otherwise insert the remainder as new path
+	// no match → carve out the remainder
 	for ; i < len(ts.Items); i++ {
-		tok := ts.Items[i]
-		nxt := newSeqNode()
-		cur.children[tok] = nxt
-		cur = nxt
+		n := newSeqNode()
+		cur.children[ts.Items[i]] = n
+		cur = n
 	}
-	leaf := m.getOrCreateLeaf(cur)
-	return leaf.Add(ts)
+	return m.getOrCreateLeaf(cur).Add(ts)
+}
+
+// ----------------------------------------------------------------------------
+// snapshot types & (de)serialization
+// ----------------------------------------------------------------------------
+
+type clusterSnapshot struct {
+	Fingerprint int64     `json:"fp"`
+	TokenList   []string  `json:"tokens"`
+	MatchCount  int       `json:"mc"`
+	Total       int       `json:"tot"`
+	LastUpdated time.Time `json:"upd"`
+}
+
+type leafSnapshot struct {
+	Path     []string          `json:"path"`
+	Clusters []clusterSnapshot `json:"clusters"`
+}
+
+// Serialize walks the entire trie and returns a JSON snapshot of every leaf.
+func (m *TrieClusterManager) Serialize() ([]byte, error) {
+	var snaps []leafSnapshot
+	var dfs func(node *seqNode, path []string)
+	dfs = func(node *seqNode, path []string) {
+		if node.leaf != nil {
+			node.leaf.mu.Lock()
+			clSS := make([]clusterSnapshot, len(node.leaf.clusters))
+			for i, cl := range node.leaf.clusters {
+				toks := make([]string, 0, len(cl.TokenSet))
+				for tok := range cl.TokenSet {
+					toks = append(toks, tok)
+				}
+				clSS[i] = clusterSnapshot{
+					Fingerprint: cl.Fingerprint,
+					TokenList:   toks,
+					MatchCount:  cl.MatchCount,
+					Total:       cl.Total,
+					LastUpdated: cl.LastUpdated,
+				}
+			}
+			node.leaf.mu.Unlock()
+			snaps = append(snaps, leafSnapshot{Path: append([]string{}, path...), Clusters: clSS})
+		}
+		for tok, child := range node.children {
+			dfs(child, append(path, tok))
+		}
+	}
+	dfs(m.root, nil)
+
+	// marshal
+	return json.MarshalIndent(snaps, "", "  ")
+}
+
+// Restore merges an incoming snapshot JSON into the current trie,
+// preserving any in-flight clusters not present in the snapshot.
+func (m *TrieClusterManager) Restore(data []byte) error {
+	var snaps []leafSnapshot
+	if err := json.Unmarshal(data, &snaps); err != nil {
+		return err
+	}
+
+	for _, ls := range snaps {
+		// find or create the leaf at that path
+		cur := m.root
+		for _, tok := range ls.Path {
+			nxt, ok := cur.children[tok]
+			if !ok {
+				nxt = newSeqNode()
+				cur.children[tok] = nxt
+			}
+			cur = nxt
+		}
+		leaf := m.getOrCreateLeaf(cur)
+
+		leaf.mu.Lock()
+		// build a map fp→cluster for easy lookup
+		existing := make(map[int64]*cluster)
+		for _, cl := range leaf.clusters {
+			existing[cl.Fingerprint] = cl
+		}
+
+		// merge in each snapshot cluster
+		for _, cSnap := range ls.Clusters {
+			if cl, ok := existing[cSnap.Fingerprint]; ok {
+				// merge stats
+				cl.Total += cSnap.Total
+				cl.MatchCount += cSnap.MatchCount
+				if cSnap.LastUpdated.After(cl.LastUpdated) {
+					cl.LastUpdated = cSnap.LastUpdated
+				}
+				// union token sets
+				for _, tok := range cSnap.TokenList {
+					cl.TokenSet[tok] = struct{}{}
+				}
+			} else {
+				// brand-new cluster from snapshot
+				ts := make(map[string]struct{}, len(cSnap.TokenList))
+				for _, tok := range cSnap.TokenList {
+					ts[tok] = struct{}{}
+				}
+				newCl := &cluster{
+					Fingerprint: cSnap.Fingerprint,
+					TokenSet:    ts,
+					MatchCount:  cSnap.MatchCount,
+					Total:       cSnap.Total,
+					LastUpdated: cSnap.LastUpdated,
+				}
+				leaf.clusters = append(leaf.clusters, newCl)
+			}
+		}
+
+		// re-sort by descending matchRate
+		sort.SliceStable(leaf.clusters, func(i, j int) bool {
+			return leaf.clusters[i].matchRate() > leaf.clusters[j].matchRate()
+		})
+		leaf.mu.Unlock()
+	}
+
+	return nil
 }
