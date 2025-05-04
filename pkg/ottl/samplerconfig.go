@@ -105,7 +105,8 @@ type ContextStatement struct {
 }
 
 type FingerprintConfig struct {
-	Trie []byte `json:"trie,omitempty" yaml:"trie,omitempty"`
+	Trie           []byte `json:"trie,omitempty" yaml:"trie,omitempty"`
+	LastUpdateTime int64  `json:"last_update_time,omitempty" yaml:"last_update_time,omitempty"`
 }
 
 type MissingDataConfig struct {
