@@ -105,12 +105,7 @@ type ContextStatement struct {
 }
 
 type FingerprintConfig struct {
-	LogMappings []FingerprintMapping `json:"log_mappings,omitempty" yaml:"log_mappings,omitempty"`
-}
-
-type FingerprintMapping struct {
-	Primary string   `json:"primary,omitempty" yaml:"primary,omitempty"`
-	Aliases []string `json:"aliases,omitempty" yaml:"aliases,omitempty"`
+	Trie []byte `json:"trie,omitempty" yaml:"trie,omitempty"`
 }
 
 type MissingDataConfig struct {
