@@ -41,6 +41,7 @@ type Fingerprinter interface {
 	Fingerprint(input string) (fingerprint int64, level string, js map[string]any, err error)
 	TokenizeInput(input string) (*TokenSeq, string, map[string]any, error)
 	Tokenize(input string) (*TokenSeq, string, error)
+	GetClusterManager() *TrieClusterManager
 }
 
 type fingerprinterImpl struct {
@@ -75,6 +76,10 @@ func WithMaxTokens(maxlen int) Option {
 	return func(fp *fingerprinterImpl) {
 		fp.maxTokens = maxlen
 	}
+}
+
+func (fp *fingerprinterImpl) GetClusterManager() *TrieClusterManager {
+	return fp.clusterManager
 }
 
 func findJSONContent(input string) (string, string, string) {

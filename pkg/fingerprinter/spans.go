@@ -23,9 +23,7 @@ import (
 	"strings"
 )
 
-func CalculateSpanFingerprint(sr ptrace.Span, fpr Fingerprinter) int64 {
-	fingerprintAttributes := make([]string, 0)
-
+func GetExceptionMessage(sr ptrace.Span) string {
 	var exceptionMessage string
 	for i := 0; i < sr.Events().Len(); i++ {
 		event := sr.Events().At(i)
@@ -50,6 +48,12 @@ func CalculateSpanFingerprint(sr ptrace.Span, fpr Fingerprinter) int64 {
 			break
 		}
 	}
+	return exceptionMessage
+}
+
+func CalculateSpanFingerprint(sr ptrace.Span, fpr Fingerprinter) int64 {
+	fingerprintAttributes := make([]string, 0)
+	exceptionMessage := GetExceptionMessage(sr)
 	if exceptionMessage != "" {
 		computedFp, _, _, err := fpr.Fingerprint(exceptionMessage)
 		if err == nil {
