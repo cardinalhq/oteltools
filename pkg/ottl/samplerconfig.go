@@ -42,7 +42,6 @@ type TenantConfig struct {
 	Pitbulls          map[string]*PitbullProcessorConfig        `json:"pitbulls,omitempty" yaml:"pitbulls,omitempty"`
 	Stats             map[string]*StatsProcessorConfig          `json:"stats,omitempty" yaml:"stats,omitempty"`
 	ExtractMetrics    map[string]*ExtractMetricsProcessorConfig `json:"extract_metrics,omitempty" yaml:"extract_metrics,omitempty"`
-	FingerprintConfig FingerprintConfig                         `json:"fingerprint_config,omitempty" yaml:"fingerprint_config,omitempty"`
 	MissingDataConfig map[string]*MissingDataConfig             `json:"missing_data_config,omitempty" yaml:"missing_data_config,omitempty"`
 	SyntheticPollings map[string]*SyntheticPollingConfig        `json:"synthetic_pollings,omitempty" yaml:"synthetic_pollings,omitempty"`
 }
@@ -102,11 +101,6 @@ type ContextStatement struct {
 	Statements     []string       `json:"statements,omitempty" yaml:"statements,omitempty"`
 	SamplingConfig SamplingConfig `json:"sampling_config,omitempty" yaml:"sampling_config,omitempty"`
 	Version        int            `json:"version,omitempty" yaml:"version,omitempty"`
-}
-
-type FingerprintConfig struct {
-	Trie           string `json:"trie,omitempty" yaml:"trie,omitempty"`
-	LastUpdateTime int64  `json:"last_update_time,omitempty" yaml:"last_update_time,omitempty"`
 }
 
 type MissingDataConfig struct {
