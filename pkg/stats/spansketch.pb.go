@@ -160,6 +160,7 @@ func (x *SpanSketchProto) GetExceptionCountsMap() map[int64]int64 {
 type SpanSketchList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Sketches      []*SpanSketchProto     `protobuf:"bytes,1,rep,name=sketches,proto3" json:"sketches,omitempty"`
+	CustomerId    string                 `protobuf:"bytes,2,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -201,6 +202,13 @@ func (x *SpanSketchList) GetSketches() []*SpanSketchProto {
 	return nil
 }
 
+func (x *SpanSketchList) GetCustomerId() string {
+	if x != nil {
+		return x.CustomerId
+	}
+	return ""
+}
+
 var File_spansketch_proto protoreflect.FileDescriptor
 
 const file_spansketch_proto_rawDesc = "" +
@@ -229,9 +237,11 @@ const file_spansketch_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aE\n" +
 	"\x17ExceptionCountsMapEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x03R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"D\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"e\n" +
 	"\x0eSpanSketchList\x122\n" +
-	"\bsketches\x18\x01 \x03(\v2\x16.stats.SpanSketchProtoR\bsketchesB\tZ\a.;statsb\x06proto3"
+	"\bsketches\x18\x01 \x03(\v2\x16.stats.SpanSketchProtoR\bsketches\x12\x1f\n" +
+	"\vcustomer_id\x18\x02 \x01(\tR\n" +
+	"customerIdB\tZ\a.;statsb\x06proto3"
 
 var (
 	file_spansketch_proto_rawDescOnce sync.Once

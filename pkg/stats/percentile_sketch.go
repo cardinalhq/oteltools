@@ -91,11 +91,11 @@ type SketchCache struct {
 	customerId string
 	interval   time.Duration
 	fpr        fingerprinter.Fingerprinter
-	flushFunc  func(string, *SpanSketchList)
+	flushFunc  func(*SpanSketchList)
 }
 
 // NewSketchCache creates a cache with flush interval and callback.
-func NewSketchCache(interval time.Duration, cid string, flushFunc func(string, *SpanSketchList)) *SketchCache {
+func NewSketchCache(interval time.Duration, cid string, flushFunc func(*SpanSketchList)) *SketchCache {
 	c := &SketchCache{
 		interval:   interval,
 		customerId: cid,
@@ -201,6 +201,7 @@ func (c *SketchCache) Update(metricName string, tagValues map[string]string, spa
 func (c *SketchCache) flush() {
 	now := time.Now().Truncate(c.interval).Unix()
 	list := &SpanSketchList{}
+	list.CustomerId = c.customerId
 	c.sketches.Range(func(key, value interface{}) bool {
 		entry := value.(*sketchEntry)
 		if entry.proto.Interval < now {
@@ -211,7 +212,7 @@ func (c *SketchCache) flush() {
 		}
 		return true
 	})
-	c.flushFunc(c.customerId, list)
+	c.flushFunc(list)
 }
 
 // computeTID hashes metricName and tagValues into a stable ID.

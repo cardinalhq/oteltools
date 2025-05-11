@@ -40,4 +40,5 @@ message SpanSketchProto {
 // Wrapper for a list of span sketches to emit in a single batch
 message SpanSketchList {
   repeated SpanSketchProto sketches = 1;
+  string customer_id = 2;
 }
