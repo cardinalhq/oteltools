@@ -2,6 +2,7 @@ package stats
 
 import (
 	"fmt"
+	"golang.org/x/exp/slog"
 	"hash/fnv"
 	"sort"
 	"sync"
@@ -91,11 +92,11 @@ type SketchCache struct {
 	customerId string
 	interval   time.Duration
 	fpr        fingerprinter.Fingerprinter
-	flushFunc  func(*SpanSketchList)
+	flushFunc  func(*SpanSketchList) error
 }
 
 // NewSketchCache creates a cache with flush interval and callback.
-func NewSketchCache(interval time.Duration, cid string, flushFunc func(*SpanSketchList)) *SketchCache {
+func NewSketchCache(interval time.Duration, cid string, flushFunc func(*SpanSketchList) error) *SketchCache {
 	c := &SketchCache{
 		interval:   interval,
 		customerId: cid,
@@ -212,7 +213,10 @@ func (c *SketchCache) flush() {
 		}
 		return true
 	})
-	c.flushFunc(list)
+	err := c.flushFunc(list)
+	if err != nil {
+		slog.Error("failed to flush sketches", slog.String("customerId", c.customerId), slog.String("error", err.Error()))
+	}
 }
 
 // computeTID hashes metricName and tagValues into a stable ID.
