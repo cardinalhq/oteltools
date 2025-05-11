@@ -163,9 +163,9 @@ func (c *SketchCache) Update(metricName string, tagValues map[string]string, spa
 			continue
 		}
 		exceptionMessage := ""
-		eventName, eok := e.Attributes().Get(semconv.ExceptionEventName)
+		exceptionTypeKey, eok := e.Attributes().Get(string(semconv.ExceptionTypeKey))
 		if eok {
-			exceptionMessage = eventName.AsString()
+			exceptionMessage = exceptionTypeKey.AsString()
 		}
 
 		msg, mok := e.Attributes().Get(string(semconv.ExceptionMessageKey))
