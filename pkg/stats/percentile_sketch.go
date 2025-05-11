@@ -87,18 +87,20 @@ type sketchEntry struct {
 
 // SketchCache holds sketches for multiple metrics and emits a SpanSketchList on flush.
 type SketchCache struct {
-	sketches  sync.Map // map[string]*sketchEntry
-	interval  time.Duration
-	fpr       fingerprinter.Fingerprinter
-	flushFunc func(*SpanSketchList)
+	sketches   sync.Map // map[string]*sketchEntry
+	customerId string
+	interval   time.Duration
+	fpr        fingerprinter.Fingerprinter
+	flushFunc  func(string, *SpanSketchList)
 }
 
 // NewSketchCache creates a cache with flush interval and callback.
-func NewSketchCache(interval time.Duration, flushFunc func(*SpanSketchList)) *SketchCache {
+func NewSketchCache(interval time.Duration, cid string, flushFunc func(string, *SpanSketchList)) *SketchCache {
 	c := &SketchCache{
-		interval:  interval,
-		fpr:       fingerprinter.NewFingerprinter(fingerprinter.NewTrieClusterManager(0.5)),
-		flushFunc: flushFunc,
+		interval:   interval,
+		customerId: cid,
+		fpr:        fingerprinter.NewFingerprinter(fingerprinter.NewTrieClusterManager(0.5)),
+		flushFunc:  flushFunc,
 	}
 	go c.loop()
 	return c
@@ -209,7 +211,7 @@ func (c *SketchCache) flush() {
 		}
 		return true
 	})
-	c.flushFunc(list)
+	c.flushFunc(c.customerId, list)
 }
 
 // computeTID hashes metricName and tagValues into a stable ID.
