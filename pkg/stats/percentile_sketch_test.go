@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DataDog/sketches-go/ddsketch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -25,65 +26,65 @@ import (
 	"github.com/cardinalhq/oteltools/pkg/translate"
 )
 
-func TestPercentileSketchBasic(t *testing.T) {
-	ps, err := NewPercentileSketch()
+func TestEncodeDecodeSketch(t *testing.T) {
+	sk, err := ddsketch.NewDefaultDDSketch(0.01)
 	require.NoError(t, err)
 
-	require.NoError(t, ps.Add(100))
-	require.NoError(t, ps.Add(200))
-	require.NoError(t, ps.Add(300))
+	require.NoError(t, sk.Add(100))
+	require.NoError(t, sk.Add(200))
+	require.NoError(t, sk.Add(300))
 
-	p50, err := ps.Quantile(0.50)
+	p50, err := sk.GetValueAtQuantile(0.5)
 	require.NoError(t, err)
 	assert.Greater(t, p50, 100.0)
 	assert.Less(t, p50, 300.0)
 
-	p95, err := ps.Quantile(0.95)
+	p95, err := sk.GetValueAtQuantile(0.95)
 	require.NoError(t, err)
 	assert.InEpsilon(t, 200.0, p95, 0.05)
 
-	data := ps.Encode()
-	dps, err := DecodeSketch(data)
+	data := Encode(sk)
+	dsk, err := DecodeSketch(data)
 	require.NoError(t, err)
 
-	dP95, err := dps.Quantile(0.95)
+	dP95, err := dsk.GetValueAtQuantile(0.95)
 	require.NoError(t, err)
 	assert.InEpsilon(t, p95, dP95, 0.01)
 }
 
 func TestMergeEncodedSketch(t *testing.T) {
-	ps1, err := NewPercentileSketch()
+	skA, err := ddsketch.NewDefaultDDSketch(0.01)
 	require.NoError(t, err)
-	ps2, err := NewPercentileSketch()
-	require.NoError(t, err)
-
-	require.NoError(t, ps1.Add(100))
-	require.NoError(t, ps1.Add(200))
-	require.NoError(t, ps2.Add(300))
-
-	data1 := ps1.Encode()
-	data2 := ps2.Encode()
-
-	merged, err := MergeEncodedSketch(data1, data2)
+	skB, err := ddsketch.NewDefaultDDSketch(0.01)
 	require.NoError(t, err)
 
-	dps, err := DecodeSketch(merged)
+	require.NoError(t, skA.Add(100))
+	require.NoError(t, skA.Add(200))
+	require.NoError(t, skB.Add(300))
+
+	dataA := Encode(skA)
+	dataB := Encode(skB)
+
+	merged, err := MergeEncodedSketch(dataA, dataB)
 	require.NoError(t, err)
 
-	p50, err := dps.Quantile(0.50)
+	dsk, err := DecodeSketch(merged)
 	require.NoError(t, err)
-	// p50 should lie between the inputs
+
+	p50, err := dsk.GetValueAtQuantile(0.5)
+	require.NoError(t, err)
 	assert.GreaterOrEqual(t, p50, 100.0)
 	assert.LessOrEqual(t, p50, 300.0)
 }
 
 func TestSketchCache_FlushAndGrouping(t *testing.T) {
 	var flushed *SpanSketchList
-	flushFunc := func(lst *SpanSketchList) {
+	flushFn := func(lst *SpanSketchList) error {
 		flushed = lst
+		return nil
 	}
 
-	cache := NewSketchCache(time.Minute, flushFunc)
+	cache := NewSketchCache(time.Minute, "cust1", flushFn)
 
 	// Span A: auth service
 	spanA := ptrace.NewSpan()
@@ -102,7 +103,8 @@ func TestSketchCache_FlushAndGrouping(t *testing.T) {
 	// Flush manually
 	cache.flush()
 
-	// Expect two sketches
+	require.NotNil(t, flushed)
+	assert.Equal(t, "cust1", flushed.CustomerId)
 	require.Len(t, flushed.Sketches, 2)
 
 	seen := map[string]bool{}
@@ -112,6 +114,8 @@ func TestSketchCache_FlushAndGrouping(t *testing.T) {
 		require.Equal(t, "db.calls", proto.MetricName)
 		require.NotEmpty(t, proto.Sketch)
 		require.Equal(t, int64(1), proto.TotalCount)
+		require.Equal(t, int64(0), proto.ErrorCount)
+		require.Equal(t, int64(0), proto.ExceptionCount)
 	}
 	assert.True(t, seen["auth"])
 	assert.True(t, seen["billing"])

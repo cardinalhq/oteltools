@@ -17,38 +17,8 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
 
-// PercentileSketch wraps a DDSketch for quantile estimation at 1% relative accuracy.
-type PercentileSketch struct {
-	sketch *ddsketch.DDSketch
-}
-
-// NewPercentileSketch constructs a new sketch.
-func NewPercentileSketch() (*PercentileSketch, error) {
-	s, err := ddsketch.NewDefaultDDSketch(0.01)
-	if err != nil {
-		return nil, err
-	}
-	return &PercentileSketch{sketch: s}, nil
-}
-
-func (ps *PercentileSketch) Quantile(v float64) (float64, error) {
-	return ps.sketch.GetValueAtQuantile(v)
-}
-
-// Add ingests a value.
-func (ps *PercentileSketch) Add(v float64) error {
-	return ps.sketch.Add(v)
-}
-
-// Encode serializes the sketch.
-func (ps *PercentileSketch) Encode() []byte {
-	var buf []byte
-	ps.sketch.Encode(&buf, false)
-	return buf
-}
-
 // DecodeSketch reconstructs from bytes.
-func DecodeSketch(data []byte) (*PercentileSketch, error) {
+func DecodeSketch(data []byte) (*ddsketch.DDSketch, error) {
 	m, err := mapping.NewLogarithmicMapping(0.01)
 	if err != nil {
 		return nil, err
@@ -57,11 +27,11 @@ func DecodeSketch(data []byte) (*PercentileSketch, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &PercentileSketch{sketch: sk}, nil
+	return sk, nil
 }
 
-func (ps *PercentileSketch) Merge(other *PercentileSketch) error {
-	return ps.sketch.MergeWith(other.sketch)
+func Merge(sketch *ddsketch.DDSketch, other *ddsketch.DDSketch) error {
+	return sketch.MergeWith(other)
 }
 
 func MergeEncodedSketch(a, b []byte) ([]byte, error) {
@@ -74,16 +44,16 @@ func MergeEncodedSketch(a, b []byte) ([]byte, error) {
 		return nil, fmt.Errorf("decoding sketch B: %w", err)
 	}
 	// 2) Merge B into A
-	if err := skA.Merge(skB); err != nil {
+	if err := Merge(skA, skB); err != nil {
 		return nil, fmt.Errorf("merging sketches: %w", err)
 	}
-	return skA.Encode(), nil
+	return Encode(skA), nil
 }
 
 // sketchEntry couples a proto and its internal sketch state.
 type sketchEntry struct {
 	proto    *SpanSketchProto
-	internal *PercentileSketch
+	internal *ddsketch.DDSketch
 }
 
 // SketchCache holds sketches for multiple metrics and emits a SpanSketchList on flush.
@@ -138,7 +108,7 @@ func (c *SketchCache) Update(metricName string, tagValues map[string]string, spa
 			ExceptionCountsMap: make(map[int64]int64),
 		}
 		// Initialize internal sketch
-		ps, _ := NewPercentileSketch()
+		ps, _ := ddsketch.NewDefaultDDSketch(0.01)
 		entry = &sketchEntry{proto: proto, internal: ps}
 		c.sketches.Store(key, entry)
 	} else {
@@ -198,6 +168,12 @@ func (c *SketchCache) Update(metricName string, tagValues map[string]string, spa
 	}
 }
 
+func Encode(sketch *ddsketch.DDSketch) []byte {
+	var buf []byte
+	sketch.Encode(&buf, false)
+	return buf
+}
+
 // flush emits a SpanSketchList proto and removes old entries.
 func (c *SketchCache) flush() {
 	now := time.Now().Truncate(c.interval).Unix()
@@ -207,7 +183,7 @@ func (c *SketchCache) flush() {
 		entry := value.(*sketchEntry)
 		if entry.proto.Interval < now {
 			// Encode sketch bytes
-			entry.proto.Sketch = entry.internal.Encode()
+			entry.proto.Sketch = Encode(entry.internal)
 			list.Sketches = append(list.Sketches, entry.proto)
 			c.sketches.Delete(key)
 		}
