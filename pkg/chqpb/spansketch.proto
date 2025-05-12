@@ -14,9 +14,9 @@
 
 syntax = "proto3";
 
-package stats;
+package chqpb;
 
-option go_package = ".;stats";
+option go_package = ".;chqpb";
 
 
 // A single span sketch for a metric and timeseries

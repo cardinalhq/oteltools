@@ -18,7 +18,7 @@
 // 	protoc        v5.29.3
 // source: spansketch.proto
 
-package stats
+package chqpb
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -213,22 +213,22 @@ var File_spansketch_proto protoreflect.FileDescriptor
 
 const file_spansketch_proto_rawDesc = "" +
 	"\n" +
-	"\x10spansketch.proto\x12\x05stats\"\x8f\x05\n" +
+	"\x10spansketch.proto\x12\x05chqpb\"\x8f\x05\n" +
 	"\x0fSpanSketchProto\x12\x1f\n" +
 	"\vmetric_name\x18\x01 \x01(\tR\n" +
 	"metricName\x12\x10\n" +
 	"\x03tid\x18\x02 \x01(\tR\x03tid\x12\x1a\n" +
 	"\binterval\x18\x03 \x01(\x03R\binterval\x124\n" +
-	"\x04tags\x18\x04 \x03(\v2 .stats.SpanSketchProto.TagsEntryR\x04tags\x12\x16\n" +
+	"\x04tags\x18\x04 \x03(\v2 .chqpb.SpanSketchProto.TagsEntryR\x04tags\x12\x16\n" +
 	"\x06sketch\x18\x05 \x01(\fR\x06sketch\x12\x1f\n" +
 	"\vtotal_count\x18\x06 \x01(\x03R\n" +
 	"totalCount\x12\x1f\n" +
 	"\verror_count\x18\a \x01(\x03R\n" +
 	"errorCount\x12'\n" +
 	"\x0fexception_count\x18\b \x01(\x03R\x0eexceptionCount\x12P\n" +
-	"\x0eexceptions_map\x18\t \x03(\v2).stats.SpanSketchProto.ExceptionsMapEntryR\rexceptionsMap\x12`\n" +
+	"\x0eexceptions_map\x18\t \x03(\v2).chqpb.SpanSketchProto.ExceptionsMapEntryR\rexceptionsMap\x12`\n" +
 	"\x14exception_counts_map\x18\n" +
-	" \x03(\v2..stats.SpanSketchProto.ExceptionCountsMapEntryR\x12exceptionCountsMap\x1a7\n" +
+	" \x03(\v2..chqpb.SpanSketchProto.ExceptionCountsMapEntryR\x12exceptionCountsMap\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a@\n" +
@@ -239,9 +239,9 @@ const file_spansketch_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\x03R\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"e\n" +
 	"\x0eSpanSketchList\x122\n" +
-	"\bsketches\x18\x01 \x03(\v2\x16.stats.SpanSketchProtoR\bsketches\x12\x1f\n" +
+	"\bsketches\x18\x01 \x03(\v2\x16.chqpb.SpanSketchProtoR\bsketches\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
-	"customerIdB\tZ\a.;statsb\x06proto3"
+	"customerIdB\tZ\a.;chqpbb\x06proto3"
 
 var (
 	file_spansketch_proto_rawDescOnce sync.Once
@@ -257,17 +257,17 @@ func file_spansketch_proto_rawDescGZIP() []byte {
 
 var file_spansketch_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_spansketch_proto_goTypes = []any{
-	(*SpanSketchProto)(nil), // 0: stats.SpanSketchProto
-	(*SpanSketchList)(nil),  // 1: stats.SpanSketchList
-	nil,                     // 2: stats.SpanSketchProto.TagsEntry
-	nil,                     // 3: stats.SpanSketchProto.ExceptionsMapEntry
-	nil,                     // 4: stats.SpanSketchProto.ExceptionCountsMapEntry
+	(*SpanSketchProto)(nil), // 0: chqpb.SpanSketchProto
+	(*SpanSketchList)(nil),  // 1: chqpb.SpanSketchList
+	nil,                     // 2: chqpb.SpanSketchProto.TagsEntry
+	nil,                     // 3: chqpb.SpanSketchProto.ExceptionsMapEntry
+	nil,                     // 4: chqpb.SpanSketchProto.ExceptionCountsMapEntry
 }
 var file_spansketch_proto_depIdxs = []int32{
-	2, // 0: stats.SpanSketchProto.tags:type_name -> stats.SpanSketchProto.TagsEntry
-	3, // 1: stats.SpanSketchProto.exceptions_map:type_name -> stats.SpanSketchProto.ExceptionsMapEntry
-	4, // 2: stats.SpanSketchProto.exception_counts_map:type_name -> stats.SpanSketchProto.ExceptionCountsMapEntry
-	0, // 3: stats.SpanSketchList.sketches:type_name -> stats.SpanSketchProto
+	2, // 0: chqpb.SpanSketchProto.tags:type_name -> chqpb.SpanSketchProto.TagsEntry
+	3, // 1: chqpb.SpanSketchProto.exceptions_map:type_name -> chqpb.SpanSketchProto.ExceptionsMapEntry
+	4, // 2: chqpb.SpanSketchProto.exception_counts_map:type_name -> chqpb.SpanSketchProto.ExceptionCountsMapEntry
+	0, // 3: chqpb.SpanSketchList.sketches:type_name -> chqpb.SpanSketchProto
 	4, // [4:4] is the sub-list for method output_type
 	4, // [4:4] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name
