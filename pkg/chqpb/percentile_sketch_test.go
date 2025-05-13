@@ -91,14 +91,14 @@ func TestSketchCache_FlushAndGrouping(t *testing.T) {
 	spanA.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 100)
 	spanA.Status().SetCode(ptrace.StatusCodeOk)
 	tagsA := map[string]string{"service.name": "auth"}
-	cache.Update("db.calls", "auth", "cluster", "namespace", tagsA, spanA)
+	cache.Update("db.calls", tagsA, spanA)
 
 	// Span B: billing service
 	spanB := ptrace.NewSpan()
 	spanB.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 200)
 	spanB.Status().SetCode(ptrace.StatusCodeOk)
 	tagsB := map[string]string{"service.name": "billing"}
-	cache.Update("db.calls", "billing", "cluster", "namespace", tagsB, spanB)
+	cache.Update("db.calls", tagsB, spanB)
 
 	// Flush manually
 	cache.flush()
