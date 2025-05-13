@@ -85,7 +85,7 @@ func (c *SketchCache) loop() {
 }
 
 // Update ingests a span under a metricName and tagValues.
-func (c *SketchCache) Update(metricName string, tagValues map[string]string, span ptrace.Span) {
+func (c *SketchCache) Update(metricName, serviceName, clusterName, namespaceName string, tagValues map[string]string, span ptrace.Span) {
 	// Determine bucket interval
 	interval := span.EndTimestamp().AsTime().Truncate(c.interval).Unix()
 	// Compute tid from metricName and tags
@@ -98,6 +98,9 @@ func (c *SketchCache) Update(metricName string, tagValues map[string]string, spa
 		// Initialize proto
 		proto := &SpanSketchProto{
 			MetricName:         metricName,
+			ServiceName:        serviceName,
+			ClusterName:        clusterName,
+			NamespaceName:      namespaceName,
 			Tid:                tid,
 			Interval:           interval,
 			Tags:               tagValues,

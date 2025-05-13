@@ -37,21 +37,24 @@ const (
 
 // A single span sketch for a metric and timeseries
 type SpanSketchProto struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	MetricName string                 `protobuf:"bytes,1,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
-	Tid        string                 `protobuf:"bytes,2,opt,name=tid,proto3" json:"tid,omitempty"`
-	Interval   int64                  `protobuf:"varint,3,opt,name=interval,proto3" json:"interval,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MetricName    string                 `protobuf:"bytes,1,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
+	ServiceName   string                 `protobuf:"bytes,2,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
+	NamespaceName string                 `protobuf:"bytes,3,opt,name=namespace_name,json=namespaceName,proto3" json:"namespace_name,omitempty"`
+	ClusterName   string                 `protobuf:"bytes,4,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
+	Tid           string                 `protobuf:"bytes,5,opt,name=tid,proto3" json:"tid,omitempty"`
+	Interval      int64                  `protobuf:"varint,6,opt,name=interval,proto3" json:"interval,omitempty"`
 	// Map of tag key to tag value
-	Tags map[string]string `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Tags map[string]string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Encoded DDSketch bytes
-	Sketch         []byte `protobuf:"bytes,5,opt,name=sketch,proto3" json:"sketch,omitempty"`
-	TotalCount     int64  `protobuf:"varint,6,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
-	ErrorCount     int64  `protobuf:"varint,7,opt,name=error_count,json=errorCount,proto3" json:"error_count,omitempty"`
-	ExceptionCount int64  `protobuf:"varint,8,opt,name=exception_count,json=exceptionCount,proto3" json:"exception_count,omitempty"`
+	Sketch         []byte `protobuf:"bytes,8,opt,name=sketch,proto3" json:"sketch,omitempty"`
+	TotalCount     int64  `protobuf:"varint,9,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	ErrorCount     int64  `protobuf:"varint,10,opt,name=error_count,json=errorCount,proto3" json:"error_count,omitempty"`
+	ExceptionCount int64  `protobuf:"varint,11,opt,name=exception_count,json=exceptionCount,proto3" json:"exception_count,omitempty"`
 	// fingerprint -> exception message
-	ExceptionsMap map[int64]string `protobuf:"bytes,9,rep,name=exceptions_map,json=exceptionsMap,proto3" json:"exceptions_map,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	ExceptionsMap map[int64]string `protobuf:"bytes,12,rep,name=exceptions_map,json=exceptionsMap,proto3" json:"exceptions_map,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// fingerprint -> exception occurrences
-	ExceptionCountsMap map[int64]int64 `protobuf:"bytes,10,rep,name=exception_counts_map,json=exceptionCountsMap,proto3" json:"exception_counts_map,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	ExceptionCountsMap map[int64]int64 `protobuf:"bytes,13,rep,name=exception_counts_map,json=exceptionCountsMap,proto3" json:"exception_counts_map,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -89,6 +92,27 @@ func (*SpanSketchProto) Descriptor() ([]byte, []int) {
 func (x *SpanSketchProto) GetMetricName() string {
 	if x != nil {
 		return x.MetricName
+	}
+	return ""
+}
+
+func (x *SpanSketchProto) GetServiceName() string {
+	if x != nil {
+		return x.ServiceName
+	}
+	return ""
+}
+
+func (x *SpanSketchProto) GetNamespaceName() string {
+	if x != nil {
+		return x.NamespaceName
+	}
+	return ""
+}
+
+func (x *SpanSketchProto) GetClusterName() string {
+	if x != nil {
+		return x.ClusterName
 	}
 	return ""
 }
@@ -213,22 +237,25 @@ var File_spansketch_proto protoreflect.FileDescriptor
 
 const file_spansketch_proto_rawDesc = "" +
 	"\n" +
-	"\x10spansketch.proto\x12\x05chqpb\"\x8f\x05\n" +
+	"\x10spansketch.proto\x12\x05chqpb\"\xfc\x05\n" +
 	"\x0fSpanSketchProto\x12\x1f\n" +
 	"\vmetric_name\x18\x01 \x01(\tR\n" +
-	"metricName\x12\x10\n" +
-	"\x03tid\x18\x02 \x01(\tR\x03tid\x12\x1a\n" +
-	"\binterval\x18\x03 \x01(\x03R\binterval\x124\n" +
-	"\x04tags\x18\x04 \x03(\v2 .chqpb.SpanSketchProto.TagsEntryR\x04tags\x12\x16\n" +
-	"\x06sketch\x18\x05 \x01(\fR\x06sketch\x12\x1f\n" +
-	"\vtotal_count\x18\x06 \x01(\x03R\n" +
+	"metricName\x12!\n" +
+	"\fservice_name\x18\x02 \x01(\tR\vserviceName\x12%\n" +
+	"\x0enamespace_name\x18\x03 \x01(\tR\rnamespaceName\x12!\n" +
+	"\fcluster_name\x18\x04 \x01(\tR\vclusterName\x12\x10\n" +
+	"\x03tid\x18\x05 \x01(\tR\x03tid\x12\x1a\n" +
+	"\binterval\x18\x06 \x01(\x03R\binterval\x124\n" +
+	"\x04tags\x18\a \x03(\v2 .chqpb.SpanSketchProto.TagsEntryR\x04tags\x12\x16\n" +
+	"\x06sketch\x18\b \x01(\fR\x06sketch\x12\x1f\n" +
+	"\vtotal_count\x18\t \x01(\x03R\n" +
 	"totalCount\x12\x1f\n" +
-	"\verror_count\x18\a \x01(\x03R\n" +
+	"\verror_count\x18\n" +
+	" \x01(\x03R\n" +
 	"errorCount\x12'\n" +
-	"\x0fexception_count\x18\b \x01(\x03R\x0eexceptionCount\x12P\n" +
-	"\x0eexceptions_map\x18\t \x03(\v2).chqpb.SpanSketchProto.ExceptionsMapEntryR\rexceptionsMap\x12`\n" +
-	"\x14exception_counts_map\x18\n" +
-	" \x03(\v2..chqpb.SpanSketchProto.ExceptionCountsMapEntryR\x12exceptionCountsMap\x1a7\n" +
+	"\x0fexception_count\x18\v \x01(\x03R\x0eexceptionCount\x12P\n" +
+	"\x0eexceptions_map\x18\f \x03(\v2).chqpb.SpanSketchProto.ExceptionsMapEntryR\rexceptionsMap\x12`\n" +
+	"\x14exception_counts_map\x18\r \x03(\v2..chqpb.SpanSketchProto.ExceptionCountsMapEntryR\x12exceptionCountsMap\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a@\n" +

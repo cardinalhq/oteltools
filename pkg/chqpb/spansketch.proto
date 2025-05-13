@@ -22,19 +22,22 @@ option go_package = ".;chqpb";
 // A single span sketch for a metric and timeseries
 message SpanSketchProto {
   string metric_name = 1;
-  string tid = 2;
-  int64 interval = 3;
+  string service_name = 2;
+  string namespace_name = 3;
+  string cluster_name = 4;
+  string tid = 5;
+  int64 interval = 6;
   // Map of tag key to tag value
-  map<string, string> tags = 4;
+  map<string, string> tags = 7;
   // Encoded DDSketch bytes
-  bytes sketch = 5;
-  int64 total_count = 6;
-  int64 error_count = 7;
-  int64 exception_count = 8;
+  bytes sketch = 8;
+  int64 total_count = 9;
+  int64 error_count = 10;
+  int64 exception_count = 11;
   // fingerprint -> exception message
-  map<int64, string> exceptions_map = 9;
+  map<int64, string> exceptions_map = 12;
   // fingerprint -> exception occurrences
-  map<int64, int64> exception_counts_map = 10;
+  map<int64, int64> exception_counts_map = 13;
 }
 
 // Wrapper for a list of span sketches to emit in a single batch
