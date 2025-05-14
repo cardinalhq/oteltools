@@ -182,7 +182,7 @@ func (c *SketchCache) flush() {
 	c.sketches.Range(func(key, value interface{}) bool {
 		entry := value.(*sketchEntry)
 		slog.Info("ShouldFlush?", slog.Int64("interval", entry.proto.Interval), slog.Int64("now", now))
-		if entry.proto.Interval <= now {
+		if entry.proto.Interval < now {
 			// Encode sketch bytes
 			entry.proto.Sketch = Encode(entry.internal)
 			list.Sketches = append(list.Sketches, entry.proto)
