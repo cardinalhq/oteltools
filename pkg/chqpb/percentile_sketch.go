@@ -175,20 +175,38 @@ func synthesizeErrorMessageFromSpan(span ptrace.Span) string {
 			msg += val
 		}
 	}
+
+	// fallback: dump all string attributes in sorted order
 	if msg == "" {
+		var kvs []string
 		attr.Range(func(k string, v pcommon.Value) bool {
-			msg += fmt.Sprintf("%s=%s | ", k, v.Str())
+			if v.Type() == pcommon.ValueTypeStr {
+				kvs = append(kvs, fmt.Sprintf("%s=%s", k, v.Str()))
+			}
 			return true
 		})
+		sort.Strings(kvs)
+		msg = fmt.Sprintf("attrs=[%s]", joinWithSep(kvs, " | "))
 	}
 	return msg
 }
 
 func toStrValue(attrs pcommon.Map, key string) string {
-	if v, ok := attrs.Get(key); ok {
-		return key + "=" + v.AsString()
+	if v, ok := attrs.Get(key); ok && v.Type() == pcommon.ValueTypeStr {
+		return v.Str()
 	}
 	return ""
+}
+
+func joinWithSep(parts []string, sep string) string {
+	if len(parts) == 0 {
+		return ""
+	}
+	out := parts[0]
+	for _, p := range parts[1:] {
+		out += sep + p
+	}
+	return out
 }
 
 func (c *SketchCache) flush() {
