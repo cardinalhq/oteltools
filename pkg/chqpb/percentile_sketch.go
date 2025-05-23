@@ -69,6 +69,7 @@ type SketchCache struct {
 	interval   time.Duration
 	fpr        fingerprinter.Fingerprinter
 	flushFunc  func(*SpanSketchList) error
+	marshaller ptrace.JSONMarshaler
 }
 
 func NewSketchCache(interval time.Duration, cid string, flushFunc func(*SpanSketchList) error) *SketchCache {
@@ -77,6 +78,7 @@ func NewSketchCache(interval time.Duration, cid string, flushFunc func(*SpanSket
 		customerId: cid,
 		fpr:        fingerprinter.NewFingerprinter(fingerprinter.NewTrieClusterManager(0.5)),
 		flushFunc:  flushFunc,
+		marshaller: ptrace.JSONMarshaler{},
 	}
 	go c.loop()
 	return c
@@ -89,7 +91,7 @@ func (c *SketchCache) loop() {
 	}
 }
 
-func (c *SketchCache) Update(metricName string, tagValues map[string]string, span ptrace.Span) {
+func (c *SketchCache) Update(metricName string, tagValues map[string]string, span ptrace.Span, resource pcommon.Resource) {
 	interval := span.EndTimestamp().AsTime().Truncate(c.interval).Unix()
 	tid := computeTID(metricName, tagValues)
 	bucket, _ := c.buckets.LoadOrStore(interval, &sync.Map{})
@@ -137,8 +139,11 @@ func (c *SketchCache) Update(metricName string, tagValues map[string]string, spa
 		if c.fpr != nil {
 			fp, _, _, err := c.fpr.Fingerprint(exMsg)
 			if err == nil {
-				entry.proto.ExceptionsMap[fp] = exMsg
-				entry.proto.ExceptionCountsMap[fp]++
+				bytes, err := c.spanToJson(span, resource)
+				if err == nil {
+					entry.proto.ExceptionsMap[fp] = string(bytes)
+					entry.proto.ExceptionCountsMap[fp]++
+				}
 			}
 		}
 	}
@@ -150,11 +155,28 @@ func (c *SketchCache) Update(metricName string, tagValues map[string]string, spa
 		if c.fpr != nil {
 			fp, _, _, err := c.fpr.Fingerprint(exMsg)
 			if err == nil {
-				entry.proto.ExceptionsMap[fp] = exMsg
-				entry.proto.ExceptionCountsMap[fp]++
+				bytes, err := c.spanToJson(span, resource)
+				if err == nil {
+					entry.proto.ExceptionsMap[fp] = string(bytes)
+					entry.proto.ExceptionCountsMap[fp]++
+				}
 			}
 		}
 	}
+}
+
+func (c *SketchCache) spanToJson(src ptrace.Span, resource pcommon.Resource) ([]byte, error) {
+	td := ptrace.NewTraces()
+	rs := td.ResourceSpans().AppendEmpty()
+	resource.CopyTo(rs.Resource())
+
+	ss := rs.ScopeSpans().AppendEmpty()
+
+	dst := ss.Spans().AppendEmpty()
+
+	src.CopyTo(dst)
+
+	return c.marshaller.MarshalTraces(td)
 }
 
 func synthesizeErrorMessageFromSpan(span ptrace.Span) string {
