@@ -10,6 +10,7 @@ package chqpb
 
 import (
 	"fmt"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"golang.org/x/exp/slog"
 	"hash/fnv"
 	"sort"
@@ -124,11 +125,13 @@ func (c *SketchCache) Update(metricName string, tagValues map[string]string, spa
 		_ = entry.internal.Add(v.Double())
 	}
 
+	hasException := false
 	for i := 0; i < span.Events().Len(); i++ {
 		e := span.Events().At(i)
 		if e.Name() != semconv.ExceptionEventName {
 			continue
 		}
+		hasException = true
 		exMsg := extractExceptionMessage(e)
 		entry.proto.ExceptionCount++
 		if c.fpr != nil {
@@ -139,6 +142,71 @@ func (c *SketchCache) Update(metricName string, tagValues map[string]string, spa
 			}
 		}
 	}
+
+	// No exception event, but status is error: synthesize from attributes
+	if !hasException && span.Status().Code() == ptrace.StatusCodeError {
+		exMsg := synthesizeErrorMessageFromSpan(span)
+		entry.proto.ExceptionCount++
+		if c.fpr != nil {
+			fp, _, _, err := c.fpr.Fingerprint(exMsg)
+			if err == nil {
+				entry.proto.ExceptionsMap[fp] = exMsg
+				entry.proto.ExceptionCountsMap[fp]++
+			}
+		}
+	}
+}
+
+func synthesizeErrorMessageFromSpan(span ptrace.Span) string {
+	attr := span.Attributes()
+	candidates := []string{
+		toStrValue(attr, "error.message"),
+		toStrValue(attr, "error"),
+		toStrValue(attr, string(semconv.HTTPResponseStatusCodeKey)),
+		toStrValue(attr, string(semconv.RPCGRPCStatusCodeKey)),
+		toStrValue(attr, string(semconv.ExceptionMessageKey)),
+	}
+	msg := ""
+	for _, val := range candidates {
+		if val != "" {
+			if msg != "" {
+				msg += " | "
+			}
+			msg += val
+		}
+	}
+
+	// fallback: dump all string attributes in sorted order
+	if msg == "" {
+		var kvs []string
+		attr.Range(func(k string, v pcommon.Value) bool {
+			if v.Type() == pcommon.ValueTypeStr {
+				kvs = append(kvs, fmt.Sprintf("%s=%s", k, v.Str()))
+			}
+			return true
+		})
+		sort.Strings(kvs)
+		msg = fmt.Sprintf("attrs=[%s]", joinWithSep(kvs, " | "))
+	}
+	return msg
+}
+
+func toStrValue(attrs pcommon.Map, key string) string {
+	if v, ok := attrs.Get(key); ok && v.Type() == pcommon.ValueTypeStr {
+		return v.Str()
+	}
+	return ""
+}
+
+func joinWithSep(parts []string, sep string) string {
+	if len(parts) == 0 {
+		return ""
+	}
+	out := parts[0]
+	for _, p := range parts[1:] {
+		out += sep + p
+	}
+	return out
 }
 
 func (c *SketchCache) flush() {
