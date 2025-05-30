@@ -15,6 +15,8 @@
 package chqpb
 
 import (
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"testing"
 	"time"
 
@@ -84,6 +86,8 @@ func TestSketchCache_FlushAndGrouping(t *testing.T) {
 		return nil
 	}
 
+	res := pcommon.NewResource()
+	res.Attributes().PutStr(string(semconv.ServiceNameKey), "auth")
 	cache := NewSketchCache(time.Minute, "cust1", flushFn)
 
 	// Span A: auth service
@@ -91,14 +95,16 @@ func TestSketchCache_FlushAndGrouping(t *testing.T) {
 	spanA.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 100)
 	spanA.Status().SetCode(ptrace.StatusCodeOk)
 	tagsA := map[string]string{"service.name": "auth"}
-	cache.Update("db.calls", tagsA, spanA)
+	cache.Update("db.calls", tagsA, spanA, res)
 
 	// Span B: billing service
+	res = pcommon.NewResource()
+	res.Attributes().PutStr(string(semconv.ServiceNameKey), "billing")
 	spanB := ptrace.NewSpan()
 	spanB.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 200)
 	spanB.Status().SetCode(ptrace.StatusCodeOk)
 	tagsB := map[string]string{"service.name": "billing"}
-	cache.Update("db.calls", tagsB, spanB)
+	cache.Update("db.calls", tagsB, spanB, res)
 
 	// Flush manually
 	cache.flush()
