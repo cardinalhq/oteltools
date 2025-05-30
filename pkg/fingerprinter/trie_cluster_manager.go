@@ -15,8 +15,6 @@
 package fingerprinter
 
 import (
-	"encoding/json"
-	"sort"
 	"sync"
 	"time"
 
@@ -141,6 +139,7 @@ func (lc *LeafClusterer) Add(ts *TokenSeq) int64 {
 type seqNode struct {
 	children map[string]*seqNode
 	leaf     *LeafClusterer
+	sync.RWMutex
 }
 
 func newSeqNode() *seqNode {
@@ -161,6 +160,9 @@ func NewTrieClusterManager(threshold float64) *TrieClusterManager {
 }
 
 func (m *TrieClusterManager) getOrCreateLeaf(n *seqNode) *LeafClusterer {
+	n.Lock()
+	defer n.Unlock()
+
 	if n.leaf == nil {
 		n.leaf = NewLeafClusterer(m.threshold)
 	}
@@ -171,10 +173,19 @@ func collectLeafers(n *seqNode) []*LeafClusterer {
 	var out []*LeafClusterer
 	var dfs func(x *seqNode)
 	dfs = func(x *seqNode) {
+		x.RLock()
 		if x.leaf != nil {
 			out = append(out, x.leaf)
 		}
+		// snapshot children pointers under the same lock
+		children := make([]*seqNode, 0, len(x.children))
 		for _, c := range x.children {
+			children = append(children, c)
+		}
+		x.RUnlock()
+
+		// recurse after unlocking
+		for _, c := range children {
 			dfs(c)
 		}
 	}
@@ -190,11 +201,13 @@ func (m *TrieClusterManager) Cluster(ts *TokenSeq) int64 {
 	cur := m.root
 	i := 0
 	for ; i < len(ts.Items); i++ {
-		if nxt, ok := cur.children[ts.Items[i]]; ok {
-			cur = nxt
-		} else {
+		cur.RLock()
+		nxt, ok := cur.children[ts.Items[i]]
+		cur.RUnlock()
+		if !ok {
 			break
 		}
+		cur = nxt
 	}
 
 	// exact
@@ -244,127 +257,10 @@ func (m *TrieClusterManager) Cluster(ts *TokenSeq) int64 {
 	// no match → carve out the remainder
 	for ; i < len(ts.Items); i++ {
 		n := newSeqNode()
+		cur.Lock()
 		cur.children[ts.Items[i]] = n
+		cur.Unlock()
 		cur = n
 	}
 	return m.getOrCreateLeaf(cur).Add(ts)
-}
-
-// ----------------------------------------------------------------------------
-// snapshot types & (de)serialization
-// ----------------------------------------------------------------------------
-
-type clusterSnapshot struct {
-	Fingerprint int64     `json:"fp"`
-	TokenList   []string  `json:"tokens"`
-	MatchCount  int       `json:"mc"`
-	Total       int       `json:"tot"`
-	LastUpdated time.Time `json:"upd"`
-}
-
-type leafSnapshot struct {
-	Path     []string          `json:"path"`
-	Clusters []clusterSnapshot `json:"clusters"`
-}
-
-// Serialize walks the entire trie and returns a JSON snapshot of every leaf.
-func (m *TrieClusterManager) Serialize() ([]byte, error) {
-	var snaps []leafSnapshot
-	var dfs func(node *seqNode, path []string)
-	dfs = func(node *seqNode, path []string) {
-		if node.leaf != nil {
-			node.leaf.mu.Lock()
-			clSS := make([]clusterSnapshot, len(node.leaf.clusters))
-			for i, cl := range node.leaf.clusters {
-				toks := make([]string, 0, len(cl.TokenSet))
-				for tok := range cl.TokenSet {
-					toks = append(toks, tok)
-				}
-				clSS[i] = clusterSnapshot{
-					Fingerprint: cl.Fingerprint,
-					TokenList:   toks,
-					MatchCount:  cl.MatchCount,
-					Total:       cl.Total,
-					LastUpdated: cl.LastUpdated,
-				}
-			}
-			node.leaf.mu.Unlock()
-			snaps = append(snaps, leafSnapshot{Path: append([]string{}, path...), Clusters: clSS})
-		}
-		for tok, child := range node.children {
-			dfs(child, append(path, tok))
-		}
-	}
-	dfs(m.root, nil)
-
-	// marshal
-	return json.MarshalIndent(snaps, "", "  ")
-}
-
-// Restore merges an incoming snapshot JSON into the current trie,
-// preserving any in-flight clusters not present in the snapshot.
-func (m *TrieClusterManager) Restore(data []byte) error {
-	var snaps []leafSnapshot
-	if err := json.Unmarshal(data, &snaps); err != nil {
-		return err
-	}
-
-	for _, ls := range snaps {
-		// find or create the leaf at that path
-		cur := m.root
-		for _, tok := range ls.Path {
-			nxt, ok := cur.children[tok]
-			if !ok {
-				nxt = newSeqNode()
-				cur.children[tok] = nxt
-			}
-			cur = nxt
-		}
-		leaf := m.getOrCreateLeaf(cur)
-
-		leaf.mu.Lock()
-		// build a map fp→cluster for easy lookup
-		existing := make(map[int64]*cluster)
-		for _, cl := range leaf.clusters {
-			existing[cl.Fingerprint] = cl
-		}
-
-		// merge in each snapshot cluster
-		for _, cSnap := range ls.Clusters {
-			if cl, ok := existing[cSnap.Fingerprint]; ok {
-				// merge stats
-				cl.Total += cSnap.Total
-				cl.MatchCount += cSnap.MatchCount
-				if cSnap.LastUpdated.After(cl.LastUpdated) {
-					cl.LastUpdated = cSnap.LastUpdated
-				}
-				// union token sets
-				for _, tok := range cSnap.TokenList {
-					cl.TokenSet[tok] = struct{}{}
-				}
-			} else {
-				// brand-new cluster from snapshot
-				ts := make(map[string]struct{}, len(cSnap.TokenList))
-				for _, tok := range cSnap.TokenList {
-					ts[tok] = struct{}{}
-				}
-				newCl := &cluster{
-					Fingerprint: cSnap.Fingerprint,
-					TokenSet:    ts,
-					MatchCount:  cSnap.MatchCount,
-					Total:       cSnap.Total,
-					LastUpdated: cSnap.LastUpdated,
-				}
-				leaf.clusters = append(leaf.clusters, newCl)
-			}
-		}
-
-		// re-sort by descending matchRate
-		sort.SliceStable(leaf.clusters, func(i, j int) bool {
-			return leaf.clusters[i].matchRate() > leaf.clusters[j].matchRate()
-		})
-		leaf.mu.Unlock()
-	}
-
-	return nil
 }
