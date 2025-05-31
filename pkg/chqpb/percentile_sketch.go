@@ -11,6 +11,7 @@ package chqpb
 import (
 	"fmt"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	"golang.org/x/exp/slog"
 	"hash/fnv"
 	"sort"
@@ -22,11 +23,10 @@ import (
 	"github.com/DataDog/sketches-go/ddsketch/store"
 	"github.com/cardinalhq/oteltools/pkg/fingerprinter"
 	"github.com/cardinalhq/oteltools/pkg/translate"
-	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
 
-// DecodeSketch reconstructs from bytes.
+// DecodeSketch reconstructs a DDSketch from its encoded bytes.
 func DecodeSketch(data []byte) (*ddsketch.DDSketch, error) {
 	m, err := mapping.NewLogarithmicMapping(0.01)
 	if err != nil {
@@ -59,12 +59,13 @@ func MergeEncodedSketch(a, b []byte) ([]byte, error) {
 }
 
 type sketchEntry struct {
+	mu       sync.Mutex
 	proto    *SpanSketchProto
 	internal *ddsketch.DDSketch
 }
 
 type SketchCache struct {
-	buckets    sync.Map // map[int64]map[string]*sketchEntry
+	buckets    sync.Map // map[int64]*sync.Map where each inner sync.Map: map[string]*sketchEntry
 	customerId string
 	interval   time.Duration
 	fpr        fingerprinter.Fingerprinter
@@ -91,11 +92,17 @@ func (c *SketchCache) loop() {
 	}
 }
 
-func (c *SketchCache) Update(metricName string, tagValues map[string]string, span ptrace.Span, resource pcommon.Resource) {
+func (c *SketchCache) Update(
+	metricName string,
+	tagValues map[string]string,
+	span ptrace.Span,
+	resource pcommon.Resource,
+) {
 	interval := span.EndTimestamp().AsTime().Truncate(c.interval).Unix()
 	tid := computeTID(metricName, tagValues)
-	bucket, _ := c.buckets.LoadOrStore(interval, &sync.Map{})
-	skMap := bucket.(*sync.Map)
+
+	bucketIface, _ := c.buckets.LoadOrStore(interval, &sync.Map{})
+	skMap := bucketIface.(*sync.Map) // inner map[string]*sketchEntry
 
 	val, ok := skMap.Load(tid)
 	var entry *sketchEntry
@@ -112,11 +119,17 @@ func (c *SketchCache) Update(metricName string, tagValues map[string]string, spa
 			ExceptionCountsMap: make(map[int64]int64),
 		}
 		ps, _ := ddsketch.NewDefaultDDSketch(0.01)
-		entry = &sketchEntry{proto: proto, internal: ps}
+		entry = &sketchEntry{
+			proto:    proto,
+			internal: ps,
+		}
 		skMap.Store(tid, entry)
 	} else {
 		entry = val.(*sketchEntry)
 	}
+
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
 
 	entry.proto.TotalCount++
 	if span.Status().Code() == ptrace.StatusCodeError {
@@ -171,9 +184,7 @@ func (c *SketchCache) spanToJson(src ptrace.Span, resource pcommon.Resource) ([]
 	resource.CopyTo(rs.Resource())
 
 	ss := rs.ScopeSpans().AppendEmpty()
-
 	dst := ss.Spans().AppendEmpty()
-
 	src.CopyTo(dst)
 
 	return c.marshaller.MarshalTraces(td)
@@ -198,7 +209,7 @@ func synthesizeErrorMessageFromSpan(span ptrace.Span) string {
 		}
 	}
 
-	// fallback: dump all string attributes in sorted order
+	// Fallback: dump all string attributes sorted lexicographically
 	if msg == "" {
 		var kvs []string
 		attr.Range(func(k string, v pcommon.Value) bool {
@@ -213,6 +224,7 @@ func synthesizeErrorMessageFromSpan(span ptrace.Span) string {
 	return msg
 }
 
+// toStrValue returns string value of a pcommon.Map entry (if it exists and is a string).
 func toStrValue(attrs pcommon.Map, key string) string {
 	if v, ok := attrs.Get(key); ok && v.Type() == pcommon.ValueTypeStr {
 		return v.Str()
@@ -242,10 +254,15 @@ func (c *SketchCache) flush() {
 		}
 
 		skMap := v.(*sync.Map)
+
 		skMap.Range(func(tid, entryVal interface{}) bool {
 			entry := entryVal.(*sketchEntry)
+
+			entry.mu.Lock()
 			entry.proto.Sketch = Encode(entry.internal)
 			list.Sketches = append(list.Sketches, entry.proto)
+			entry.mu.Unlock()
+
 			return true
 		})
 		slog.Info("Adding span sketches to flush list", slog.Int64("interval", interval), slog.Int("accumulated", len(list.Sketches)))
