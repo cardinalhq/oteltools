@@ -31,8 +31,8 @@ func createTestLogRecord(ts time.Time, severity plog.SeverityNumber, body string
 }
 
 func TestLogSketchCache_FlushPlainLog(t *testing.T) {
-	var captured *LogSketchList
-	cache := NewServiceLogCountsCache(1*time.Second, "cust1", func(list *LogSketchList) error {
+	var captured *ServiceLogCountList
+	cache := NewServiceLogCountsCache(1*time.Second, "cust1", func(list *ServiceLogCountList) error {
 		captured = list
 		return nil
 	})
@@ -72,8 +72,8 @@ func TestLogSketchCache_FlushPlainLog(t *testing.T) {
 }
 
 func TestLogSketchCache_FlushErrorLog(t *testing.T) {
-	var captured *LogSketchList
-	cache := NewServiceLogCountsCache(1*time.Second, "cust1", func(list *LogSketchList) error {
+	var captured *ServiceLogCountList
+	cache := NewServiceLogCountsCache(1*time.Second, "cust1", func(list *ServiceLogCountList) error {
 		captured = list
 		return nil
 	})

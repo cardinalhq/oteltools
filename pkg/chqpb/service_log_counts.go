@@ -139,7 +139,6 @@ func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog
 			}
 		}
 	}
-
 }
 
 func isError(lr plog.LogRecord) bool {
