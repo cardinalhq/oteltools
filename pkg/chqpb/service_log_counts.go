@@ -10,13 +10,12 @@ package chqpb
 
 import (
 	"fmt"
+	"github.com/cardinalhq/oteltools/pkg/translate"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"hash/fnv"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/cardinalhq/oteltools/pkg/fingerprinter"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"golang.org/x/exp/slog"
@@ -39,7 +38,6 @@ type ServiceLogCountsCache struct {
 	buckets    sync.Map // map[int64]*sync.Map where inner map: map[string]*logEntry
 	customerId string
 	interval   time.Duration
-	fpr        fingerprinter.Fingerprinter
 	flushFunc  func(list *ServiceLogCountList) error
 	marshaller plog.JSONMarshaler
 }
@@ -49,7 +47,6 @@ func NewServiceLogCountsCache(interval time.Duration, cid string, flushFunc func
 	c := &ServiceLogCountsCache{
 		interval:   interval,
 		customerId: cid,
-		fpr:        fingerprinter.NewFingerprinter(fingerprinter.NewTrieClusterManager(0.5)),
 		flushFunc:  flushFunc,
 		marshaller: plog.JSONMarshaler{},
 	}
@@ -87,6 +84,10 @@ func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog
 		ns = nsAttr.AsString()
 	}
 
+	if svc == "" || clus == "" || ns == "" {
+		return
+	}
+
 	// Build TID as "service|cluster|namespace"
 	h := fnv.New64a()
 	tidStr := fmt.Sprintf("%s|%s|%s", svc, clus, ns)
@@ -117,26 +118,18 @@ func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog
 
 	entry.totalCount++
 	if isError(logRecord) {
-		entry.errorCount++
-		msg := logRecord.Body().AsString()
-		exMsg := extractExceptionMessage(logRecord.Attributes())
-		if exMsg != "" || strings.Contains(msg, "Exception") || strings.Contains(msg, "Error") {
+		fpVal, fpFound := logRecord.Attributes().Get(translate.CardinalFieldFingerprint)
+		if fpFound {
+			fp := fpVal.Int()
+			entry.errorCount++
 			entry.exceptionCount++
-			if c.fpr != nil {
-				if exMsg != "" {
-					msg = exMsg
-				}
-				fp, _, _, err := c.fpr.Fingerprint(msg)
+			if _, exists := entry.exceptionMap[fp]; !exists {
+				bytes, err := c.logToJson(logRecord, resource)
 				if err == nil {
-					if _, exists := entry.exceptionMap[fp]; !exists {
-						bytes, err := c.logToJson(logRecord, resource)
-						if err == nil {
-							entry.exceptionMap[fp] = string(bytes)
-						}
-					}
-					entry.exceptionCounts[fp]++
+					entry.exceptionMap[fp] = string(bytes)
 				}
 			}
+			entry.exceptionCounts[fp]++
 		}
 	}
 }
