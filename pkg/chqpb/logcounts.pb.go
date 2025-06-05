@@ -16,7 +16,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v5.29.3
-// source: logsketch.proto
+// source: logcounts.proto
 
 package chqpb
 
@@ -36,7 +36,7 @@ const (
 )
 
 // A single log sketch for a TID (service + cluster + namespace) and interval
-type LogSketchProto struct {
+type ServiceLogCountProto struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ServiceName   string                 `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
 	NamespaceName string                 `protobuf:"bytes,2,opt,name=namespace_name,json=namespaceName,proto3" json:"namespace_name,omitempty"`
@@ -57,21 +57,21 @@ type LogSketchProto struct {
 	sizeCache       protoimpl.SizeCache
 }
 
-func (x *LogSketchProto) Reset() {
-	*x = LogSketchProto{}
-	mi := &file_logsketch_proto_msgTypes[0]
+func (x *ServiceLogCountProto) Reset() {
+	*x = ServiceLogCountProto{}
+	mi := &file_logcounts_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *LogSketchProto) String() string {
+func (x *ServiceLogCountProto) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LogSketchProto) ProtoMessage() {}
+func (*ServiceLogCountProto) ProtoMessage() {}
 
-func (x *LogSketchProto) ProtoReflect() protoreflect.Message {
-	mi := &file_logsketch_proto_msgTypes[0]
+func (x *ServiceLogCountProto) ProtoReflect() protoreflect.Message {
+	mi := &file_logcounts_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -82,75 +82,75 @@ func (x *LogSketchProto) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LogSketchProto.ProtoReflect.Descriptor instead.
-func (*LogSketchProto) Descriptor() ([]byte, []int) {
-	return file_logsketch_proto_rawDescGZIP(), []int{0}
+// Deprecated: Use ServiceLogCountProto.ProtoReflect.Descriptor instead.
+func (*ServiceLogCountProto) Descriptor() ([]byte, []int) {
+	return file_logcounts_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *LogSketchProto) GetServiceName() string {
+func (x *ServiceLogCountProto) GetServiceName() string {
 	if x != nil {
 		return x.ServiceName
 	}
 	return ""
 }
 
-func (x *LogSketchProto) GetNamespaceName() string {
+func (x *ServiceLogCountProto) GetNamespaceName() string {
 	if x != nil {
 		return x.NamespaceName
 	}
 	return ""
 }
 
-func (x *LogSketchProto) GetClusterName() string {
+func (x *ServiceLogCountProto) GetClusterName() string {
 	if x != nil {
 		return x.ClusterName
 	}
 	return ""
 }
 
-func (x *LogSketchProto) GetTid() string {
+func (x *ServiceLogCountProto) GetTid() string {
 	if x != nil {
 		return x.Tid
 	}
 	return ""
 }
 
-func (x *LogSketchProto) GetInterval() int64 {
+func (x *ServiceLogCountProto) GetInterval() int64 {
 	if x != nil {
 		return x.Interval
 	}
 	return 0
 }
 
-func (x *LogSketchProto) GetTotalCount() int64 {
+func (x *ServiceLogCountProto) GetTotalCount() int64 {
 	if x != nil {
 		return x.TotalCount
 	}
 	return 0
 }
 
-func (x *LogSketchProto) GetErrorCount() int64 {
+func (x *ServiceLogCountProto) GetErrorCount() int64 {
 	if x != nil {
 		return x.ErrorCount
 	}
 	return 0
 }
 
-func (x *LogSketchProto) GetExceptionCount() int64 {
+func (x *ServiceLogCountProto) GetExceptionCount() int64 {
 	if x != nil {
 		return x.ExceptionCount
 	}
 	return 0
 }
 
-func (x *LogSketchProto) GetExceptionMap() map[int64]string {
+func (x *ServiceLogCountProto) GetExceptionMap() map[int64]string {
 	if x != nil {
 		return x.ExceptionMap
 	}
 	return nil
 }
 
-func (x *LogSketchProto) GetExceptionCounts() map[int64]int64 {
+func (x *ServiceLogCountProto) GetExceptionCounts() map[int64]int64 {
 	if x != nil {
 		return x.ExceptionCounts
 	}
@@ -158,29 +158,29 @@ func (x *LogSketchProto) GetExceptionCounts() map[int64]int64 {
 }
 
 // Wrapper for a list of log sketches to emit in a single batch
-type LogSketchList struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Sketches      []*LogSketchProto      `protobuf:"bytes,1,rep,name=sketches,proto3" json:"sketches,omitempty"`
-	CustomerId    string                 `protobuf:"bytes,2,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+type ServiceLogCountList struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Sketches      []*ServiceLogCountProto `protobuf:"bytes,1,rep,name=sketches,proto3" json:"sketches,omitempty"`
+	CustomerId    string                  `protobuf:"bytes,2,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *LogSketchList) Reset() {
-	*x = LogSketchList{}
-	mi := &file_logsketch_proto_msgTypes[1]
+func (x *ServiceLogCountList) Reset() {
+	*x = ServiceLogCountList{}
+	mi := &file_logcounts_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *LogSketchList) String() string {
+func (x *ServiceLogCountList) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LogSketchList) ProtoMessage() {}
+func (*ServiceLogCountList) ProtoMessage() {}
 
-func (x *LogSketchList) ProtoReflect() protoreflect.Message {
-	mi := &file_logsketch_proto_msgTypes[1]
+func (x *ServiceLogCountList) ProtoReflect() protoreflect.Message {
+	mi := &file_logcounts_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -191,31 +191,31 @@ func (x *LogSketchList) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LogSketchList.ProtoReflect.Descriptor instead.
-func (*LogSketchList) Descriptor() ([]byte, []int) {
-	return file_logsketch_proto_rawDescGZIP(), []int{1}
+// Deprecated: Use ServiceLogCountList.ProtoReflect.Descriptor instead.
+func (*ServiceLogCountList) Descriptor() ([]byte, []int) {
+	return file_logcounts_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *LogSketchList) GetSketches() []*LogSketchProto {
+func (x *ServiceLogCountList) GetSketches() []*ServiceLogCountProto {
 	if x != nil {
 		return x.Sketches
 	}
 	return nil
 }
 
-func (x *LogSketchList) GetCustomerId() string {
+func (x *ServiceLogCountList) GetCustomerId() string {
 	if x != nil {
 		return x.CustomerId
 	}
 	return ""
 }
 
-var File_logsketch_proto protoreflect.FileDescriptor
+var File_logcounts_proto protoreflect.FileDescriptor
 
-const file_logsketch_proto_rawDesc = "" +
+const file_logcounts_proto_rawDesc = "" +
 	"\n" +
-	"\x0flogsketch.proto\x12\x05chqpb\"\xc0\x04\n" +
-	"\x0eLogSketchProto\x12!\n" +
+	"\x0flogcounts.proto\x12\x05chqpb\"\xd2\x04\n" +
+	"\x14ServiceLogCountProto\x12!\n" +
 	"\fservice_name\x18\x01 \x01(\tR\vserviceName\x12%\n" +
 	"\x0enamespace_name\x18\x02 \x01(\tR\rnamespaceName\x12!\n" +
 	"\fcluster_name\x18\x03 \x01(\tR\vclusterName\x12\x10\n" +
@@ -225,44 +225,44 @@ const file_logsketch_proto_rawDesc = "" +
 	"totalCount\x12\x1f\n" +
 	"\verror_count\x18\a \x01(\x03R\n" +
 	"errorCount\x12'\n" +
-	"\x0fexception_count\x18\b \x01(\x03R\x0eexceptionCount\x12L\n" +
-	"\rexception_map\x18\t \x03(\v2'.chqpb.LogSketchProto.ExceptionMapEntryR\fexceptionMap\x12U\n" +
+	"\x0fexception_count\x18\b \x01(\x03R\x0eexceptionCount\x12R\n" +
+	"\rexception_map\x18\t \x03(\v2-.chqpb.ServiceLogCountProto.ExceptionMapEntryR\fexceptionMap\x12[\n" +
 	"\x10exception_counts\x18\n" +
-	" \x03(\v2*.chqpb.LogSketchProto.ExceptionCountsEntryR\x0fexceptionCounts\x1a?\n" +
+	" \x03(\v20.chqpb.ServiceLogCountProto.ExceptionCountsEntryR\x0fexceptionCounts\x1a?\n" +
 	"\x11ExceptionMapEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x03R\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
 	"\x14ExceptionCountsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x03R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"c\n" +
-	"\rLogSketchList\x121\n" +
-	"\bsketches\x18\x01 \x03(\v2\x15.chqpb.LogSketchProtoR\bsketches\x12\x1f\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"o\n" +
+	"\x13ServiceLogCountList\x127\n" +
+	"\bsketches\x18\x01 \x03(\v2\x1b.chqpb.ServiceLogCountProtoR\bsketches\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
 	"customerIdB\tZ\a.;chqpbb\x06proto3"
 
 var (
-	file_logsketch_proto_rawDescOnce sync.Once
-	file_logsketch_proto_rawDescData []byte
+	file_logcounts_proto_rawDescOnce sync.Once
+	file_logcounts_proto_rawDescData []byte
 )
 
-func file_logsketch_proto_rawDescGZIP() []byte {
-	file_logsketch_proto_rawDescOnce.Do(func() {
-		file_logsketch_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_logsketch_proto_rawDesc), len(file_logsketch_proto_rawDesc)))
+func file_logcounts_proto_rawDescGZIP() []byte {
+	file_logcounts_proto_rawDescOnce.Do(func() {
+		file_logcounts_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_logcounts_proto_rawDesc), len(file_logcounts_proto_rawDesc)))
 	})
-	return file_logsketch_proto_rawDescData
+	return file_logcounts_proto_rawDescData
 }
 
-var file_logsketch_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-var file_logsketch_proto_goTypes = []any{
-	(*LogSketchProto)(nil), // 0: chqpb.LogSketchProto
-	(*LogSketchList)(nil),  // 1: chqpb.LogSketchList
-	nil,                    // 2: chqpb.LogSketchProto.ExceptionMapEntry
-	nil,                    // 3: chqpb.LogSketchProto.ExceptionCountsEntry
+var file_logcounts_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_logcounts_proto_goTypes = []any{
+	(*ServiceLogCountProto)(nil), // 0: chqpb.ServiceLogCountProto
+	(*ServiceLogCountList)(nil),  // 1: chqpb.ServiceLogCountList
+	nil,                          // 2: chqpb.ServiceLogCountProto.ExceptionMapEntry
+	nil,                          // 3: chqpb.ServiceLogCountProto.ExceptionCountsEntry
 }
-var file_logsketch_proto_depIdxs = []int32{
-	2, // 0: chqpb.LogSketchProto.exception_map:type_name -> chqpb.LogSketchProto.ExceptionMapEntry
-	3, // 1: chqpb.LogSketchProto.exception_counts:type_name -> chqpb.LogSketchProto.ExceptionCountsEntry
-	0, // 2: chqpb.LogSketchList.sketches:type_name -> chqpb.LogSketchProto
+var file_logcounts_proto_depIdxs = []int32{
+	2, // 0: chqpb.ServiceLogCountProto.exception_map:type_name -> chqpb.ServiceLogCountProto.ExceptionMapEntry
+	3, // 1: chqpb.ServiceLogCountProto.exception_counts:type_name -> chqpb.ServiceLogCountProto.ExceptionCountsEntry
+	0, // 2: chqpb.ServiceLogCountList.sketches:type_name -> chqpb.ServiceLogCountProto
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
@@ -270,26 +270,26 @@ var file_logsketch_proto_depIdxs = []int32{
 	0, // [0:3] is the sub-list for field type_name
 }
 
-func init() { file_logsketch_proto_init() }
-func file_logsketch_proto_init() {
-	if File_logsketch_proto != nil {
+func init() { file_logcounts_proto_init() }
+func file_logcounts_proto_init() {
+	if File_logcounts_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_logsketch_proto_rawDesc), len(file_logsketch_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_logcounts_proto_rawDesc), len(file_logcounts_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_logsketch_proto_goTypes,
-		DependencyIndexes: file_logsketch_proto_depIdxs,
-		MessageInfos:      file_logsketch_proto_msgTypes,
+		GoTypes:           file_logcounts_proto_goTypes,
+		DependencyIndexes: file_logcounts_proto_depIdxs,
+		MessageInfos:      file_logcounts_proto_msgTypes,
 	}.Build()
-	File_logsketch_proto = out.File
-	file_logsketch_proto_goTypes = nil
-	file_logsketch_proto_depIdxs = nil
+	File_logcounts_proto = out.File
+	file_logcounts_proto_goTypes = nil
+	file_logcounts_proto_depIdxs = nil
 }

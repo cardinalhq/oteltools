@@ -34,19 +34,19 @@ type logEntry struct {
 	exceptionMap    map[int64]string
 }
 
-// LogSketchCache aggregates log metrics into time buckets, then flushes as LogSketchList.
-type LogSketchCache struct {
+// ServiceLogCountsCache aggregates log metrics into time buckets, then flushes as LogSketchList.
+type ServiceLogCountsCache struct {
 	buckets    sync.Map // map[int64]*sync.Map where inner map: map[string]*logEntry
 	customerId string
 	interval   time.Duration
 	fpr        fingerprinter.Fingerprinter
-	flushFunc  func(*LogSketchList) error
+	flushFunc  func(list *ServiceLogCountList) error
 	marshaller plog.JSONMarshaler
 }
 
-// NewLogSketchCache creates a cache that flushes every interval, invoking flushFunc with LogSketchList.
-func NewLogSketchCache(interval time.Duration, cid string, flushFunc func(*LogSketchList) error) *LogSketchCache {
-	c := &LogSketchCache{
+// NewServiceLogCountsCache creates a cache that flushes every interval, invoking flushFunc with LogSketchList.
+func NewServiceLogCountsCache(interval time.Duration, cid string, flushFunc func(list *ServiceLogCountList) error) *ServiceLogCountsCache {
+	c := &ServiceLogCountsCache{
 		interval:   interval,
 		customerId: cid,
 		fpr:        fingerprinter.NewFingerprinter(fingerprinter.NewTrieClusterManager(0.5)),
@@ -57,7 +57,7 @@ func NewLogSketchCache(interval time.Duration, cid string, flushFunc func(*LogSk
 	return c
 }
 
-func (c *LogSketchCache) loop() {
+func (c *ServiceLogCountsCache) loop() {
 	t := time.NewTicker(c.interval)
 	for range t.C {
 		c.flush()
@@ -65,7 +65,7 @@ func (c *LogSketchCache) loop() {
 }
 
 // Update ingests a single logRecord with resource attributes.
-func (c *LogSketchCache) Update(resource pcommon.Resource, logRecord plog.LogRecord) {
+func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog.LogRecord) {
 	// Compute interval bucket
 	interval := logRecord.Timestamp().AsTime().Truncate(c.interval).Unix()
 
@@ -148,9 +148,9 @@ func isError(lr plog.LogRecord) bool {
 }
 
 // flush constructs a LogSketchList from completed intervals and invokes flushFunc.
-func (c *LogSketchCache) flush() {
+func (c *ServiceLogCountsCache) flush() {
 	now := time.Now().Truncate(c.interval).Unix()
-	list := &LogSketchList{CustomerId: c.customerId}
+	list := &ServiceLogCountList{CustomerId: c.customerId}
 
 	c.buckets.Range(func(intervalKey, v interface{}) bool {
 		interval := intervalKey.(int64)
@@ -165,7 +165,7 @@ func (c *LogSketchCache) flush() {
 
 			entry.mu.Lock()
 			// Build LogSketchProto for this entry
-			proto := &LogSketchProto{
+			proto := &ServiceLogCountProto{
 				ServiceName:     entry.serviceName,
 				NamespaceName:   entry.namespaceName,
 				ClusterName:     entry.clusterName,
@@ -183,7 +183,6 @@ func (c *LogSketchCache) flush() {
 			return true
 		})
 
-		slog.Info("Adding log sketches to flush list", slog.Int64("interval", interval), slog.Int("accumulated", len(list.Sketches)))
 		c.buckets.Delete(intervalKey)
 		return true
 	})
@@ -195,7 +194,7 @@ func (c *LogSketchCache) flush() {
 	}
 }
 
-func (c *LogSketchCache) logToJson(logRecord plog.LogRecord, resource pcommon.Resource) ([]byte, error) {
+func (c *ServiceLogCountsCache) logToJson(logRecord plog.LogRecord, resource pcommon.Resource) ([]byte, error) {
 	ld := plog.NewLogs()
 	rs := ld.ResourceLogs().AppendEmpty()
 	resource.CopyTo(rs.Resource())
