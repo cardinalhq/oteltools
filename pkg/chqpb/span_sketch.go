@@ -161,7 +161,7 @@ func (c *SketchCache) Update(
 			continue
 		}
 		hasException = true
-		exMsg := extractExceptionMessage(e)
+		exMsg := extractExceptionMessage(e.Attributes())
 		entry.proto.ExceptionCount++
 		if c.fpr != nil {
 			fp, _, _, err := c.fpr.Fingerprint(exMsg)
@@ -291,18 +291,18 @@ func (c *SketchCache) flush() {
 	}
 }
 
-func extractExceptionMessage(e ptrace.SpanEvent) string {
+func extractExceptionMessage(attributes pcommon.Map) string {
 	exceptionMessage := ""
-	if et, ok := e.Attributes().Get(string(semconv.ExceptionTypeKey)); ok {
+	if et, ok := attributes.Get(string(semconv.ExceptionTypeKey)); ok {
 		exceptionMessage = et.AsString()
 	}
-	if msg, ok := e.Attributes().Get(string(semconv.ExceptionMessageKey)); ok {
+	if msg, ok := attributes.Get(string(semconv.ExceptionMessageKey)); ok {
 		if exceptionMessage != "" {
 			exceptionMessage += ": "
 		}
 		exceptionMessage += msg.AsString()
 	}
-	if st, ok := e.Attributes().Get(string(semconv.ExceptionStacktraceKey)); ok {
+	if st, ok := attributes.Get(string(semconv.ExceptionStacktraceKey)); ok {
 		if exceptionMessage != "" {
 			exceptionMessage += ": "
 		}
