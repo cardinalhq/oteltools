@@ -22,15 +22,11 @@ import (
 )
 
 type logEntry struct {
-	mu              sync.Mutex
-	serviceName     string
-	clusterName     string
-	namespaceName   string
-	totalCount      int64
-	errorCount      int64
-	exceptionCount  int64
-	exceptionCounts map[int64]int64
-	exceptionMap    map[int64]string
+	mu            sync.Mutex
+	serviceName   string
+	clusterName   string
+	namespaceName string
+	proto         *ServiceLogCountProto
 }
 
 // ServiceLogCountsCache aggregates log metrics into time buckets, then flushes as LogSketchList.
@@ -101,12 +97,23 @@ func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog
 	val, ok := logMap.Load(tid)
 	var entry *logEntry
 	if !ok {
+		proto := &ServiceLogCountProto{
+			ServiceName:     svc,
+			NamespaceName:   ns,
+			ClusterName:     clus,
+			Tid:             tid,
+			Interval:        interval,
+			TotalCount:      0,
+			ErrorCount:      0,
+			ExceptionCount:  0,
+			ExceptionMap:    make(map[int64]string),
+			ExceptionCounts: make(map[int64]int64),
+		}
 		entry = &logEntry{
-			serviceName:     svc,
-			clusterName:     clus,
-			namespaceName:   ns,
-			exceptionCounts: make(map[int64]int64),
-			exceptionMap:    make(map[int64]string),
+			serviceName:   svc,
+			clusterName:   clus,
+			namespaceName: ns,
+			proto:         proto,
 		}
 		logMap.Store(tid, entry)
 	} else {
@@ -116,20 +123,20 @@ func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
 
-	entry.totalCount++
+	entry.proto.TotalCount++
 	if isError(logRecord) {
 		fpVal, fpFound := logRecord.Attributes().Get(translate.CardinalFieldFingerprint)
 		if fpFound {
 			fp := fpVal.Int()
-			entry.errorCount++
-			entry.exceptionCount++
-			if _, exists := entry.exceptionMap[fp]; !exists {
+			entry.proto.ErrorCount++
+			if _, exists := entry.proto.ExceptionMap[fp]; !exists {
+				entry.proto.ExceptionCount++ // only bump for first‐time fp
 				bytes, err := c.logToJson(logRecord, resource)
 				if err == nil {
-					entry.exceptionMap[fp] = string(bytes)
+					entry.proto.ExceptionMap[fp] = string(bytes)
 				}
 			}
-			entry.exceptionCounts[fp]++
+			entry.proto.ExceptionCounts[fp]++
 		}
 	}
 }
@@ -139,7 +146,6 @@ func isError(lr plog.LogRecord) bool {
 	return severity >= plog.SeverityNumberWarn
 }
 
-// flush constructs a LogSketchList from completed intervals and invokes flushFunc.
 func (c *ServiceLogCountsCache) flush() {
 	now := time.Now().Truncate(c.interval).Unix()
 	list := &ServiceLogCountList{CustomerId: c.customerId}
@@ -150,38 +156,24 @@ func (c *ServiceLogCountsCache) flush() {
 			return true
 		}
 
-		logMap := v.(*sync.Map)
+		skMap := v.(*sync.Map)
 
-		logMap.Range(func(key, entryVal interface{}) bool {
+		skMap.Range(func(tid, entryVal interface{}) bool {
 			entry := entryVal.(*logEntry)
 
 			entry.mu.Lock()
-			// Build LogSketchProto for this entry
-			proto := &ServiceLogCountProto{
-				ServiceName:     entry.serviceName,
-				NamespaceName:   entry.namespaceName,
-				ClusterName:     entry.clusterName,
-				Tid:             key.(string),
-				Interval:        interval,
-				TotalCount:      entry.totalCount,
-				ErrorCount:      entry.errorCount,
-				ExceptionCount:  entry.exceptionCount,
-				ExceptionMap:    entry.exceptionMap,
-				ExceptionCounts: entry.exceptionCounts,
-			}
-			list.Sketches = append(list.Sketches, proto)
+			list.Sketches = append(list.Sketches, entry.proto)
 			entry.mu.Unlock()
 
 			return true
 		})
-
 		c.buckets.Delete(intervalKey)
 		return true
 	})
 
 	if len(list.Sketches) > 0 {
 		if err := c.flushFunc(list); err != nil {
-			slog.Error("failed to flush log sketches", slog.String("customerId", c.customerId), slog.String("error", err.Error()))
+			slog.Error("failed to flush service log counts", slog.String("customerId", c.customerId), slog.String("error", err.Error()))
 		}
 	}
 }

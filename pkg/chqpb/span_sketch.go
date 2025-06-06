@@ -279,7 +279,6 @@ func (c *SketchCache) flush() {
 
 			return true
 		})
-		slog.Info("Adding span sketches to flush list", slog.Int64("interval", interval), slog.Int("accumulated", len(list.Sketches)))
 		c.buckets.Delete(intervalKey)
 		return true
 	})
