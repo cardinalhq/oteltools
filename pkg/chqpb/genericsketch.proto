@@ -33,4 +33,5 @@ message GenericSketchProto {
 message GenericSketchList {
   repeated GenericSketchProto sketches = 1;
   string customer_id = 2;
+  string telemetryType = 3;
 }

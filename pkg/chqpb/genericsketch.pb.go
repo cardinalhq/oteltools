@@ -118,6 +118,7 @@ type GenericSketchList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Sketches      []*GenericSketchProto  `protobuf:"bytes,1,rep,name=sketches,proto3" json:"sketches,omitempty"`
 	CustomerId    string                 `protobuf:"bytes,2,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	TelemetryType string                 `protobuf:"bytes,3,opt,name=telemetryType,proto3" json:"telemetryType,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -166,6 +167,13 @@ func (x *GenericSketchList) GetCustomerId() string {
 	return ""
 }
 
+func (x *GenericSketchList) GetTelemetryType() string {
+	if x != nil {
+		return x.TelemetryType
+	}
+	return ""
+}
+
 var File_genericsketch_proto protoreflect.FileDescriptor
 
 const file_genericsketch_proto_rawDesc = "" +
@@ -180,11 +188,12 @@ const file_genericsketch_proto_rawDesc = "" +
 	"\x06sketch\x18\x05 \x01(\fR\x06sketch\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"k\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x91\x01\n" +
 	"\x11GenericSketchList\x125\n" +
 	"\bsketches\x18\x01 \x03(\v2\x19.chqpb.GenericSketchProtoR\bsketches\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
-	"customerIdB\tZ\a.;chqpbb\x06proto3"
+	"customerId\x12$\n" +
+	"\rtelemetryType\x18\x03 \x01(\tR\rtelemetryTypeB\tZ\a.;chqpbb\x06proto3"
 
 var (
 	file_genericsketch_proto_rawDescOnce sync.Once

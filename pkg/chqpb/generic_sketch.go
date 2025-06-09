@@ -37,17 +37,19 @@ type genericSketchEntry struct {
 }
 
 type GenericSketchCache struct {
-	buckets    sync.Map // map[int64]*sync.Map where inner map[string]*genericSketchEntry
-	customerId string
-	interval   time.Duration
-	flushFunc  func(*GenericSketchList) error
+	buckets       sync.Map // map[int64]*sync.Map where inner map[string]*genericSketchEntry
+	customerId    string
+	interval      time.Duration
+	telemetryType string
+	flushFunc     func(*GenericSketchList) error
 }
 
-func NewGenericSketchCache(interval time.Duration, cid string, flushFunc func(*GenericSketchList) error) *GenericSketchCache {
+func NewGenericSketchCache(interval time.Duration, cid, telemetryType string, flushFunc func(*GenericSketchList) error) *GenericSketchCache {
 	c := &GenericSketchCache{
-		interval:   interval,
-		customerId: cid,
-		flushFunc:  flushFunc,
+		interval:      interval,
+		customerId:    cid,
+		flushFunc:     flushFunc,
+		telemetryType: telemetryType,
 	}
 	go c.loop()
 	return c
@@ -100,7 +102,7 @@ func (c *GenericSketchCache) Update(
 
 func (c *GenericSketchCache) flush() {
 	now := time.Now().Truncate(c.interval).Unix()
-	list := &GenericSketchList{CustomerId: c.customerId}
+	list := &GenericSketchList{CustomerId: c.customerId, TelemetryType: c.telemetryType}
 
 	c.buckets.Range(func(intervalKey, v interface{}) bool {
 		interval := intervalKey.(int64)
