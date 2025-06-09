@@ -72,14 +72,14 @@ func MergeEncodedSketch(a, b []byte) ([]byte, error) {
 	return Encode(skA), nil
 }
 
-type sketchEntry struct {
+type spanSketchEntry struct {
 	mu       sync.Mutex
 	proto    *SpanSketchProto
 	internal *ddsketch.DDSketch
 }
 
-type SketchCache struct {
-	buckets    sync.Map // map[int64]*sync.Map where each inner sync.Map: map[string]*sketchEntry
+type SpanSketchCache struct {
+	buckets    sync.Map // map[int64]*sync.Map where each inner sync.Map: map[string]*spanSketchEntry
 	customerId string
 	interval   time.Duration
 	fpr        fingerprinter.Fingerprinter
@@ -87,8 +87,8 @@ type SketchCache struct {
 	marshaller ptrace.JSONMarshaler
 }
 
-func NewSketchCache(interval time.Duration, cid string, flushFunc func(*SpanSketchList) error) *SketchCache {
-	c := &SketchCache{
+func NewSpanSketchCache(interval time.Duration, cid string, flushFunc func(*SpanSketchList) error) *SpanSketchCache {
+	c := &SpanSketchCache{
 		interval:   interval,
 		customerId: cid,
 		fpr:        fingerprinter.NewFingerprinter(fingerprinter.NewTrieClusterManager(0.5)),
@@ -99,14 +99,14 @@ func NewSketchCache(interval time.Duration, cid string, flushFunc func(*SpanSket
 	return c
 }
 
-func (c *SketchCache) loop() {
+func (c *SpanSketchCache) loop() {
 	t := time.NewTicker(c.interval)
 	for range t.C {
 		c.flush()
 	}
 }
 
-func (c *SketchCache) Update(
+func (c *SpanSketchCache) Update(
 	metricName string,
 	tagValues map[string]string,
 	span ptrace.Span,
@@ -116,10 +116,10 @@ func (c *SketchCache) Update(
 	tid := computeTID(metricName, tagValues)
 
 	bucketIface, _ := c.buckets.LoadOrStore(interval, &sync.Map{})
-	skMap := bucketIface.(*sync.Map) // inner map[string]*sketchEntry
+	skMap := bucketIface.(*sync.Map) // inner map[string]*spanSketchEntry
 
 	val, ok := skMap.Load(tid)
-	var entry *sketchEntry
+	var entry *spanSketchEntry
 	if !ok {
 		proto := &SpanSketchProto{
 			MetricName:         metricName,
@@ -133,13 +133,13 @@ func (c *SketchCache) Update(
 			ExceptionCountsMap: make(map[int64]int64),
 		}
 		ps, _ := ddsketch.NewDefaultDDSketch(0.01)
-		entry = &sketchEntry{
+		entry = &spanSketchEntry{
 			proto:    proto,
 			internal: ps,
 		}
 		skMap.Store(tid, entry)
 	} else {
-		entry = val.(*sketchEntry)
+		entry = val.(*spanSketchEntry)
 	}
 
 	entry.mu.Lock()
@@ -192,7 +192,7 @@ func (c *SketchCache) Update(
 	}
 }
 
-func (c *SketchCache) spanToJson(src ptrace.Span, resource pcommon.Resource) ([]byte, error) {
+func (c *SpanSketchCache) spanToJson(src ptrace.Span, resource pcommon.Resource) ([]byte, error) {
 	td := ptrace.NewTraces()
 	rs := td.ResourceSpans().AppendEmpty()
 	resource.CopyTo(rs.Resource())
@@ -257,7 +257,7 @@ func joinWithSep(parts []string, sep string) string {
 	return out
 }
 
-func (c *SketchCache) flush() {
+func (c *SpanSketchCache) flush() {
 	now := time.Now().Truncate(c.interval).Unix()
 	list := &SpanSketchList{CustomerId: c.customerId}
 
@@ -270,7 +270,7 @@ func (c *SketchCache) flush() {
 		skMap := v.(*sync.Map)
 
 		skMap.Range(func(tid, entryVal interface{}) bool {
-			entry := entryVal.(*sketchEntry)
+			entry := entryVal.(*spanSketchEntry)
 
 			entry.mu.Lock()
 			entry.proto.Sketch = Encode(entry.internal)

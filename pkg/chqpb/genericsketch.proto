@@ -1,0 +1,39 @@
+// Copyright 2024-2025 CardinalHQ, Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package chqpb;
+
+option go_package = ".;chqpb";
+
+
+// A single span sketch for a metric and timeseries
+message GenericSketchProto {
+  string metric_name = 1;
+  string service_name = 2;
+  string namespace_name = 3;
+  string cluster_name = 4;
+  string tid = 5;
+  int64 interval = 6;
+  // Map of tag key to tag value
+  map<string, string> tags = 7;
+  bytes sketch = 8;
+}
+
+// Wrapper for a list of span sketches to emit in a single batch
+message GenericSketchList {
+  repeated GenericSketchProto sketches = 1;
+  string customer_id = 2;
+}
