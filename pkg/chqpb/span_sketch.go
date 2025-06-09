@@ -316,7 +316,7 @@ func Encode(sketch *ddsketch.DDSketch) []byte {
 	return buf
 }
 
-func computeTID(metricName string, tags map[string]string) string {
+func computeTID(metricName string, tags map[string]string) int64 {
 	keys := make([]string, 0, len(tags))
 	for k := range tags {
 		keys = append(keys, k)
@@ -327,5 +327,5 @@ func computeTID(metricName string, tags map[string]string) string {
 	for _, k := range keys {
 		_, _ = h.Write([]byte(k + "=" + tags[k] + "|"))
 	}
-	return fmt.Sprintf("%x", h.Sum64())
+	return int64(h.Sum64())
 }

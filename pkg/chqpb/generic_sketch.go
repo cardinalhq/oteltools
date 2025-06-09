@@ -68,6 +68,7 @@ func (c *GenericSketchCache) Update(
 	metricName string,
 	metricType string,
 	tagValues map[string]string,
+	isAggregate bool,
 	value float64,
 	ts time.Time,
 ) {
@@ -84,11 +85,12 @@ func (c *GenericSketchCache) Update(
 		entry = &genericSketchEntry{
 			internal: m,
 			proto: &GenericSketchProto{
-				MetricName: metricName,
-				MetricType: metricType,
-				Tid:        tid,
-				Interval:   interval,
-				Tags:       tagValues,
+				MetricName:  metricName,
+				MetricType:  metricType,
+				Tid:         tid,
+				Interval:    interval,
+				Tags:        tagValues,
+				IsAggregate: isAggregate,
 			},
 		}
 		skMap.Store(tid, entry)

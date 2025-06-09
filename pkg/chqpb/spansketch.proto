@@ -22,7 +22,7 @@ option go_package = ".;chqpb";
 // A single span sketch for a metric and timeseries
 message SpanSketchProto {
   string metric_name = 1;
-  string tid = 5;
+  int64 tid = 5;
   int64 interval = 6;
   // Map of tag key to tag value
   map<string, string> tags = 7;
