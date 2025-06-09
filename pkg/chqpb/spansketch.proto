@@ -22,9 +22,6 @@ option go_package = ".;chqpb";
 // A single span sketch for a metric and timeseries
 message SpanSketchProto {
   string metric_name = 1;
-  string service_name = 2;
-  string namespace_name = 3;
-  string cluster_name = 4;
   string tid = 5;
   int64 interval = 6;
   // Map of tag key to tag value

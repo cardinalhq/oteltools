@@ -37,16 +37,13 @@ const (
 
 // A single span sketch for a metric and timeseries
 type GenericSketchProto struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MetricName    string                 `protobuf:"bytes,1,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
-	ServiceName   string                 `protobuf:"bytes,2,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	NamespaceName string                 `protobuf:"bytes,3,opt,name=namespace_name,json=namespaceName,proto3" json:"namespace_name,omitempty"`
-	ClusterName   string                 `protobuf:"bytes,4,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
-	Tid           string                 `protobuf:"bytes,5,opt,name=tid,proto3" json:"tid,omitempty"`
-	Interval      int64                  `protobuf:"varint,6,opt,name=interval,proto3" json:"interval,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	MetricName string                 `protobuf:"bytes,1,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
+	Tid        string                 `protobuf:"bytes,2,opt,name=tid,proto3" json:"tid,omitempty"`
+	Interval   int64                  `protobuf:"varint,3,opt,name=interval,proto3" json:"interval,omitempty"`
 	// Map of tag key to tag value
-	Tags          map[string]string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Sketch        []byte            `protobuf:"bytes,8,opt,name=sketch,proto3" json:"sketch,omitempty"`
+	Tags          map[string]string `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Sketch        []byte            `protobuf:"bytes,5,opt,name=sketch,proto3" json:"sketch,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -84,27 +81,6 @@ func (*GenericSketchProto) Descriptor() ([]byte, []int) {
 func (x *GenericSketchProto) GetMetricName() string {
 	if x != nil {
 		return x.MetricName
-	}
-	return ""
-}
-
-func (x *GenericSketchProto) GetServiceName() string {
-	if x != nil {
-		return x.ServiceName
-	}
-	return ""
-}
-
-func (x *GenericSketchProto) GetNamespaceName() string {
-	if x != nil {
-		return x.NamespaceName
-	}
-	return ""
-}
-
-func (x *GenericSketchProto) GetClusterName() string {
-	if x != nil {
-		return x.ClusterName
 	}
 	return ""
 }
@@ -194,17 +170,14 @@ var File_genericsketch_proto protoreflect.FileDescriptor
 
 const file_genericsketch_proto_rawDesc = "" +
 	"\n" +
-	"\x13genericsketch.proto\x12\x05chqpb\"\xda\x02\n" +
+	"\x13genericsketch.proto\x12\x05chqpb\"\xed\x01\n" +
 	"\x12GenericSketchProto\x12\x1f\n" +
 	"\vmetric_name\x18\x01 \x01(\tR\n" +
-	"metricName\x12!\n" +
-	"\fservice_name\x18\x02 \x01(\tR\vserviceName\x12%\n" +
-	"\x0enamespace_name\x18\x03 \x01(\tR\rnamespaceName\x12!\n" +
-	"\fcluster_name\x18\x04 \x01(\tR\vclusterName\x12\x10\n" +
-	"\x03tid\x18\x05 \x01(\tR\x03tid\x12\x1a\n" +
-	"\binterval\x18\x06 \x01(\x03R\binterval\x127\n" +
-	"\x04tags\x18\a \x03(\v2#.chqpb.GenericSketchProto.TagsEntryR\x04tags\x12\x16\n" +
-	"\x06sketch\x18\b \x01(\fR\x06sketch\x1a7\n" +
+	"metricName\x12\x10\n" +
+	"\x03tid\x18\x02 \x01(\tR\x03tid\x12\x1a\n" +
+	"\binterval\x18\x03 \x01(\x03R\binterval\x127\n" +
+	"\x04tags\x18\x04 \x03(\v2#.chqpb.GenericSketchProto.TagsEntryR\x04tags\x12\x16\n" +
+	"\x06sketch\x18\x05 \x01(\fR\x06sketch\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"k\n" +

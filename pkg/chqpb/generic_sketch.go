@@ -63,7 +63,7 @@ func (c *GenericSketchCache) loop() {
 }
 
 func (c *GenericSketchCache) Update(
-	metricName, serviceName, namespaceName, clusterName string,
+	metricName string,
 	tagValues map[string]string,
 	value float64,
 	ts time.Time,
@@ -81,13 +81,10 @@ func (c *GenericSketchCache) Update(
 		entry = &genericSketchEntry{
 			internal: m,
 			proto: &GenericSketchProto{
-				MetricName:    metricName,
-				ServiceName:   serviceName,
-				NamespaceName: namespaceName,
-				ClusterName:   clusterName,
-				Tid:           tid,
-				Interval:      interval,
-				Tags:          tagValues,
+				MetricName: metricName,
+				Tid:        tid,
+				Interval:   interval,
+				Tags:       tagValues,
 			},
 		}
 		skMap.Store(tid, entry)
