@@ -35,7 +35,7 @@ type LogExtractor struct {
 	MetricValue         *ottl.Statement[ottllog.TransformContext]
 }
 
-func (l LogExtractor) ExtractMetricAttributes(ctx context.Context, tCtx ottllog.TransformContext) map[string]any {
+func (l LogExtractor) ExtractLineAttributes(ctx context.Context, tCtx ottllog.TransformContext) map[string]any {
 	return l.extractAttributes(ctx, tCtx, l.LineDimensions)
 }
 
