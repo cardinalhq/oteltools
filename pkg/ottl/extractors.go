@@ -16,6 +16,7 @@ package ottl
 
 import (
 	"context"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottllog"
@@ -92,6 +93,15 @@ type SpanExtractor struct {
 	MetricUnit          string
 	MetricType          string
 	MetricValue         *ottl.Statement[ottlspan.TransformContext]
+}
+
+type MetricSketchExtractor struct {
+	RuleID              string
+	MetricName          string
+	MetricType          string
+	MetricUnit          string
+	LineDimensions      map[string]*ottl.Statement[ottlspan.TransformContext]
+	AggregateDimensions map[string]*ottl.Statement[ottlspan.TransformContext]
 }
 
 func (l LogExtractor) EvalLogConditions(ctx context.Context, transformCtx ottllog.TransformContext) (bool, error) {
@@ -217,6 +227,38 @@ func ParseSpanExtractorConfigs(extractorConfigs []MetricExtractorConfig, logger 
 		spanExtractors = append(spanExtractors, spanExtractor)
 	}
 	return spanExtractors, nil
+}
+
+func ParseMetricSketchExtractorConfigs(extractorConfigs []MetricSketchExtractorConfig, logger *zap.Logger) (map[string]*MetricSketchExtractor, error) {
+	configsByMetricName := make(map[string]*MetricSketchExtractor, len(extractorConfigs))
+	parser, _ := ottldatapoint.NewParser(ToFactory[ottldatapoint.TransformContext](), component.TelemetrySettings{Logger: logger})
+
+	for _, extractorConfig := range extractorConfigs {
+		m := &MetricSketchExtractor{
+			RuleID:     extractorConfig.RuleId,
+			MetricName: extractorConfig.MetricName,
+			MetricType: extractorConfig.MetricType,
+			MetricUnit: extractorConfig.MetricUnit,
+		}
+		lineDimensions := make(map[string]*ottl.Statement[ottldatapoint.TransformContext])
+		for key, value := range extractorConfig.LineDimensions {
+			statement, statementParseError := parser.ParseStatement(valueStatement(value))
+			if statementParseError != nil {
+				return nil, statementParseError
+			}
+			lineDimensions[key] = statement
+		}
+		aggregateDimensions := make(map[string]*ottl.Statement[ottldatapoint.TransformContext])
+		for key, value := range extractorConfig.AggregateDimensions {
+			statement, statementParseError := parser.ParseStatement(valueStatement(value))
+			if statementParseError != nil {
+				return nil, statementParseError
+			}
+			aggregateDimensions[key] = statement
+		}
+		configsByMetricName[extractorConfig.MetricName] = m
+	}
+	return configsByMetricName, nil
 }
 
 // This is roughly 5x faster than using fmt.Sprintf()
