@@ -23,18 +23,19 @@
 package chqpb
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/DataDog/sketches-go/ddsketch/pb/sketchpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"golang.org/x/exp/slog"
+	"google.golang.org/protobuf/proto"
 	"hash/fnv"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/DataDog/sketches-go/ddsketch"
-	"github.com/DataDog/sketches-go/ddsketch/mapping"
-	"github.com/DataDog/sketches-go/ddsketch/store"
 	"github.com/cardinalhq/oteltools/pkg/fingerprinter"
 	"github.com/cardinalhq/oteltools/pkg/translate"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
@@ -42,15 +43,12 @@ import (
 
 // DecodeSketch reconstructs a DDSketch from its encoded bytes.
 func DecodeSketch(data []byte) (*ddsketch.DDSketch, error) {
-	m, err := mapping.NewLogarithmicMapping(0.01)
+	var pbSketch sketchpb.DDSketch
+	err := proto.Unmarshal(data, &pbSketch)
 	if err != nil {
 		return nil, err
 	}
-	sk, err := ddsketch.DecodeDDSketch(data, store.DefaultProvider, m)
-	if err != nil {
-		return nil, err
-	}
-	return sk, nil
+	return ddsketch.FromProto(&pbSketch)
 }
 
 func Merge(sketch *ddsketch.DDSketch, other *ddsketch.DDSketch) error {
@@ -58,18 +56,18 @@ func Merge(sketch *ddsketch.DDSketch, other *ddsketch.DDSketch) error {
 }
 
 func MergeEncodedSketch(a, b []byte) ([]byte, error) {
-	skA, err := DecodeSketch(a)
+	sketch1, err := DecodeSketch(a)
 	if err != nil {
-		return nil, fmt.Errorf("decoding sketch A: %w", err)
+		return nil, err
 	}
-	skB, err := DecodeSketch(b)
+	sketch2, err := DecodeSketch(b)
 	if err != nil {
-		return nil, fmt.Errorf("decoding sketch B: %w", err)
+		return nil, err
 	}
-	if err := Merge(skA, skB); err != nil {
+	if err := sketch1.MergeWith(sketch2); err != nil {
 		return nil, fmt.Errorf("merging sketches: %w", err)
 	}
-	return Encode(skA), nil
+	return Encode(sketch1), nil
 }
 
 type sketchEntry struct {
@@ -311,9 +309,9 @@ func extractExceptionMessage(attributes pcommon.Map) string {
 }
 
 func Encode(sketch *ddsketch.DDSketch) []byte {
-	var buf []byte
-	sketch.Encode(&buf, false)
-	return buf
+	var buf bytes.Buffer
+	sketch.EncodeProto(&buf)
+	return buf.Bytes()
 }
 
 func computeTID(metricName string, tags map[string]string) string {
