@@ -112,7 +112,7 @@ func (c *SpanSketchCache) Update(
 	span ptrace.Span,
 	parentTID int64,
 	resource pcommon.Resource,
-) {
+) int64 {
 	interval := span.EndTimestamp().AsTime().Truncate(c.interval).Unix()
 	tid := computeTID(metricName, tagValues)
 
@@ -192,6 +192,7 @@ func (c *SpanSketchCache) Update(
 			}
 		}
 	}
+	return tid
 }
 
 func (c *SpanSketchCache) spanToJson(src ptrace.Span, resource pcommon.Resource) ([]byte, error) {

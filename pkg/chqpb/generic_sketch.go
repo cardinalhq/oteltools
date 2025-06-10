@@ -72,7 +72,7 @@ func (c *GenericSketchCache) UpdateWithCount(
 	value float64,
 	count uint64,
 	ts time.Time,
-) {
+) int64 {
 	interval := ts.Truncate(c.interval).Unix()
 	tid := computeTID(metricName, tagValues)
 
@@ -103,6 +103,7 @@ func (c *GenericSketchCache) UpdateWithCount(
 	defer entry.mu.Unlock()
 
 	_ = entry.internal.AddWithCount(value, float64(count))
+	return tid
 }
 
 func (c *GenericSketchCache) Update(
@@ -112,7 +113,7 @@ func (c *GenericSketchCache) Update(
 	parentTID int64,
 	value float64,
 	ts time.Time,
-) {
+) int64 {
 	interval := ts.Truncate(c.interval).Unix()
 	tid := computeTID(metricName, tagValues)
 
@@ -143,6 +144,7 @@ func (c *GenericSketchCache) Update(
 	defer entry.mu.Unlock()
 
 	_ = entry.internal.Add(value)
+	return tid
 }
 
 func (c *GenericSketchCache) flush() {
