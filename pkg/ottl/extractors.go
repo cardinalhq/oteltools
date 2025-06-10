@@ -100,8 +100,8 @@ type MetricSketchExtractor struct {
 	MetricName          string
 	MetricType          string
 	MetricUnit          string
-	LineDimensions      map[string]*ottl.Statement[ottlspan.TransformContext]
-	AggregateDimensions map[string]*ottl.Statement[ottlspan.TransformContext]
+	LineDimensions      map[string]*ottl.Statement[ottldatapoint.TransformContext]
+	AggregateDimensions map[string]*ottl.Statement[ottldatapoint.TransformContext]
 }
 
 func (l LogExtractor) EvalLogConditions(ctx context.Context, transformCtx ottllog.TransformContext) (bool, error) {
@@ -259,6 +259,30 @@ func ParseMetricSketchExtractorConfigs(extractorConfigs []MetricSketchExtractorC
 		configsByMetricName[extractorConfig.MetricName] = m
 	}
 	return configsByMetricName, nil
+}
+
+func (m MetricSketchExtractor) ExtractLineAttributes(ctx context.Context, tCtx ottldatapoint.TransformContext) map[string]any {
+	return m.extractAttributes(ctx, tCtx, m.LineDimensions)
+}
+
+func (m MetricSketchExtractor) ExtractAggregateAttributes(ctx context.Context, tCtx ottldatapoint.TransformContext) map[string]any {
+	return m.extractAttributes(ctx, tCtx, m.AggregateDimensions)
+}
+
+func (m MetricSketchExtractor) extractAttributes(ctx context.Context, tCtx ottldatapoint.TransformContext, dims map[string]*ottl.Statement[ottldatapoint.TransformContext]) map[string]any {
+	if dims == nil {
+		return nil
+	}
+
+	attrMap := make(map[string]any, len(dims))
+	for k, v := range dims {
+		attrVal, _, err := v.Execute(ctx, tCtx)
+		if err != nil || attrVal == nil || attrVal == "" {
+			continue
+		}
+		attrMap[k] = attrVal
+	}
+	return attrMap
 }
 
 // This is roughly 5x faster than using fmt.Sprintf()
