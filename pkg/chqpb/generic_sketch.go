@@ -64,6 +64,47 @@ func (c *GenericSketchCache) loop() {
 	}
 }
 
+func (c *GenericSketchCache) UpdateWithCount(
+	metricName string,
+	metricType string,
+	tagValues map[string]string,
+	isAggregate bool,
+	value float64,
+	count uint64,
+	ts time.Time,
+) {
+	interval := ts.Truncate(c.interval).Unix()
+	tid := computeTID(metricName, tagValues)
+
+	bucketIface, _ := c.buckets.LoadOrStore(interval, &sync.Map{})
+	skMap := bucketIface.(*sync.Map)
+
+	val, ok := skMap.Load(tid)
+	var entry *genericSketchEntry
+	if !ok {
+		m, _ := ddsketch.NewDefaultDDSketch(0.01)
+		entry = &genericSketchEntry{
+			internal: m,
+			proto: &GenericSketchProto{
+				MetricName:  metricName,
+				MetricType:  metricType,
+				Tid:         tid,
+				Interval:    interval,
+				Tags:        tagValues,
+				IsAggregate: isAggregate,
+			},
+		}
+		skMap.Store(tid, entry)
+	} else {
+		entry = val.(*genericSketchEntry)
+	}
+
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+
+	_ = entry.internal.AddWithCount(value, float64(count))
+}
+
 func (c *GenericSketchCache) Update(
 	metricName string,
 	metricType string,
