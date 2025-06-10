@@ -28,7 +28,7 @@ message GenericSketchProto {
   // Map of tag key to tag value
   map<string, string> tags = 5;
   bytes sketch = 6;
-  bool isAggregate = 7; // Indicates if this sketch is an aggregate sketch
+  int64 parentTID = 7; // Indicates if this sketch is an aggregate sketch
 }
 
 // Wrapper for a list of span sketches to emit in a single batch

@@ -52,7 +52,7 @@ type SpanSketchProto struct {
 	ExceptionsMap map[int64]string `protobuf:"bytes,12,rep,name=exceptions_map,json=exceptionsMap,proto3" json:"exceptions_map,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// fingerprint -> exception occurrences
 	ExceptionCountsMap map[int64]int64 `protobuf:"bytes,13,rep,name=exception_counts_map,json=exceptionCountsMap,proto3" json:"exception_counts_map,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
-	IsAggregate        bool            `protobuf:"varint,14,opt,name=isAggregate,proto3" json:"isAggregate,omitempty"`
+	ParentTID          int64           `protobuf:"varint,14,opt,name=parentTID,proto3" json:"parentTID,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -157,11 +157,11 @@ func (x *SpanSketchProto) GetExceptionCountsMap() map[int64]int64 {
 	return nil
 }
 
-func (x *SpanSketchProto) GetIsAggregate() bool {
+func (x *SpanSketchProto) GetParentTID() int64 {
 	if x != nil {
-		return x.IsAggregate
+		return x.ParentTID
 	}
-	return false
+	return 0
 }
 
 // Wrapper for a list of span sketches to emit in a single batch
@@ -221,7 +221,7 @@ var File_spansketch_proto protoreflect.FileDescriptor
 
 const file_spansketch_proto_rawDesc = "" +
 	"\n" +
-	"\x10spansketch.proto\x12\x05chqpb\"\xb1\x05\n" +
+	"\x10spansketch.proto\x12\x05chqpb\"\xad\x05\n" +
 	"\x0fSpanSketchProto\x12\x1f\n" +
 	"\vmetric_name\x18\x01 \x01(\tR\n" +
 	"metricName\x12\x10\n" +
@@ -236,8 +236,8 @@ const file_spansketch_proto_rawDesc = "" +
 	"errorCount\x12'\n" +
 	"\x0fexception_count\x18\v \x01(\x03R\x0eexceptionCount\x12P\n" +
 	"\x0eexceptions_map\x18\f \x03(\v2).chqpb.SpanSketchProto.ExceptionsMapEntryR\rexceptionsMap\x12`\n" +
-	"\x14exception_counts_map\x18\r \x03(\v2..chqpb.SpanSketchProto.ExceptionCountsMapEntryR\x12exceptionCountsMap\x12 \n" +
-	"\visAggregate\x18\x0e \x01(\bR\visAggregate\x1a7\n" +
+	"\x14exception_counts_map\x18\r \x03(\v2..chqpb.SpanSketchProto.ExceptionCountsMapEntryR\x12exceptionCountsMap\x12\x1c\n" +
+	"\tparentTID\x18\x0e \x01(\x03R\tparentTID\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a@\n" +

@@ -68,7 +68,7 @@ func (c *GenericSketchCache) UpdateWithCount(
 	metricName string,
 	metricType string,
 	tagValues map[string]string,
-	isAggregate bool,
+	parentTID int64,
 	value float64,
 	count uint64,
 	ts time.Time,
@@ -86,12 +86,12 @@ func (c *GenericSketchCache) UpdateWithCount(
 		entry = &genericSketchEntry{
 			internal: m,
 			proto: &GenericSketchProto{
-				MetricName:  metricName,
-				MetricType:  metricType,
-				Tid:         tid,
-				Interval:    interval,
-				Tags:        tagValues,
-				IsAggregate: isAggregate,
+				MetricName: metricName,
+				MetricType: metricType,
+				Tid:        tid,
+				Interval:   interval,
+				Tags:       tagValues,
+				ParentTID:  parentTID,
 			},
 		}
 		skMap.Store(tid, entry)
@@ -109,7 +109,7 @@ func (c *GenericSketchCache) Update(
 	metricName string,
 	metricType string,
 	tagValues map[string]string,
-	isAggregate bool,
+	parentTID int64,
 	value float64,
 	ts time.Time,
 ) {
@@ -126,12 +126,12 @@ func (c *GenericSketchCache) Update(
 		entry = &genericSketchEntry{
 			internal: m,
 			proto: &GenericSketchProto{
-				MetricName:  metricName,
-				MetricType:  metricType,
-				Tid:         tid,
-				Interval:    interval,
-				Tags:        tagValues,
-				IsAggregate: isAggregate,
+				MetricName: metricName,
+				MetricType: metricType,
+				Tid:        tid,
+				Interval:   interval,
+				Tags:       tagValues,
+				ParentTID:  parentTID,
 			},
 		}
 		skMap.Store(tid, entry)

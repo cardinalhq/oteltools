@@ -45,7 +45,7 @@ type GenericSketchProto struct {
 	// Map of tag key to tag value
 	Tags          map[string]string `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	Sketch        []byte            `protobuf:"bytes,6,opt,name=sketch,proto3" json:"sketch,omitempty"`
-	IsAggregate   bool              `protobuf:"varint,7,opt,name=isAggregate,proto3" json:"isAggregate,omitempty"` // Indicates if this sketch is an aggregate sketch
+	ParentTID     int64             `protobuf:"varint,7,opt,name=parentTID,proto3" json:"parentTID,omitempty"` // Indicates if this sketch is an aggregate sketch
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -122,11 +122,11 @@ func (x *GenericSketchProto) GetSketch() []byte {
 	return nil
 }
 
-func (x *GenericSketchProto) GetIsAggregate() bool {
+func (x *GenericSketchProto) GetParentTID() int64 {
 	if x != nil {
-		return x.IsAggregate
+		return x.ParentTID
 	}
-	return false
+	return 0
 }
 
 // Wrapper for a list of span sketches to emit in a single batch
@@ -194,7 +194,7 @@ var File_genericsketch_proto protoreflect.FileDescriptor
 
 const file_genericsketch_proto_rawDesc = "" +
 	"\n" +
-	"\x13genericsketch.proto\x12\x05chqpb\"\xb0\x02\n" +
+	"\x13genericsketch.proto\x12\x05chqpb\"\xac\x02\n" +
 	"\x12GenericSketchProto\x12\x1f\n" +
 	"\vmetric_name\x18\x01 \x01(\tR\n" +
 	"metricName\x12\x1f\n" +
@@ -203,8 +203,8 @@ const file_genericsketch_proto_rawDesc = "" +
 	"\x03tid\x18\x03 \x01(\x03R\x03tid\x12\x1a\n" +
 	"\binterval\x18\x04 \x01(\x03R\binterval\x127\n" +
 	"\x04tags\x18\x05 \x03(\v2#.chqpb.GenericSketchProto.TagsEntryR\x04tags\x12\x16\n" +
-	"\x06sketch\x18\x06 \x01(\fR\x06sketch\x12 \n" +
-	"\visAggregate\x18\a \x01(\bR\visAggregate\x1a7\n" +
+	"\x06sketch\x18\x06 \x01(\fR\x06sketch\x12\x1c\n" +
+	"\tparentTID\x18\a \x01(\x03R\tparentTID\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x91\x01\n" +
