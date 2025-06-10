@@ -119,7 +119,7 @@ func (c *SketchCache) Update(
 	val, ok := skMap.Load(tid)
 	var entry *sketchEntry
 	if !ok {
-		proto := &SpanSketchProto{
+		sketchProto := &SpanSketchProto{
 			MetricName:         metricName,
 			Tid:                tid,
 			Interval:           interval,
@@ -132,7 +132,7 @@ func (c *SketchCache) Update(
 		}
 		ps, _ := ddsketch.NewDefaultDDSketch(0.01)
 		entry = &sketchEntry{
-			proto:    proto,
+			proto:    sketchProto,
 			internal: ps,
 		}
 		skMap.Store(tid, entry)
@@ -164,9 +164,9 @@ func (c *SketchCache) Update(
 		if c.fpr != nil {
 			fp, _, _, err := c.fpr.Fingerprint(exMsg)
 			if err == nil {
-				bytes, err := c.spanToJson(span, resource)
+				spanBytes, err := c.spanToJson(span, resource)
 				if err == nil {
-					entry.proto.ExceptionsMap[fp] = string(bytes)
+					entry.proto.ExceptionsMap[fp] = string(spanBytes)
 					entry.proto.ExceptionCountsMap[fp]++
 				}
 			}
@@ -180,9 +180,9 @@ func (c *SketchCache) Update(
 		if c.fpr != nil {
 			fp, _, _, err := c.fpr.Fingerprint(exMsg)
 			if err == nil {
-				bytes, err := c.spanToJson(span, resource)
+				spanBytes, err := c.spanToJson(span, resource)
 				if err == nil {
-					entry.proto.ExceptionsMap[fp] = string(bytes)
+					entry.proto.ExceptionsMap[fp] = string(spanBytes)
 					entry.proto.ExceptionCountsMap[fp]++
 				}
 			}
