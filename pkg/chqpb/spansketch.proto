@@ -35,6 +35,7 @@ message SpanSketchProto {
   map<int64, string> exceptions_map = 12;
   // fingerprint -> exception occurrences
   map<int64, int64> exception_counts_map = 13;
+  bool isAggregate = 14;
 }
 
 // Wrapper for a list of span sketches to emit in a single batch
