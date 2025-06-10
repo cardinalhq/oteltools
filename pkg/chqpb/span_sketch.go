@@ -110,7 +110,6 @@ func (c *SpanSketchCache) Update(
 	metricName string,
 	tagValues map[string]string,
 	span ptrace.Span,
-	parentTID int64,
 	resource pcommon.Resource,
 ) int64 {
 	interval := span.EndTimestamp().AsTime().Truncate(c.interval).Unix()
@@ -132,7 +131,6 @@ func (c *SpanSketchCache) Update(
 			ExceptionCount:     0,
 			ExceptionsMap:      make(map[int64]string),
 			ExceptionCountsMap: make(map[int64]int64),
-			ParentTID:          parentTID,
 		}
 		ps, _ := ddsketch.NewDefaultDDSketch(0.01)
 		entry = &spanSketchEntry{

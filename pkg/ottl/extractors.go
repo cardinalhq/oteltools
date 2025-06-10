@@ -17,6 +17,8 @@ package ottl
 import (
 	"context"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
+	"hash/fnv"
+	"slices"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottllog"
@@ -27,7 +29,7 @@ import (
 
 type LogExtractor struct {
 	Conditions          []*ottl.Condition[ottllog.TransformContext]
-	LineDimensions      map[string]*ottl.Statement[ottllog.TransformContext]
+	LineDimensions      map[int64]map[string]*ottl.Statement[ottllog.TransformContext]
 	AggregateDimensions map[string]*ottl.Statement[ottllog.TransformContext]
 	MetricName          string
 	RuleID              string
@@ -36,8 +38,12 @@ type LogExtractor struct {
 	MetricValue         *ottl.Statement[ottllog.TransformContext]
 }
 
-func (l LogExtractor) ExtractLineAttributes(ctx context.Context, tCtx ottllog.TransformContext) map[string]any {
-	return l.extractAttributes(ctx, tCtx, l.LineDimensions)
+func (l LogExtractor) ExtractLineAttributes(ctx context.Context, tCtx ottllog.TransformContext) map[int64]map[string]any {
+	attributesByTagFamilyID := make(map[int64]map[string]any, 0)
+	for tagFamilyID, dimensions := range l.LineDimensions {
+		attributesByTagFamilyID[tagFamilyID] = l.extractAttributes(ctx, tCtx, dimensions)
+	}
+	return attributesByTagFamilyID
 }
 
 func (l LogExtractor) ExtractAggregateAttributes(ctx context.Context, tCtx ottllog.TransformContext) map[string]any {
@@ -60,7 +66,55 @@ func (l LogExtractor) extractAttributes(ctx context.Context, tCtx ottllog.Transf
 	return attrMap
 }
 
-func (l SpanExtractor) extractAttributes(ctx context.Context, tCtx ottlspan.TransformContext, dims map[string]*ottl.Statement[ottlspan.TransformContext]) map[string]any {
+func parseLogExtractorConfig(extractorConfig MetricExtractorConfig, parser ottl.Parser[ottllog.TransformContext]) (*LogExtractor, error) {
+	conditions, err := parser.ParseConditions(extractorConfig.Conditions)
+	if err != nil {
+		return nil, err
+	}
+	lineDimensionsByTagFamilyID := make(map[int64]map[string]*ottl.Statement[ottllog.TransformContext], 0)
+	for _, dim := range extractorConfig.LineDimensions {
+		lineDimensions := make(map[string]*ottl.Statement[ottllog.TransformContext])
+		tagNames := make([]string, 0)
+		for key, value := range dim {
+			tagNames = append(tagNames, key)
+			statement, statementParseError := parser.ParseStatement(valueStatement(value))
+			if statementParseError != nil {
+				return nil, statementParseError
+			}
+			lineDimensions[key] = statement
+		}
+		slices.Sort(tagNames)
+		h := fnv.New64a()
+		for _, k := range tagNames {
+			_, _ = h.Write([]byte(k))
+		}
+		tagFamilyID := int64(h.Sum64())
+		lineDimensionsByTagFamilyID[tagFamilyID] = lineDimensions
+	}
+
+	aggregateDimensions := make(map[string]*ottl.Statement[ottllog.TransformContext])
+	for key, value := range extractorConfig.AggregateDimensions {
+		statement, statementParseError := parser.ParseStatement(valueStatement(value))
+		if statementParseError != nil {
+			return nil, statementParseError
+		}
+		aggregateDimensions[key] = statement
+	}
+	metricValue, _ := parser.ParseStatement(valueStatement(extractorConfig.MetricValue))
+
+	return &LogExtractor{
+		RuleID:              extractorConfig.RuleId,
+		Conditions:          conditions,
+		LineDimensions:      lineDimensionsByTagFamilyID,
+		AggregateDimensions: aggregateDimensions,
+		MetricName:          extractorConfig.MetricName,
+		MetricUnit:          extractorConfig.MetricUnit,
+		MetricType:          extractorConfig.MetricType,
+		MetricValue:         metricValue,
+	}, nil
+}
+
+func (s SpanExtractor) extractAttributes(ctx context.Context, tCtx ottlspan.TransformContext, dims map[string]*ottl.Statement[ottlspan.TransformContext]) map[string]any {
 	if dims == nil {
 		return nil
 	}
@@ -76,18 +130,22 @@ func (l SpanExtractor) extractAttributes(ctx context.Context, tCtx ottlspan.Tran
 	return attrMap
 }
 
-func (s SpanExtractor) ExtractLineAttributes(ctx context.Context, tCtx ottlspan.TransformContext) map[string]any {
-	return s.extractAttributes(ctx, tCtx, s.LineDimensions)
+func (s SpanExtractor) ExtractLineAttributes(ctx context.Context, tCtx ottlspan.TransformContext) map[int64]map[string]any {
+	attributesByTagFamilyID := make(map[int64]map[string]any)
+	for tagFamilyID, dimensions := range s.LineDimensions {
+		attributesByTagFamilyID[tagFamilyID] = s.extractAttributes(ctx, tCtx, dimensions)
+	}
+	return attributesByTagFamilyID
 }
 
-func (l SpanExtractor) ExtractAggregateAttributes(ctx context.Context, tCtx ottlspan.TransformContext) map[string]any {
-	return l.extractAttributes(ctx, tCtx, l.AggregateDimensions)
+func (s SpanExtractor) ExtractAggregateAttributes(ctx context.Context, tCtx ottlspan.TransformContext) map[string]any {
+	return s.extractAttributes(ctx, tCtx, s.AggregateDimensions)
 }
 
 type SpanExtractor struct {
 	RuleID              string
 	Conditions          []*ottl.Condition[ottlspan.TransformContext]
-	LineDimensions      map[string]*ottl.Statement[ottlspan.TransformContext]
+	LineDimensions      map[int64]map[string]*ottl.Statement[ottlspan.TransformContext]
 	AggregateDimensions map[string]*ottl.Statement[ottlspan.TransformContext]
 	MetricName          string
 	MetricUnit          string
@@ -100,7 +158,7 @@ type MetricSketchExtractor struct {
 	MetricName          string
 	MetricType          string
 	MetricUnit          string
-	LineDimensions      map[string]*ottl.Statement[ottldatapoint.TransformContext]
+	LineDimensions      map[int64]map[string]*ottl.Statement[ottldatapoint.TransformContext]
 	AggregateDimensions map[string]*ottl.Statement[ottldatapoint.TransformContext]
 }
 
@@ -117,8 +175,8 @@ func (l LogExtractor) EvalLogConditions(ctx context.Context, transformCtx ottllo
 	return true, nil
 }
 
-func (l SpanExtractor) EvalSpanConditions(ctx context.Context, transformCtx ottlspan.TransformContext) (bool, error) {
-	for _, condition := range l.Conditions {
+func (s SpanExtractor) EvalSpanConditions(ctx context.Context, transformCtx ottlspan.TransformContext) (bool, error) {
+	for _, condition := range s.Conditions {
 		matches, err := condition.Eval(ctx, transformCtx)
 		if err != nil {
 			return false, err
@@ -130,69 +188,56 @@ func (l SpanExtractor) EvalSpanConditions(ctx context.Context, transformCtx ottl
 	return true, nil
 }
 
-func parseLogExtractorConfig(extractorConfig MetricExtractorConfig, parser ottl.Parser[ottllog.TransformContext]) (*LogExtractor, error) {
+func parseSpanExtractorConfig(
+	extractorConfig MetricExtractorConfig,
+	parser ottl.Parser[ottlspan.TransformContext],
+) (*SpanExtractor, error) {
 	conditions, err := parser.ParseConditions(extractorConfig.Conditions)
 	if err != nil {
 		return nil, err
 	}
-	lineDimensions := make(map[string]*ottl.Statement[ottllog.TransformContext])
-	for key, value := range extractorConfig.LineDimensions {
-		statement, statementParseError := parser.ParseStatement(valueStatement(value))
-		if statementParseError != nil {
-			return nil, statementParseError
+
+	lineDimensionsByTagFamilyID := make(map[int64]map[string]*ottl.Statement[ottlspan.TransformContext], 0)
+	for _, dim := range extractorConfig.LineDimensions {
+		lineDimensions := make(map[string]*ottl.Statement[ottlspan.TransformContext])
+		tagNames := make([]string, 0)
+
+		for key, value := range dim {
+			tagNames = append(tagNames, key)
+			statement, err := parser.ParseStatement(valueStatement(value))
+			if err != nil {
+				return nil, err
+			}
+			lineDimensions[key] = statement
 		}
-		lineDimensions[key] = statement
+
+		slices.Sort(tagNames)
+		h := fnv.New64a()
+		for _, k := range tagNames {
+			_, _ = h.Write([]byte(k))
+		}
+		tagFamilyID := int64(h.Sum64())
+		lineDimensionsByTagFamilyID[tagFamilyID] = lineDimensions
 	}
 
-	aggregateDimensions := make(map[string]*ottl.Statement[ottllog.TransformContext])
-	for key, value := range extractorConfig.AggregateDimensions {
-		statement, statementParseError := parser.ParseStatement(valueStatement(value))
-		if statementParseError != nil {
-			return nil, statementParseError
-		}
-		lineDimensions[key] = statement
-	}
-	metricValue, _ := parser.ParseStatement(valueStatement(extractorConfig.MetricValue))
-
-	return &LogExtractor{
-		RuleID:              extractorConfig.RuleId,
-		Conditions:          conditions,
-		LineDimensions:      lineDimensions,
-		AggregateDimensions: aggregateDimensions,
-		MetricName:          extractorConfig.MetricName,
-		MetricUnit:          extractorConfig.MetricUnit,
-		MetricType:          extractorConfig.MetricType,
-		MetricValue:         metricValue,
-	}, nil
-}
-
-func parseSpanExtractorConfig(extractorConfig MetricExtractorConfig, parser ottl.Parser[ottlspan.TransformContext]) (*SpanExtractor, error) {
-	conditions, err := parser.ParseConditions(extractorConfig.Conditions)
-	if err != nil {
-		return nil, err
-	}
-	lineDimensions := make(map[string]*ottl.Statement[ottlspan.TransformContext])
-	for key, value := range extractorConfig.LineDimensions {
-		statement, statementParseError := parser.ParseStatement(valueStatement(value))
-		if statementParseError != nil {
-			return nil, statementParseError
-		}
-		lineDimensions[key] = statement
-	}
 	aggregateDimensions := make(map[string]*ottl.Statement[ottlspan.TransformContext])
 	for key, value := range extractorConfig.AggregateDimensions {
-		statement, statementParseError := parser.ParseStatement(valueStatement(value))
-		if statementParseError != nil {
-			return nil, statementParseError
+		statement, err := parser.ParseStatement(valueStatement(value))
+		if err != nil {
+			return nil, err
 		}
 		aggregateDimensions[key] = statement
 	}
-	metricValue, _ := parser.ParseStatement(valueStatement(extractorConfig.MetricValue))
+
+	metricValue, err := parser.ParseStatement(valueStatement(extractorConfig.MetricValue))
+	if err != nil {
+		return nil, err
+	}
 
 	return &SpanExtractor{
 		RuleID:              extractorConfig.RuleId,
 		Conditions:          conditions,
-		LineDimensions:      lineDimensions,
+		LineDimensions:      lineDimensionsByTagFamilyID,
 		AggregateDimensions: aggregateDimensions,
 		MetricName:          extractorConfig.MetricName,
 		MetricUnit:          extractorConfig.MetricUnit,
@@ -240,13 +285,25 @@ func ParseMetricSketchExtractorConfigs(extractorConfigs []MetricSketchExtractorC
 			MetricType: extractorConfig.MetricType,
 			MetricUnit: extractorConfig.MetricUnit,
 		}
-		lineDimensions := make(map[string]*ottl.Statement[ottldatapoint.TransformContext])
-		for key, value := range extractorConfig.LineDimensions {
-			statement, statementParseError := parser.ParseStatement(valueStatement(value))
-			if statementParseError != nil {
-				return nil, statementParseError
+		lineDimensionsByTagFamilyID := make(map[int64]map[string]*ottl.Statement[ottldatapoint.TransformContext])
+		for _, dim := range extractorConfig.LineDimensions {
+			tagNames := make([]string, 0)
+			lineDimensions := make(map[string]*ottl.Statement[ottldatapoint.TransformContext])
+			for key, value := range dim {
+				tagNames = append(tagNames, key)
+				statement, statementParseError := parser.ParseStatement(valueStatement(value))
+				if statementParseError != nil {
+					return nil, statementParseError
+				}
+				lineDimensions[key] = statement
 			}
-			lineDimensions[key] = statement
+			slices.Sort(tagNames)
+			h := fnv.New64a()
+			for _, k := range tagNames {
+				_, _ = h.Write([]byte(k))
+			}
+			tagFamilyID := int64(h.Sum64())
+			lineDimensionsByTagFamilyID[tagFamilyID] = lineDimensions
 		}
 		aggregateDimensions := make(map[string]*ottl.Statement[ottldatapoint.TransformContext])
 		for key, value := range extractorConfig.AggregateDimensions {
@@ -261,8 +318,12 @@ func ParseMetricSketchExtractorConfigs(extractorConfigs []MetricSketchExtractorC
 	return configsByMetricName, nil
 }
 
-func (m MetricSketchExtractor) ExtractLineAttributes(ctx context.Context, tCtx ottldatapoint.TransformContext) map[string]any {
-	return m.extractAttributes(ctx, tCtx, m.LineDimensions)
+func (m MetricSketchExtractor) ExtractLineAttributes(ctx context.Context, tCtx ottldatapoint.TransformContext) map[int64]map[string]any {
+	attributesByTagFamilyID := make(map[int64]map[string]any)
+	for tagFamilyID, dimensions := range m.LineDimensions {
+		attributesByTagFamilyID[tagFamilyID] = m.extractAttributes(ctx, tCtx, dimensions)
+	}
+	return attributesByTagFamilyID
 }
 
 func (m MetricSketchExtractor) ExtractAggregateAttributes(ctx context.Context, tCtx ottldatapoint.TransformContext) map[string]any {
