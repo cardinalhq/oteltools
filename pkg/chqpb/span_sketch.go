@@ -111,12 +111,12 @@ func (c *SpanSketchCache) loop() {
 }
 
 func (c *SpanSketchCache) getErrorCountTopK(metricName string) *TopKByFrequency {
-	topK, _ := c.errorCountTopKs.LoadOrStore(metricName, NewTopKByFrequency(c.maxK, 5*c.interval))
+	topK, _ := c.errorCountTopKs.LoadOrStore(metricName, NewTopKByFrequency(c.maxK, 2*c.interval))
 	return topK.(*TopKByFrequency)
 }
 
 func (c *SpanSketchCache) getValueTopK(metricName string) *TopKByValue {
-	topK, _ := c.latencyTopKs.LoadOrStore(metricName, NewTopKByValue(c.maxK))
+	topK, _ := c.latencyTopKs.LoadOrStore(metricName, NewTopKByValue(c.maxK, 2*c.interval))
 	return topK.(*TopKByValue)
 }
 
@@ -294,6 +294,7 @@ func (c *SpanSketchCache) flush() {
 			errorCountTopK.AddCount(entry.proto.Tid, int(entry.proto.ExceptionCount))
 
 			latencyTopK := c.getValueTopK(entry.proto.MetricName)
+			latencyTopK.CleanupExpired()
 			p50, err := entry.internal.GetValueAtQuantile(0.5)
 			if err == nil {
 				latencyTopK.Add(entry.proto.Tid, p50)

@@ -2,12 +2,13 @@ package chqpb
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTopKByValue_AddAndSortedSlice(t *testing.T) {
-	topK := NewTopKByValue(3)
+	topK := NewTopKByValue(3, time.Second)
 
 	topK.Add(1, 10)
 	topK.Add(2, 20)
@@ -22,7 +23,7 @@ func TestTopKByValue_AddAndSortedSlice(t *testing.T) {
 }
 
 func TestTopKByValue_Eviction(t *testing.T) {
-	topK := NewTopKByValue(3)
+	topK := NewTopKByValue(3, time.Second)
 
 	topK.Add(1, 10)
 	topK.Add(2, 20)
@@ -36,7 +37,7 @@ func TestTopKByValue_Eviction(t *testing.T) {
 }
 
 func TestTopKByValue_UpdateImproved(t *testing.T) {
-	topK := NewTopKByValue(3)
+	topK := NewTopKByValue(3, time.Second)
 
 	topK.Add(1, 10)
 	topK.Add(2, 20)
@@ -50,7 +51,7 @@ func TestTopKByValue_UpdateImproved(t *testing.T) {
 }
 
 func TestTopKByValue_UpdateWorse(t *testing.T) {
-	topK := NewTopKByValue(3)
+	topK := NewTopKByValue(3, time.Second)
 
 	topK.Add(1, 10)
 	topK.Add(2, 20)
@@ -63,7 +64,7 @@ func TestTopKByValue_UpdateWorse(t *testing.T) {
 }
 
 func TestTopKByValue_Eligible(t *testing.T) {
-	topK := NewTopKByValue(3)
+	topK := NewTopKByValue(3, time.Second)
 
 	// Warmup: less than k items, any value is eligible
 	assert.True(t, topK.Eligible(1))
