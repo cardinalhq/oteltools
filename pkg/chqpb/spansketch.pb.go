@@ -53,6 +53,7 @@ type SpanSketchProto struct {
 	// fingerprint -> exception occurrences
 	ExceptionCountsMap map[int64]int64 `protobuf:"bytes,13,rep,name=exception_counts_map,json=exceptionCountsMap,proto3" json:"exception_counts_map,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	ParentTID          int64           `protobuf:"varint,14,opt,name=parentTID,proto3" json:"parentTID,omitempty"`
+	TagFamilyId        int64           `protobuf:"varint,15,opt,name=tagFamilyId,proto3" json:"tagFamilyId,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -164,6 +165,13 @@ func (x *SpanSketchProto) GetParentTID() int64 {
 	return 0
 }
 
+func (x *SpanSketchProto) GetTagFamilyId() int64 {
+	if x != nil {
+		return x.TagFamilyId
+	}
+	return 0
+}
+
 // Wrapper for a list of span sketches to emit in a single batch
 type SpanSketchList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -221,7 +229,7 @@ var File_spansketch_proto protoreflect.FileDescriptor
 
 const file_spansketch_proto_rawDesc = "" +
 	"\n" +
-	"\x10spansketch.proto\x12\x05chqpb\"\xad\x05\n" +
+	"\x10spansketch.proto\x12\x05chqpb\"\xcf\x05\n" +
 	"\x0fSpanSketchProto\x12\x1f\n" +
 	"\vmetric_name\x18\x01 \x01(\tR\n" +
 	"metricName\x12\x10\n" +
@@ -237,7 +245,8 @@ const file_spansketch_proto_rawDesc = "" +
 	"\x0fexception_count\x18\v \x01(\x03R\x0eexceptionCount\x12P\n" +
 	"\x0eexceptions_map\x18\f \x03(\v2).chqpb.SpanSketchProto.ExceptionsMapEntryR\rexceptionsMap\x12`\n" +
 	"\x14exception_counts_map\x18\r \x03(\v2..chqpb.SpanSketchProto.ExceptionCountsMapEntryR\x12exceptionCountsMap\x12\x1c\n" +
-	"\tparentTID\x18\x0e \x01(\x03R\tparentTID\x1a7\n" +
+	"\tparentTID\x18\x0e \x01(\x03R\tparentTID\x12 \n" +
+	"\vtagFamilyId\x18\x0f \x01(\x03R\vtagFamilyId\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a@\n" +

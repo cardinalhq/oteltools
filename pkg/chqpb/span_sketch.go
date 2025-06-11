@@ -79,20 +79,24 @@ type spanSketchEntry struct {
 }
 
 type SpanSketchCache struct {
-	buckets    sync.Map // map[int64]*sync.Map where each inner sync.Map: map[string]*spanSketchEntry
-	customerId string
-	interval   time.Duration
-	fpr        fingerprinter.Fingerprinter
-	flushFunc  func(*SpanSketchList) error
-	marshaller ptrace.JSONMarshaler
+	buckets         sync.Map // map[int64]*sync.Map where each inner sync.Map: map[string]*spanSketchEntry
+	customerId      string
+	interval        time.Duration
+	fpr             fingerprinter.Fingerprinter
+	flushFunc       func(*SpanSketchList) error
+	marshaller      ptrace.JSONMarshaler
+	errorCountTopKs sync.Map
+	latencyTopKs    sync.Map
+	maxK            int
 }
 
-func NewSpanSketchCache(interval time.Duration, cid string, flushFunc func(*SpanSketchList) error) *SpanSketchCache {
+func NewSpanSketchCache(interval time.Duration, cid string, maxK int, flushFunc func(*SpanSketchList) error) *SpanSketchCache {
 	c := &SpanSketchCache{
 		interval:   interval,
 		customerId: cid,
 		fpr:        fingerprinter.NewFingerprinter(fingerprinter.NewTrieClusterManager(0.5)),
 		flushFunc:  flushFunc,
+		maxK:       maxK,
 		marshaller: ptrace.JSONMarshaler{},
 	}
 	go c.loop()
@@ -106,21 +110,47 @@ func (c *SpanSketchCache) loop() {
 	}
 }
 
+func (c *SpanSketchCache) getErrorCountTopK(metricName string) *TopKByFrequency {
+	topK, _ := c.errorCountTopKs.LoadOrStore(metricName, NewTopKByFrequency(c.maxK, 5*c.interval))
+	return topK.(*TopKByFrequency)
+}
+
+func (c *SpanSketchCache) getValueTopK(metricName string) *TopKByValue {
+	topK, _ := c.latencyTopKs.LoadOrStore(metricName, NewTopKByValue(c.maxK))
+	return topK.(*TopKByValue)
+}
+
 func (c *SpanSketchCache) Update(
 	metricName string,
 	tagValues map[string]string,
 	span ptrace.Span,
 	resource pcommon.Resource,
+	parentTID int64,
+	tagFamilyId int64,
 ) int64 {
 	interval := span.EndTimestamp().AsTime().Truncate(c.interval).Unix()
 	tid := computeTID(metricName, tagValues)
 
 	bucketIface, _ := c.buckets.LoadOrStore(interval, &sync.Map{})
 	skMap := bucketIface.(*sync.Map) // inner map[string]*spanSketchEntry
+	spanDurationVal, _ := span.Attributes().Get(translate.CardinalFieldSpanDuration)
+	spanDuration := spanDurationVal.Double()
+
+	var shouldEligible = false
+	if span.Status().Code() == ptrace.StatusCodeError {
+		errorCountTopK := c.getErrorCountTopK(metricName)
+		shouldEligible = errorCountTopK.EligibleWithCount(tid, 1)
+	} else {
+		latencyTopK := c.getValueTopK(metricName)
+		shouldEligible = latencyTopK.Eligible(spanDuration)
+	}
 
 	val, ok := skMap.Load(tid)
 	var entry *spanSketchEntry
 	if !ok {
+		if !shouldEligible {
+			return tid
+		}
 		proto := &SpanSketchProto{
 			MetricName:         metricName,
 			Tid:                tid,
@@ -131,6 +161,8 @@ func (c *SpanSketchCache) Update(
 			ExceptionCount:     0,
 			ExceptionsMap:      make(map[int64]string),
 			ExceptionCountsMap: make(map[int64]int64),
+			TagFamilyId:        tagFamilyId,
+			ParentTID:          parentTID,
 		}
 		ps, _ := ddsketch.NewDefaultDDSketch(0.01)
 		entry = &spanSketchEntry{
@@ -150,9 +182,7 @@ func (c *SpanSketchCache) Update(
 		entry.proto.ErrorCount++
 	}
 
-	if v, ok := span.Attributes().Get(translate.CardinalFieldSpanDuration); ok {
-		_ = entry.internal.Add(v.Double())
-	}
+	_ = entry.internal.Add(spanDuration)
 
 	hasException := false
 	for i := 0; i < span.Events().Len(); i++ {
@@ -179,18 +209,28 @@ func (c *SpanSketchCache) Update(
 	if !hasException && span.Status().Code() == ptrace.StatusCodeError {
 		exMsg := synthesizeErrorMessageFromSpan(span)
 		entry.proto.ExceptionCount++
-		if c.fpr != nil {
+
+		if exMsg == "" {
+			fp, ok := span.Attributes().Get(translate.CardinalFieldFingerprint)
+			if ok {
+				c.putException(span, resource, entry, fp.Int())
+			}
+		} else if c.fpr != nil {
 			fp, _, _, err := c.fpr.Fingerprint(exMsg)
 			if err == nil {
-				bytes, err := c.spanToJson(span, resource)
-				if err == nil {
-					entry.proto.ExceptionsMap[fp] = string(bytes)
-					entry.proto.ExceptionCountsMap[fp]++
-				}
+				c.putException(span, resource, entry, fp)
 			}
 		}
 	}
 	return tid
+}
+
+func (c *SpanSketchCache) putException(span ptrace.Span, resource pcommon.Resource, entry *spanSketchEntry, fp int64) {
+	bytes, err := c.spanToJson(span, resource)
+	if err == nil {
+		entry.proto.ExceptionsMap[fp] = string(bytes)
+		entry.proto.ExceptionCountsMap[fp]++
+	}
 }
 
 func (c *SpanSketchCache) spanToJson(src ptrace.Span, resource pcommon.Resource) ([]byte, error) {
@@ -224,18 +264,6 @@ func synthesizeErrorMessageFromSpan(span ptrace.Span) string {
 		}
 	}
 
-	// Fallback: dump all string attributes sorted lexicographically
-	if msg == "" {
-		var kvs []string
-		attr.Range(func(k string, v pcommon.Value) bool {
-			if v.Type() == pcommon.ValueTypeStr {
-				kvs = append(kvs, fmt.Sprintf("%s=%s", k, v.Str()))
-			}
-			return true
-		})
-		sort.Strings(kvs)
-		msg = fmt.Sprintf("attrs=[%s]", joinWithSep(kvs, " | "))
-	}
 	return msg
 }
 
@@ -245,17 +273,6 @@ func toStrValue(attrs pcommon.Map, key string) string {
 		return v.Str()
 	}
 	return ""
-}
-
-func joinWithSep(parts []string, sep string) string {
-	if len(parts) == 0 {
-		return ""
-	}
-	out := parts[0]
-	for _, p := range parts[1:] {
-		out += sep + p
-	}
-	return out
 }
 
 func (c *SpanSketchCache) flush() {
@@ -272,6 +289,15 @@ func (c *SpanSketchCache) flush() {
 
 		skMap.Range(func(tid, entryVal interface{}) bool {
 			entry := entryVal.(*spanSketchEntry)
+			errorCountTopK := c.getErrorCountTopK(entry.proto.MetricName)
+			errorCountTopK.CleanupExpired()
+			errorCountTopK.AddCount(entry.proto.Tid, int(entry.proto.ExceptionCount))
+
+			latencyTopK := c.getValueTopK(entry.proto.MetricName)
+			p50, err := entry.internal.GetValueAtQuantile(0.5)
+			if err == nil {
+				latencyTopK.Add(entry.proto.Tid, p50)
+			}
 
 			entry.mu.Lock()
 			entry.proto.Sketch = Encode(entry.internal)

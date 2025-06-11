@@ -36,6 +36,7 @@ message SpanSketchProto {
   // fingerprint -> exception occurrences
   map<int64, int64> exception_counts_map = 13;
   int64 parentTID = 14;
+  int64 tagFamilyId = 15;
 }
 
 // Wrapper for a list of span sketches to emit in a single batch
