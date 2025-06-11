@@ -199,48 +199,66 @@ func (c *GenericSketchCache) Update(
 
 func (c *GenericSketchCache) flush() {
 	now := time.Now().Truncate(c.interval).Unix()
-	list := &GenericSketchList{CustomerId: c.customerId, TelemetryType: c.telemetryType}
+	out := &GenericSketchList{
+		CustomerId:    c.customerId,
+		TelemetryType: c.telemetryType,
+	}
 
 	c.buckets.Range(func(intervalKey, v interface{}) bool {
 		interval := intervalKey.(int64)
 		if interval >= now {
+			// skip current/future buckets
 			return true
 		}
-
 		skMap := v.(*sync.Map)
-		skMap.Range(func(tid, val interface{}) bool {
-			entry := val.(*genericSketchEntry)
 
+		skMap.Range(func(_, val interface{}) bool {
+			entry := val.(*genericSketchEntry)
+			mn := entry.proto.MetricName
+			tid := entry.proto.Tid
+
+			// expire old entries
+			freqTK := c.getFreqTopK(mn)
+			freqTK.CleanupExpired()
+			valTK := c.getValueTopK(mn)
+			valTK.CleanupExpired()
+
+			var inTopK bool
 			switch entry.proto.MetricType {
 			case Count:
-				freqTopK := c.getFreqTopK(entry.proto.MetricName)
-				freqTopK.CleanupExpired()
-				count := int(math.Ceil(entry.internal.GetCount()))
-				freqTopK.AddCount(entry.proto.Tid, count)
-
+				// round up the count
+				cnt := int(math.Ceil(entry.internal.GetCount()))
+				inTopK = freqTK.AddCount(tid, cnt)
 			default:
-				valueTopK := c.getValueTopK(entry.proto.MetricName)
-				valueTopK.CleanupExpired()
-				p50, err := entry.internal.GetValueAtQuantile(0.5)
-				if err == nil {
-					valueTopK.Add(entry.proto.Tid, p50)
+				if p50, err := entry.internal.GetValueAtQuantile(0.5); err == nil {
+					inTopK = valTK.Add(tid, p50)
 				}
 			}
 
+			if !inTopK {
+				// not in freq or value top-K → skip
+				return true
+			}
+
+			// serialize & collect
 			entry.mu.Lock()
 			entry.proto.Sketch = Encode(entry.internal)
-			list.Sketches = append(list.Sketches, entry.proto)
+			out.Sketches = append(out.Sketches, entry.proto)
 			entry.mu.Unlock()
 
 			return true
 		})
+
 		c.buckets.Delete(intervalKey)
 		return true
 	})
 
-	if len(list.Sketches) > 0 {
-		if err := c.flushFunc(list); err != nil {
-			slog.Error("failed to flush generic sketches", slog.String("customerId", c.customerId), slog.String("error", err.Error()))
+	if len(out.Sketches) > 0 {
+		if err := c.flushFunc(out); err != nil {
+			slog.Error("failed to flush generic sketches",
+				slog.String("customerId", c.customerId),
+				slog.String("error", err.Error()),
+			)
 		}
 	}
 }

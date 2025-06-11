@@ -115,7 +115,7 @@ func (c *SpanSketchCache) getErrorCountTopK(metricName string) *TopKByFrequency 
 	return topK.(*TopKByFrequency)
 }
 
-func (c *SpanSketchCache) getValueTopK(metricName string) *TopKByValue {
+func (c *SpanSketchCache) getLatencyTopK(metricName string) *TopKByValue {
 	topK, _ := c.latencyTopKs.LoadOrStore(metricName, NewTopKByValue(c.maxK, 2*c.interval))
 	return topK.(*TopKByValue)
 }
@@ -141,7 +141,7 @@ func (c *SpanSketchCache) Update(
 		errorCountTopK := c.getErrorCountTopK(metricName)
 		shouldEligible = errorCountTopK.EligibleWithCount(tid, 1)
 	} else {
-		latencyTopK := c.getValueTopK(metricName)
+		latencyTopK := c.getLatencyTopK(metricName)
 		shouldEligible = latencyTopK.Eligible(spanDuration)
 	}
 
@@ -277,43 +277,61 @@ func toStrValue(attrs pcommon.Map, key string) string {
 
 func (c *SpanSketchCache) flush() {
 	now := time.Now().Truncate(c.interval).Unix()
-	list := &SpanSketchList{CustomerId: c.customerId}
+	out := &SpanSketchList{CustomerId: c.customerId}
 
 	c.buckets.Range(func(intervalKey, v interface{}) bool {
 		interval := intervalKey.(int64)
 		if interval >= now {
 			return true
 		}
-
 		skMap := v.(*sync.Map)
 
-		skMap.Range(func(tid, entryVal interface{}) bool {
+		// single pass—admit only if AddCount or Add returns true
+		skMap.Range(func(_, entryVal interface{}) bool {
 			entry := entryVal.(*spanSketchEntry)
-			errorCountTopK := c.getErrorCountTopK(entry.proto.MetricName)
-			errorCountTopK.CleanupExpired()
-			errorCountTopK.AddCount(entry.proto.Tid, int(entry.proto.ExceptionCount))
+			mn := entry.proto.MetricName
+			tid := entry.proto.Tid
 
-			latencyTopK := c.getValueTopK(entry.proto.MetricName)
+			// expire old top-K entries first
+			errorCountTopK := c.getErrorCountTopK(mn)
+			errorCountTopK.CleanupExpired()
+			latencyTopK := c.getLatencyTopK(mn)
 			latencyTopK.CleanupExpired()
-			p50, err := entry.internal.GetValueAtQuantile(0.5)
+
+			// update with this interval’s data; only returns true if tid ends up in top-K
+			inErr := errorCountTopK.AddCount(tid, int(entry.proto.ExceptionCount))
+
+			// compute p75 once
+			p75, err := entry.internal.GetValueAtQuantile(0.75)
+			inVal := false
 			if err == nil {
-				latencyTopK.Add(entry.proto.Tid, p50)
+				inVal = latencyTopK.Add(tid, p75)
 			}
 
+			// if not in either top-K, skip
+			if !inErr && !inVal {
+				return true
+			}
+
+			// otherwise serialize and emit
 			entry.mu.Lock()
 			entry.proto.Sketch = Encode(entry.internal)
-			list.Sketches = append(list.Sketches, entry.proto)
+			out.Sketches = append(out.Sketches, entry.proto)
 			entry.mu.Unlock()
 
 			return true
 		})
+
 		c.buckets.Delete(intervalKey)
 		return true
 	})
 
-	if len(list.Sketches) > 0 {
-		if err := c.flushFunc(list); err != nil {
-			slog.Error("failed to flush sketches", slog.String("customerId", c.customerId), slog.String("error", err.Error()))
+	if len(out.Sketches) > 0 {
+		if err := c.flushFunc(out); err != nil {
+			slog.Error("failed to flush sketches",
+				slog.String("customerId", c.customerId),
+				slog.String("error", err.Error()),
+			)
 		}
 	}
 }

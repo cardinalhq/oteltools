@@ -60,37 +60,38 @@ func NewTopKByValue(k int, ttl time.Duration) *TopKByValue {
 	}
 }
 
-func (t *TopKByValue) Add(tid int64, value float64) {
+func (t *TopKByValue) Add(tid int64, value float64) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	now := time.Now()
-
+	// update existing
 	if existing, ok := t.items[tid]; ok {
 		if value <= existing {
-			return // no improvement
+			return ok
 		}
 		t.items[tid] = value
-		if i, ok := t.h.index[tid]; ok {
-			t.h.items[i].Value = value
-			t.h.items[i].LastSeen = now
-			heap.Fix(t.h, i)
-		}
-		return
+		idx := t.h.index[tid]
+		t.h.items[idx].Value = value
+		t.h.items[idx].LastSeen = now
+		heap.Fix(t.h, idx)
+		return true
 	}
-
+	// add if capacity
 	if len(t.h.items) < t.k {
 		heap.Push(t.h, itemWithValue{Tid: tid, Value: value, LastSeen: now})
 		t.items[tid] = value
-		return
+		return true
 	}
-
+	// replace min if better
 	if value > t.h.items[0].Value {
 		evicted := heap.Pop(t.h).(itemWithValue)
 		delete(t.items, evicted.Tid)
 		heap.Push(t.h, itemWithValue{Tid: tid, Value: value, LastSeen: now})
 		t.items[tid] = value
+		return true
 	}
+	return false
 }
 
 func (t *TopKByValue) Eligible(value float64) bool {

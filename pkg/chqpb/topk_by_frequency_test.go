@@ -215,6 +215,52 @@ func TestTopKByFrequency_SortedOrder(t *testing.T) {
 	assert.Equal(t, int64(1), sorted[4].Count)
 }
 
+// Test TopKByFrequency.AddCount behavior and boolean return
+func TestTopKByFrequency_AddCount_Bool(t *testing.T) {
+	k := 3
+	ttl := time.Minute
+	topK := NewTopKByFrequency(k, ttl)
+
+	// Add initial entries: expect true
+	if !topK.AddCount(1, 1) {
+		t.Errorf("AddCount(1,1) = false; want true")
+	}
+	if !topK.AddCount(2, 2) {
+		t.Errorf("AddCount(2,2) = false; want true")
+	}
+	if !topK.AddCount(3, 3) {
+		t.Errorf("AddCount(3,3) = false; want true")
+	}
+
+	// Heap is full: AddCount for lower count -> false
+	if topK.AddCount(4, 1) {
+		t.Errorf("AddCount(4,1) = true; want false (1 <= min)")
+	}
+
+	// AddCount for higher count -> true and eviction of tid=1
+	if !topK.AddCount(4, 5) {
+		t.Errorf("AddCount(4,5) = false; want true (5 > min)")
+	}
+	// After eviction, tid=1 should no longer be eligible
+	if topK.Eligible(1) {
+		t.Errorf("Eligible(1) = true; want false (evicted)")
+	}
+	// tid=4 should be eligible
+	if !topK.Eligible(4) {
+		t.Errorf("Eligible(4) = false; want true (added)")
+	}
+
+	// Update existing tid with higher count -> true
+	if !topK.AddCount(4, 1) {
+		t.Errorf("AddCount(4,1) = false; want true (existing updated)")
+	}
+	// And count should have increased: SortedSlice()[0] should be tid=4
+	sorted := topK.SortedSlice()
+	if len(sorted) == 0 || sorted[0].Tid != 4 {
+		t.Errorf("SortedSlice()[0].Tid = %v; want 4", sorted[0].Tid)
+	}
+}
+
 // helper
 func extractTidsFreq(items []itemWithCount) []int64 {
 	out := make([]int64, len(items))

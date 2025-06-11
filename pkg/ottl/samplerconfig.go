@@ -81,11 +81,13 @@ type MetricExtractorConfig struct {
 
 type MetricSketchExtractorConfig struct {
 	RuleId              string              `json:"rule_id,omitempty" yaml:"rule_id,omitempty"`
+	Conditions          []string            `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 	MetricName          string              `json:"metric_name,omitempty" yaml:"metric_name,omitempty"`
 	MetricType          string              `json:"metric_type,omitempty" yaml:"metric_type,omitempty"`
 	MetricUnit          string              `json:"metric_unit,omitempty" yaml:"metric_unit,omitempty"`
 	LineDimensions      []map[string]string `json:"line_dimensions,omitempty" yaml:"line_dimensions,omitempty"`
 	AggregateDimensions map[string]string   `json:"aggregate_dimensions,omitempty" yaml:"aggregate_dimensions,omitempty"`
+	OutputMetricName    string              `json:"output_metric_name,omitempty" yaml:"output_metric_name,omitempty"`
 }
 
 type StatsEnrichment struct {

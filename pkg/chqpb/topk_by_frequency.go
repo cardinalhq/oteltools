@@ -65,37 +65,38 @@ func NewTopKByFrequency(k int, ttl time.Duration) *TopKByFrequency {
 	}
 }
 
-func (t *TopKByFrequency) AddCount(tid int64, count int) {
+func (t *TopKByFrequency) AddCount(tid int64, count int) bool {
 	if count <= 0 {
-		return
+		return false
 	}
-
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	t.count[tid] += int64(count)
 	now := time.Now()
-
+	// if already in heap, update & keep it
 	if i, ok := t.h.index[tid]; ok {
 		t.h.items[i].Count = t.count[tid]
 		t.h.items[i].LastSeen = now
 		heap.Fix(t.h, i)
-		return
+		return true
 	}
-
+	// if capacity, we can always add
 	if len(t.h.items) < t.k {
 		heap.Push(t.h, itemWithCount{Tid: tid, Count: t.count[tid], LastSeen: now})
-		return
+		return true
 	}
-
+	// only replace if bigger than current min
 	if t.count[tid] > t.h.items[0].Count {
 		heap.Pop(t.h)
 		heap.Push(t.h, itemWithCount{Tid: tid, Count: t.count[tid], LastSeen: now})
+		return true
 	}
+	return false
 }
 
-func (t *TopKByFrequency) Add(tid int64) {
-	t.AddCount(tid, 1)
+func (t *TopKByFrequency) Add(tid int64) bool {
+	return t.AddCount(tid, 1)
 }
 
 func (t *TopKByFrequency) Eligible(tid int64) bool {
