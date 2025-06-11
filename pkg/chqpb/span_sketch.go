@@ -24,13 +24,14 @@ package chqpb
 
 import (
 	"fmt"
-	"go.opentelemetry.io/collector/pdata/pcommon"
-	"go.opentelemetry.io/collector/pdata/ptrace"
-	"golang.org/x/exp/slog"
 	"hash/fnv"
 	"sort"
 	"sync"
 	"time"
+
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/ptrace"
+	"golang.org/x/exp/slog"
 
 	"github.com/DataDog/sketches-go/ddsketch"
 	"github.com/DataDog/sketches-go/ddsketch/mapping"
@@ -179,16 +180,27 @@ func (c *SketchCache) Update(
 	if !hasException && span.Status().Code() == ptrace.StatusCodeError {
 		exMsg := synthesizeErrorMessageFromSpan(span)
 		entry.proto.ExceptionCount++
-		if c.fpr != nil {
+
+		if exMsg == "" {
+			// Fallback: use the fingerprint from the span attributes
+			fp, ok := span.Attributes().Get(translate.CardinalFieldFingerprint)
+			if ok {
+				c.putException(span, resource, entry, fp.Int())
+			}
+		} else if c.fpr != nil {
 			fp, _, _, err := c.fpr.Fingerprint(exMsg)
 			if err == nil {
-				bytes, err := c.spanToJson(span, resource)
-				if err == nil {
-					entry.proto.ExceptionsMap[fp] = string(bytes)
-					entry.proto.ExceptionCountsMap[fp]++
-				}
+				c.putException(span, resource, entry, fp)
 			}
 		}
+	}
+}
+
+func (c *SketchCache) putException(span ptrace.Span, resource pcommon.Resource, entry *sketchEntry, fp int64) {
+	bytes, err := c.spanToJson(span, resource)
+	if err == nil {
+		entry.proto.ExceptionsMap[fp] = string(bytes)
+		entry.proto.ExceptionCountsMap[fp]++
 	}
 }
 
@@ -221,19 +233,6 @@ func synthesizeErrorMessageFromSpan(span ptrace.Span) string {
 			}
 			msg += val
 		}
-	}
-
-	// Fallback: dump all string attributes sorted lexicographically
-	if msg == "" {
-		var kvs []string
-		attr.Range(func(k string, v pcommon.Value) bool {
-			if v.Type() == pcommon.ValueTypeStr {
-				kvs = append(kvs, fmt.Sprintf("%s=%s", k, v.Str()))
-			}
-			return true
-		})
-		sort.Strings(kvs)
-		msg = fmt.Sprintf("attrs=[%s]", joinWithSep(kvs, " | "))
 	}
 	return msg
 }
