@@ -172,9 +172,11 @@ type MetricSketchExtractor struct {
 	RuleID              string
 	MetricName          string
 	MetricType          string
+	Conditions          []*ottl.Condition[ottldatapoint.TransformContext]
 	MetricUnit          string
 	LineDimensions      map[int64]map[string]*ottl.Statement[ottldatapoint.TransformContext]
 	AggregateDimensions map[string]*ottl.Statement[ottldatapoint.TransformContext]
+	OutputMetricName    string
 }
 
 func (l LogExtractor) EvalLogConditions(ctx context.Context, transformCtx ottllog.TransformContext) (bool, error) {
@@ -294,11 +296,18 @@ func ParseMetricSketchExtractorConfigs(extractorConfigs []MetricSketchExtractorC
 	parser, _ := ottldatapoint.NewParser(ToFactory[ottldatapoint.TransformContext](), component.TelemetrySettings{Logger: logger})
 
 	for _, extractorConfig := range extractorConfigs {
+		conditions, err := parser.ParseConditions(extractorConfig.Conditions)
+		if err != nil {
+			return nil, err
+		}
+
 		m := &MetricSketchExtractor{
-			RuleID:     extractorConfig.RuleId,
-			MetricName: extractorConfig.MetricName,
-			MetricType: extractorConfig.MetricType,
-			MetricUnit: extractorConfig.MetricUnit,
+			RuleID:           extractorConfig.RuleId,
+			Conditions:       conditions,
+			MetricName:       extractorConfig.MetricName,
+			MetricType:       extractorConfig.MetricType,
+			OutputMetricName: extractorConfig.OutputMetricName,
+			MetricUnit:       extractorConfig.MetricUnit,
 		}
 		lineDimensionsByTagFamilyID := make(map[int64]map[string]*ottl.Statement[ottldatapoint.TransformContext])
 		for _, dim := range extractorConfig.LineDimensions {

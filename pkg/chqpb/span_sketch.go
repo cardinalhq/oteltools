@@ -301,11 +301,10 @@ func (c *SpanSketchCache) flush() {
 			// update with this interval’s data; only returns true if tid ends up in top-K
 			inErr := errorCountTopK.AddCount(tid, int(entry.proto.ExceptionCount))
 
-			// compute p75 once
-			p75, err := entry.internal.GetValueAtQuantile(0.75)
+			p50, err := entry.internal.GetValueAtQuantile(0.5)
 			inVal := false
 			if err == nil {
-				inVal = latencyTopK.Add(tid, p75)
+				inVal = latencyTopK.Add(tid, p50)
 			}
 
 			// if not in either top-K, skip
