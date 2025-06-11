@@ -27,6 +27,11 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	MetricName = "metricName"
+	MetricType = "metricType"
+)
+
 type LogExtractor struct {
 	Conditions          []*ottl.Condition[ottllog.TransformContext]
 	LineDimensions      map[int64]map[string]*ottl.Statement[ottllog.TransformContext]
@@ -47,6 +52,11 @@ func (l LogExtractor) ExtractLineAttributes(ctx context.Context, tCtx ottllog.Tr
 }
 
 func (l LogExtractor) ExtractAggregateAttributes(ctx context.Context, tCtx ottllog.TransformContext) map[string]any {
+	if len(l.AggregateDimensions) == 0 {
+		mapAttrs := make(map[string]any)
+		mapAttrs[MetricName] = l.MetricName
+		mapAttrs[MetricType] = l.MetricType
+	}
 	return l.extractAttributes(ctx, tCtx, l.AggregateDimensions)
 }
 
@@ -139,6 +149,11 @@ func (s SpanExtractor) ExtractLineAttributes(ctx context.Context, tCtx ottlspan.
 }
 
 func (s SpanExtractor) ExtractAggregateAttributes(ctx context.Context, tCtx ottlspan.TransformContext) map[string]any {
+	if len(s.AggregateDimensions) == 0 {
+		mapAttrs := make(map[string]any)
+		mapAttrs[MetricName] = s.MetricName
+		mapAttrs[MetricType] = s.MetricType
+	}
 	return s.extractAttributes(ctx, tCtx, s.AggregateDimensions)
 }
 
@@ -327,6 +342,11 @@ func (m MetricSketchExtractor) ExtractLineAttributes(ctx context.Context, tCtx o
 }
 
 func (m MetricSketchExtractor) ExtractAggregateAttributes(ctx context.Context, tCtx ottldatapoint.TransformContext) map[string]any {
+	if len(m.AggregateDimensions) == 0 {
+		mapAttrs := make(map[string]any)
+		mapAttrs[MetricName] = m.MetricName
+		mapAttrs[MetricType] = m.MetricType
+	}
 	return m.extractAttributes(ctx, tCtx, m.AggregateDimensions)
 }
 

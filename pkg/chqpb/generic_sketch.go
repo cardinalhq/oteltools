@@ -23,6 +23,7 @@
 package chqpb
 
 import (
+	"math"
 	"sync"
 	"time"
 
@@ -42,14 +43,18 @@ type GenericSketchCache struct {
 	interval      time.Duration
 	telemetryType string
 	flushFunc     func(*GenericSketchList) error
+	freqTopKs     sync.Map
+	valueTopKs    sync.Map
+	maxK          int
 }
 
-func NewGenericSketchCache(interval time.Duration, cid, telemetryType string, flushFunc func(*GenericSketchList) error) *GenericSketchCache {
+func NewGenericSketchCache(interval time.Duration, cid, telemetryType string, k int, flushFunc func(*GenericSketchList) error) *GenericSketchCache {
 	c := &GenericSketchCache{
 		interval:      interval,
 		customerId:    cid,
 		flushFunc:     flushFunc,
 		telemetryType: telemetryType,
+		maxK:          k,
 	}
 	go c.loop()
 	return c
@@ -62,6 +67,20 @@ func (c *GenericSketchCache) loop() {
 	for range ticker.C {
 		c.flush()
 	}
+}
+
+const (
+	Count = "count"
+)
+
+func (c *GenericSketchCache) getFreqTopK(metricName string) *TopKByFrequency {
+	topK, _ := c.freqTopKs.LoadOrStore(metricName, NewTopKByFrequency(c.maxK, 5*c.interval))
+	return topK.(*TopKByFrequency)
+}
+
+func (c *GenericSketchCache) getValueTopK(metricName string) *TopKByValue {
+	topK, _ := c.valueTopKs.LoadOrStore(metricName, NewTopKByValue(c.maxK))
+	return topK.(*TopKByValue)
 }
 
 func (c *GenericSketchCache) UpdateWithCount(
@@ -81,8 +100,22 @@ func (c *GenericSketchCache) UpdateWithCount(
 	skMap := bucketIface.(*sync.Map)
 
 	val, ok := skMap.Load(tid)
+
+	var shouldAdd = false
+	switch metricType {
+	case Count:
+		freqTopK := c.getFreqTopK(metricName)
+		shouldAdd = freqTopK.EligibleWithCount(tid, int(count))
+	default:
+		valueTopK := c.getValueTopK(metricName)
+		shouldAdd = valueTopK.Eligible(value)
+	}
+
 	var entry *genericSketchEntry
 	if !ok {
+		if !shouldAdd {
+			return tid
+		}
 		m, _ := ddsketch.NewDefaultDDSketch(0.01)
 		entry = &genericSketchEntry{
 			internal: m,
@@ -123,9 +156,22 @@ func (c *GenericSketchCache) Update(
 	bucketIface, _ := c.buckets.LoadOrStore(interval, &sync.Map{})
 	skMap := bucketIface.(*sync.Map)
 
+	var shouldAdd = false
+	switch metricType {
+	case Count:
+		freqTopK := c.getFreqTopK(metricName)
+		shouldAdd = freqTopK.Eligible(tid)
+	default:
+		valueTopK := c.getValueTopK(metricName)
+		shouldAdd = valueTopK.Eligible(value)
+	}
+
 	val, ok := skMap.Load(tid)
 	var entry *genericSketchEntry
 	if !ok {
+		if !shouldAdd {
+			return tid
+		}
 		m, _ := ddsketch.NewDefaultDDSketch(0.01)
 		entry = &genericSketchEntry{
 			internal: m,
@@ -164,6 +210,21 @@ func (c *GenericSketchCache) flush() {
 		skMap := v.(*sync.Map)
 		skMap.Range(func(tid, val interface{}) bool {
 			entry := val.(*genericSketchEntry)
+
+			switch entry.proto.MetricType {
+			case Count:
+				freqTopK := c.getFreqTopK(entry.proto.MetricName)
+				freqTopK.CleanupExpired()
+				count := int(math.Ceil(entry.internal.GetCount()))
+				freqTopK.AddCount(entry.proto.Tid, count)
+
+			default:
+				valueTopK := c.getValueTopK(entry.proto.MetricName)
+				p50, err := entry.internal.GetValueAtQuantile(0.5)
+				if err == nil {
+					valueTopK.Add(entry.proto.Tid, p50)
+				}
+			}
 
 			entry.mu.Lock()
 			entry.proto.Sketch = Encode(entry.internal)
