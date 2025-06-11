@@ -375,6 +375,19 @@ func (m MetricSketchExtractor) extractAttributes(ctx context.Context, tCtx ottld
 	return attrMap
 }
 
+func (s MetricSketchExtractor) EvalMetricConditions(ctx context.Context, transformCtx ottldatapoint.TransformContext) (bool, error) {
+	for _, condition := range s.Conditions {
+		matches, err := condition.Eval(ctx, transformCtx)
+		if err != nil {
+			return false, err
+		}
+		if !matches {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 // This is roughly 5x faster than using fmt.Sprintf()
 func valueStatement(value string) string {
 	return "value(" + value + ")"
