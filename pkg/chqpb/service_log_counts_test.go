@@ -1,6 +1,7 @@
 package chqpb
 
 import (
+	"github.com/cardinalhq/oteltools/pkg/translate"
 	"testing"
 	"time"
 
@@ -23,6 +24,8 @@ func createTestLogRecord(ts time.Time, severity plog.SeverityNumber, body string
 	sls := rs.ScopeLogs().AppendEmpty()
 	lr := sls.LogRecords().AppendEmpty()
 	lr.SetTimestamp(pcommon.NewTimestampFromTime(ts))
+	lr.Attributes().PutInt(translate.CardinalFieldFingerprint, 1)
+
 	lr.SetSeverityNumber(severity)
 	lr.Body().SetStr(body)
 

@@ -62,19 +62,33 @@ type StatsProcessorConfig struct {
 }
 
 type ExtractMetricsProcessorConfig struct {
-	LogMetricExtractors  []MetricExtractorConfig `json:"log_metric_extractors,omitempty" yaml:"log_metric_extractors,omitempty"`
-	SpanMetricExtractors []MetricExtractorConfig `json:"span_metric_extractors,omitempty" yaml:"span_metric_extractors,omitempty"`
+	LogMetricExtractors    []MetricExtractorConfig       `json:"log_metric_extractors,omitempty" yaml:"log_metric_extractors,omitempty"`
+	SpanMetricExtractors   []MetricExtractorConfig       `json:"span_metric_extractors,omitempty" yaml:"span_metric_extractors,omitempty"`
+	MetricSketchExtractors []MetricSketchExtractorConfig `json:"metric_sketch_extractors,omitempty" yaml:"metric_sketch_extractors,omitempty"`
 }
 
 type MetricExtractorConfig struct {
-	RuleId      string            `json:"rule_id,omitempty" yaml:"rule_id,omitempty"`
-	Conditions  []string          `json:"conditions,omitempty" yaml:"conditions,omitempty"`
-	Dimensions  map[string]string `json:"dimensions,omitempty" yaml:"dimensions,omitempty"`
-	MetricName  string            `json:"metric_name,omitempty" yaml:"metric_name,omitempty"`
-	MetricUnit  string            `json:"metric_unit,omitempty" yaml:"metric_unit,omitempty"`
-	MetricType  string            `json:"metric_type,omitempty" yaml:"metric_type,omitempty"`
-	MetricValue string            `json:"metric_value,omitempty" yaml:"metric_value,omitempty"`
-	Version     int               `json:"version,omitempty" yaml:"version,omitempty"`
+	RuleId              string              `json:"rule_id,omitempty" yaml:"rule_id,omitempty"`
+	Conditions          []string            `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	LineDimensions      []map[string]string `json:"line_dimensions,omitempty" yaml:"line_dimensions,omitempty"`
+	AggregateDimensions map[string]string   `json:"aggregate_dimensions,omitempty" yaml:"aggregate_dimensions,omitempty"`
+	MetricName          string              `json:"metric_name,omitempty" yaml:"metric_name,omitempty"`
+	MetricUnit          string              `json:"metric_unit,omitempty" yaml:"metric_unit,omitempty"`
+	MetricType          string              `json:"metric_type,omitempty" yaml:"metric_type,omitempty"`
+	MetricValue         string              `json:"metric_value,omitempty" yaml:"metric_value,omitempty"`
+	Version             int                 `json:"version,omitempty" yaml:"version,omitempty"`
+}
+
+type MetricSketchExtractorConfig struct {
+	RuleId              string              `json:"rule_id,omitempty" yaml:"rule_id,omitempty"`
+	Conditions          []string            `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	MetricName          string              `json:"metric_name,omitempty" yaml:"metric_name,omitempty"`
+	MetricType          string              `json:"metric_type,omitempty" yaml:"metric_type,omitempty"`
+	MetricUnit          string              `json:"metric_unit,omitempty" yaml:"metric_unit,omitempty"`
+	LineDimensions      []map[string]string `json:"line_dimensions,omitempty" yaml:"line_dimensions,omitempty"`
+	AggregateDimensions map[string]string   `json:"aggregate_dimensions,omitempty" yaml:"aggregate_dimensions,omitempty"`
+	OutputMetricName    string              `json:"output_metric_name,omitempty" yaml:"output_metric_name,omitempty"`
+	Version             int                 `json:"version,omitempty" yaml:"version,omitempty"`
 }
 
 type StatsEnrichment struct {

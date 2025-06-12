@@ -35,7 +35,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// A single log sketch for a TID (service + cluster + namespace) and interval
 type ServiceLogCountProto struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ServiceName   string                 `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
@@ -157,7 +156,7 @@ func (x *ServiceLogCountProto) GetExceptionCounts() map[int64]int64 {
 	return nil
 }
 
-// Wrapper for a list of log sketches to emit in a single batch
+// Wrapper for a list of log counts to emit in a single batch
 type ServiceLogCountList struct {
 	state         protoimpl.MessageState  `protogen:"open.v1"`
 	Sketches      []*ServiceLogCountProto `protobuf:"bytes,1,rep,name=sketches,proto3" json:"sketches,omitempty"`

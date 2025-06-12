@@ -129,8 +129,8 @@ func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog
 		if fpFound {
 			fp := fpVal.Int()
 			entry.proto.ErrorCount++
+			entry.proto.ExceptionCount++ // only bump for first‐time fp
 			if _, exists := entry.proto.ExceptionMap[fp]; !exists {
-				entry.proto.ExceptionCount++ // only bump for first‐time fp
 				bytes, err := c.logToJson(logRecord, resource)
 				if err == nil {
 					entry.proto.ExceptionMap[fp] = string(bytes)

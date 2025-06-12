@@ -37,13 +37,10 @@ const (
 
 // A single span sketch for a metric and timeseries
 type SpanSketchProto struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MetricName    string                 `protobuf:"bytes,1,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
-	ServiceName   string                 `protobuf:"bytes,2,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	NamespaceName string                 `protobuf:"bytes,3,opt,name=namespace_name,json=namespaceName,proto3" json:"namespace_name,omitempty"`
-	ClusterName   string                 `protobuf:"bytes,4,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
-	Tid           string                 `protobuf:"bytes,5,opt,name=tid,proto3" json:"tid,omitempty"`
-	Interval      int64                  `protobuf:"varint,6,opt,name=interval,proto3" json:"interval,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	MetricName string                 `protobuf:"bytes,1,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
+	Tid        int64                  `protobuf:"varint,5,opt,name=tid,proto3" json:"tid,omitempty"`
+	Interval   int64                  `protobuf:"varint,6,opt,name=interval,proto3" json:"interval,omitempty"`
 	// Map of tag key to tag value
 	Tags map[string]string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Encoded DDSketch bytes
@@ -55,6 +52,8 @@ type SpanSketchProto struct {
 	ExceptionsMap map[int64]string `protobuf:"bytes,12,rep,name=exceptions_map,json=exceptionsMap,proto3" json:"exceptions_map,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// fingerprint -> exception occurrences
 	ExceptionCountsMap map[int64]int64 `protobuf:"bytes,13,rep,name=exception_counts_map,json=exceptionCountsMap,proto3" json:"exception_counts_map,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	ParentTID          int64           `protobuf:"varint,14,opt,name=parentTID,proto3" json:"parentTID,omitempty"`
+	TagFamilyId        int64           `protobuf:"varint,15,opt,name=tagFamilyId,proto3" json:"tagFamilyId,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -96,32 +95,11 @@ func (x *SpanSketchProto) GetMetricName() string {
 	return ""
 }
 
-func (x *SpanSketchProto) GetServiceName() string {
-	if x != nil {
-		return x.ServiceName
-	}
-	return ""
-}
-
-func (x *SpanSketchProto) GetNamespaceName() string {
-	if x != nil {
-		return x.NamespaceName
-	}
-	return ""
-}
-
-func (x *SpanSketchProto) GetClusterName() string {
-	if x != nil {
-		return x.ClusterName
-	}
-	return ""
-}
-
-func (x *SpanSketchProto) GetTid() string {
+func (x *SpanSketchProto) GetTid() int64 {
 	if x != nil {
 		return x.Tid
 	}
-	return ""
+	return 0
 }
 
 func (x *SpanSketchProto) GetInterval() int64 {
@@ -178,6 +156,20 @@ func (x *SpanSketchProto) GetExceptionCountsMap() map[int64]int64 {
 		return x.ExceptionCountsMap
 	}
 	return nil
+}
+
+func (x *SpanSketchProto) GetParentTID() int64 {
+	if x != nil {
+		return x.ParentTID
+	}
+	return 0
+}
+
+func (x *SpanSketchProto) GetTagFamilyId() int64 {
+	if x != nil {
+		return x.TagFamilyId
+	}
+	return 0
 }
 
 // Wrapper for a list of span sketches to emit in a single batch
@@ -237,14 +229,11 @@ var File_spansketch_proto protoreflect.FileDescriptor
 
 const file_spansketch_proto_rawDesc = "" +
 	"\n" +
-	"\x10spansketch.proto\x12\x05chqpb\"\xfc\x05\n" +
+	"\x10spansketch.proto\x12\x05chqpb\"\xcf\x05\n" +
 	"\x0fSpanSketchProto\x12\x1f\n" +
 	"\vmetric_name\x18\x01 \x01(\tR\n" +
-	"metricName\x12!\n" +
-	"\fservice_name\x18\x02 \x01(\tR\vserviceName\x12%\n" +
-	"\x0enamespace_name\x18\x03 \x01(\tR\rnamespaceName\x12!\n" +
-	"\fcluster_name\x18\x04 \x01(\tR\vclusterName\x12\x10\n" +
-	"\x03tid\x18\x05 \x01(\tR\x03tid\x12\x1a\n" +
+	"metricName\x12\x10\n" +
+	"\x03tid\x18\x05 \x01(\x03R\x03tid\x12\x1a\n" +
 	"\binterval\x18\x06 \x01(\x03R\binterval\x124\n" +
 	"\x04tags\x18\a \x03(\v2 .chqpb.SpanSketchProto.TagsEntryR\x04tags\x12\x16\n" +
 	"\x06sketch\x18\b \x01(\fR\x06sketch\x12\x1f\n" +
@@ -255,7 +244,9 @@ const file_spansketch_proto_rawDesc = "" +
 	"errorCount\x12'\n" +
 	"\x0fexception_count\x18\v \x01(\x03R\x0eexceptionCount\x12P\n" +
 	"\x0eexceptions_map\x18\f \x03(\v2).chqpb.SpanSketchProto.ExceptionsMapEntryR\rexceptionsMap\x12`\n" +
-	"\x14exception_counts_map\x18\r \x03(\v2..chqpb.SpanSketchProto.ExceptionCountsMapEntryR\x12exceptionCountsMap\x1a7\n" +
+	"\x14exception_counts_map\x18\r \x03(\v2..chqpb.SpanSketchProto.ExceptionCountsMapEntryR\x12exceptionCountsMap\x12\x1c\n" +
+	"\tparentTID\x18\x0e \x01(\x03R\tparentTID\x12 \n" +
+	"\vtagFamilyId\x18\x0f \x01(\x03R\vtagFamilyId\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a@\n" +

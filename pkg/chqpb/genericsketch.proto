@@ -20,27 +20,21 @@ option go_package = ".;chqpb";
 
 
 // A single span sketch for a metric and timeseries
-message SpanSketchProto {
+message GenericSketchProto {
   string metric_name = 1;
-  int64 tid = 5;
-  int64 interval = 6;
+  string metric_type = 2;
+  int64 tid = 3;
+  int64 interval = 4;
   // Map of tag key to tag value
-  map<string, string> tags = 7;
-  // Encoded DDSketch bytes
-  bytes sketch = 8;
-  int64 total_count = 9;
-  int64 error_count = 10;
-  int64 exception_count = 11;
-  // fingerprint -> exception message
-  map<int64, string> exceptions_map = 12;
-  // fingerprint -> exception occurrences
-  map<int64, int64> exception_counts_map = 13;
-  int64 parentTID = 14;
-  int64 tagFamilyId = 15;
+  map<string, string> tags = 5;
+  bytes sketch = 6;
+  int64 parentTID = 7;
+  int64 tagFamilyId = 8;
 }
 
 // Wrapper for a list of span sketches to emit in a single batch
-message SpanSketchList {
-  repeated SpanSketchProto sketches = 1;
+message GenericSketchList {
+  repeated GenericSketchProto sketches = 1;
   string customer_id = 2;
+  string telemetryType = 3;
 }
