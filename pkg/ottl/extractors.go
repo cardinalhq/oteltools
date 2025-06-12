@@ -110,7 +110,14 @@ func parseLogExtractorConfig(extractorConfig MetricExtractorConfig, parser ottl.
 		}
 		aggregateDimensions[key] = statement
 	}
-	metricValue, _ := parser.ParseStatement(valueStatement(extractorConfig.MetricValue))
+
+	var metricValue *ottl.Statement[ottllog.TransformContext]
+	if extractorConfig.MetricValue != "" {
+		metricValue, err = parser.ParseStatement(valueStatement(extractorConfig.MetricValue))
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return &LogExtractor{
 		RuleID:              extractorConfig.RuleId,
@@ -246,7 +253,13 @@ func parseSpanExtractorConfig(
 		aggregateDimensions[key] = statement
 	}
 
-	metricValue, _ := parser.ParseStatement(valueStatement(extractorConfig.MetricValue))
+	var metricValue *ottl.Statement[ottlspan.TransformContext]
+	if extractorConfig.MetricValue != "" {
+		metricValue, err = parser.ParseStatement(valueStatement(extractorConfig.MetricValue))
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return &SpanExtractor{
 		RuleID:              extractorConfig.RuleId,
