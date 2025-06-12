@@ -88,6 +88,7 @@ type MetricSketchExtractorConfig struct {
 	LineDimensions      []map[string]string `json:"line_dimensions,omitempty" yaml:"line_dimensions,omitempty"`
 	AggregateDimensions map[string]string   `json:"aggregate_dimensions,omitempty" yaml:"aggregate_dimensions,omitempty"`
 	OutputMetricName    string              `json:"output_metric_name,omitempty" yaml:"output_metric_name,omitempty"`
+	Version             int                 `json:"version,omitempty" yaml:"version,omitempty"`
 }
 
 type StatsEnrichment struct {
