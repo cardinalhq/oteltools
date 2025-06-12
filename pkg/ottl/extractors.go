@@ -246,10 +246,7 @@ func parseSpanExtractorConfig(
 		aggregateDimensions[key] = statement
 	}
 
-	metricValue, err := parser.ParseStatement(valueStatement(extractorConfig.MetricValue))
-	if err != nil {
-		return nil, err
-	}
+	metricValue, _ := parser.ParseStatement(valueStatement(extractorConfig.MetricValue))
 
 	return &SpanExtractor{
 		RuleID:              extractorConfig.RuleId,
