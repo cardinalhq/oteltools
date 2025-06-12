@@ -286,38 +286,45 @@ func (c *SpanSketchCache) flush() {
 		}
 		skMap := v.(*sync.Map)
 
-		// single pass—admit only if AddCount or Add returns true
-		skMap.Range(func(_, entryVal interface{}) bool {
-			entry := entryVal.(*spanSketchEntry)
-			mn := entry.proto.MetricName
-			tid := entry.proto.Tid
+		// ─── Phase 1: Populate both heaps ─────────────────────────────────
+		skMap.Range(func(_, val interface{}) bool {
+			entry := val.(*spanSketchEntry)
+			mn, tid := entry.proto.MetricName, entry.proto.Tid
 
-			// expire old top-K entries first
-			errorCountTopK := c.getErrorCountTopK(mn)
-			errorCountTopK.CleanupExpired()
-			latencyTopK := c.getLatencyTopK(mn)
-			latencyTopK.CleanupExpired()
+			// Expire old entries
+			errTK := c.getErrorCountTopK(mn)
+			errTK.CleanupExpired()
+			latTK := c.getLatencyTopK(mn)
+			latTK.CleanupExpired()
 
-			// update with this interval’s data; only returns true if tid ends up in top-K
-			inErr := errorCountTopK.AddCount(tid, int(entry.proto.ExceptionCount))
-
-			p50, err := entry.internal.GetValueAtQuantile(0.5)
-			inVal := false
-			if err == nil {
-				inVal = latencyTopK.Add(tid, p50)
+			// Update both heaps based on this interval’s data
+			errTK.AddCount(tid, int(entry.proto.ExceptionCount))
+			if p50, err := entry.internal.GetValueAtQuantile(0.5); err == nil {
+				latTK.Add(tid, p50)
 			}
+			return true
+		})
 
-			// if not in either top-K, skip
+		// ─── Phase 2: Emit only the final top-K winners ─────────────────────
+		skMap.Range(func(_, val interface{}) bool {
+			entry := val.(*spanSketchEntry)
+			mn, tid := entry.proto.MetricName, entry.proto.Tid
+
+			errTK := c.getErrorCountTopK(mn)
+			latTK := c.getLatencyTopK(mn)
+
+			// Check membership in each heap’s index
+			_, inErr := errTK.h.index[tid]
+			_, inVal := latTK.h.index[tid]
 			if !inErr && !inVal {
 				return true
 			}
 
-			// otherwise serialize and emit
+			// Serialize & collect
 			entry.mu.Lock()
 			entry.proto.Sketch = Encode(entry.internal)
 			out.Sketches = append(out.Sketches, entry.proto)
 			entry.mu.Unlock()
-
 			return true
 		})
 

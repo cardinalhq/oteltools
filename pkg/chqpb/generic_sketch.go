@@ -207,36 +207,55 @@ func (c *GenericSketchCache) flush() {
 	c.buckets.Range(func(intervalKey, v interface{}) bool {
 		interval := intervalKey.(int64)
 		if interval >= now {
-			// skip current/future buckets
 			return true
 		}
 		skMap := v.(*sync.Map)
 
+		// ─── Phase 1: Populate both heaps ─────────────────────────────────
 		skMap.Range(func(_, val interface{}) bool {
 			entry := val.(*genericSketchEntry)
-			mn := entry.proto.MetricName
-			tid := entry.proto.Tid
+			mn, tid := entry.proto.MetricName, entry.proto.Tid
 
-			// expire old entries
+			// 1a) Expire old entries
 			freqTK := c.getFreqTopK(mn)
 			freqTK.CleanupExpired()
 			valTK := c.getValueTopK(mn)
 			valTK.CleanupExpired()
 
-			var inTopK bool
+			// 1b) Update with this TID’s final score for the interval
 			switch entry.proto.MetricType {
 			case Count:
-				// round up the count
 				cnt := int(math.Ceil(entry.internal.GetCount()))
-				inTopK = freqTK.AddCount(tid, cnt)
+				freqTK.AddCount(tid, cnt)
 			default:
 				if p50, err := entry.internal.GetValueAtQuantile(0.5); err == nil {
-					inTopK = valTK.Add(tid, p50)
+					valTK.Add(tid, p50)
 				}
 			}
+			return true
+		})
 
-			if !inTopK {
-				// not in freq or value top-K → skip
+		// ─── Phase 2: Emit *only* the winners ─────────────────────────────
+		skMap.Range(func(_, val interface{}) bool {
+			entry := val.(*genericSketchEntry)
+			mn, tid := entry.proto.MetricName, entry.proto.Tid
+
+			freqTK := c.getFreqTopK(mn)
+			valTK := c.getValueTopK(mn)
+
+			inFreq := false
+			if entry.proto.MetricType == Count {
+				// if tid sits in the heap’s index, it’s one of the top-K
+				_, inFreq = freqTK.h.index[tid]
+			}
+
+			inVal := false
+			if entry.proto.MetricType != Count {
+				_, inVal = valTK.h.index[tid]
+			}
+
+			if !inFreq && !inVal {
+				// neither top-K by count nor by value → skip
 				return true
 			}
 
@@ -245,7 +264,6 @@ func (c *GenericSketchCache) flush() {
 			entry.proto.Sketch = Encode(entry.internal)
 			out.Sketches = append(out.Sketches, entry.proto)
 			entry.mu.Unlock()
-
 			return true
 		})
 

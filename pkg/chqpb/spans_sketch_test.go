@@ -88,7 +88,7 @@ func TestSketchCache_FlushAndGrouping(t *testing.T) {
 
 	res := pcommon.NewResource()
 	res.Attributes().PutStr(string(semconv.ServiceNameKey), "auth")
-	cache := NewSpanSketchCache(time.Minute, "cust1", 1, flushFn)
+	cache := NewSpanSketchCache(time.Minute, "cust1", 2, flushFn)
 
 	// Span A: auth service
 	spanA := ptrace.NewSpan()
