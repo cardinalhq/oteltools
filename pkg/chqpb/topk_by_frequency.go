@@ -74,25 +74,55 @@ func (t *TopKByFrequency) AddCount(tid int64, count int) bool {
 
 	t.count[tid] += int64(count)
 	now := time.Now()
-	// if already in heap, update & keep it
+
+	// Check if already in heap
 	if i, ok := t.h.index[tid]; ok {
-		t.h.items[i].Count = t.count[tid]
-		t.h.items[i].LastSeen = now
-		heap.Fix(t.h, i)
-		return true
+		// Validate index bounds before accessing
+		if i < 0 || i >= len(t.h.items) {
+			// Index is corrupted - rebuild the index
+			t.rebuildIndex()
+			// Try to find the item again after rebuilding
+			if newI, stillOk := t.h.index[tid]; stillOk && newI >= 0 && newI < len(t.h.items) {
+				t.h.items[newI].Count = t.count[tid]
+				t.h.items[newI].LastSeen = now
+				heap.Fix(t.h, newI)
+				return true
+			}
+			// If still not found after rebuild, treat as new item
+		} else {
+			// Valid index - update the item
+			t.h.items[i].Count = t.count[tid]
+			t.h.items[i].LastSeen = now
+			heap.Fix(t.h, i)
+			return true
+		}
 	}
-	// if capacity, we can always add
+
+	// If heap has capacity, add new item
 	if len(t.h.items) < t.k {
 		heap.Push(t.h, itemWithCount{Tid: tid, Count: t.count[tid], LastSeen: now})
 		return true
 	}
-	// only replace if bigger than current min
-	if t.count[tid] > t.h.items[0].Count {
-		heap.Pop(t.h)
+
+	// Only replace if bigger than current min
+	if len(t.h.items) > 0 && t.count[tid] > t.h.items[0].Count {
+		// Remove the minimum item
+		oldItem := heap.Pop(t.h).(itemWithCount)
+		// Clean up its count entry
+		delete(t.count, oldItem.Tid)
+		// Add the new item
 		heap.Push(t.h, itemWithCount{Tid: tid, Count: t.count[tid], LastSeen: now})
 		return true
 	}
 	return false
+}
+
+// rebuildIndex reconstructs the index map from the current heap items
+func (t *TopKByFrequency) rebuildIndex() {
+	t.h.index = make(map[int64]int, len(t.h.items))
+	for i, item := range t.h.items {
+		t.h.index[item.Tid] = i
+	}
 }
 
 func (t *TopKByFrequency) Add(tid int64) bool {
@@ -102,8 +132,17 @@ func (t *TopKByFrequency) Add(tid int64) bool {
 func (t *TopKByFrequency) Eligible(tid int64) bool {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-	_, ok := t.h.index[tid]
-	return ok || len(t.h.items) == 0
+
+	if len(t.h.items) == 0 {
+		return true
+	}
+
+	if i, ok := t.h.index[tid]; ok {
+		// Validate index bounds
+		return i >= 0 && i < len(t.h.items)
+	}
+
+	return false
 }
 
 func (t *TopKByFrequency) EligibleWithCount(tid int64, count int) bool {
@@ -115,9 +154,14 @@ func (t *TopKByFrequency) EligibleWithCount(tid int64, count int) bool {
 	if len(t.h.items) < t.k {
 		return true
 	}
-	if _, ok := t.h.index[tid]; ok {
-		return true
+
+	if i, ok := t.h.index[tid]; ok {
+		// Validate index bounds
+		if i >= 0 && i < len(t.h.items) {
+			return true
+		}
 	}
+
 	if len(t.h.items) > 0 && currentCount > t.h.items[0].Count {
 		return true
 	}
@@ -131,18 +175,26 @@ func (t *TopKByFrequency) CleanupExpired() {
 
 	now := time.Now()
 	j := 0
+	newIndex := make(map[int64]int, len(t.h.index))
+
 	for i := 0; i < len(t.h.items); i++ {
 		item := t.h.items[i]
 		if now.Sub(item.LastSeen) <= t.ttl {
 			t.h.items[j] = item
-			t.h.index[item.Tid] = j
+			newIndex[item.Tid] = j
 			j++
 		} else {
 			delete(t.count, item.Tid)
 		}
 	}
+
 	t.h.items = t.h.items[:j]
-	heap.Init(t.h)
+	t.h.index = newIndex
+
+	// Only reinitialize heap if we have items
+	if len(t.h.items) > 0 {
+		heap.Init(t.h)
+	}
 }
 
 func (t *TopKByFrequency) SortedSlice() []itemWithCount {

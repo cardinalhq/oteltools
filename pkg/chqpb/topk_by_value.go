@@ -65,33 +65,67 @@ func (t *TopKByValue) Add(tid int64, value float64) bool {
 	defer t.mu.Unlock()
 
 	now := time.Now()
-	// update existing
+
+	// Check if item already exists
 	if existing, ok := t.items[tid]; ok {
 		if value <= existing {
-			return ok
+			return true // Already have better or equal value
 		}
+
 		t.items[tid] = value
-		idx := t.h.index[tid]
-		t.h.items[idx].Value = value
-		t.h.items[idx].LastSeen = now
-		heap.Fix(t.h, idx)
-		return true
+
+		// Validate index before accessing heap items
+		if idx, indexOk := t.h.index[tid]; indexOk {
+			if idx < 0 || idx >= len(t.h.items) {
+				// Index is corrupted - rebuild the index
+				t.rebuildIndex()
+				// Try to find the item again after rebuilding
+				if newIdx, stillOk := t.h.index[tid]; stillOk && newIdx >= 0 && newIdx < len(t.h.items) {
+					t.h.items[newIdx].Value = value
+					t.h.items[newIdx].LastSeen = now
+					heap.Fix(t.h, newIdx)
+					return true
+				}
+				// If still not found after rebuild, treat as new item (fallthrough)
+			} else {
+				// Valid index - update the item
+				t.h.items[idx].Value = value
+				t.h.items[idx].LastSeen = now
+				heap.Fix(t.h, idx)
+				return true
+			}
+		}
+
+		// If we reach here, the item exists in the items map but not in heap
+		// This shouldn't happen in normal operation - rebuild and continue
+		t.rebuildIndex()
 	}
-	// add if capacity
+
+	// Add if we have capacity
 	if len(t.h.items) < t.k {
 		heap.Push(t.h, itemWithValue{Tid: tid, Value: value, LastSeen: now})
 		t.items[tid] = value
 		return true
 	}
-	// replace min if better
-	if value > t.h.items[0].Value {
+
+	// Replace minimum if this value is better
+	if len(t.h.items) > 0 && value > t.h.items[0].Value {
 		evicted := heap.Pop(t.h).(itemWithValue)
 		delete(t.items, evicted.Tid)
 		heap.Push(t.h, itemWithValue{Tid: tid, Value: value, LastSeen: now})
 		t.items[tid] = value
 		return true
 	}
+
 	return false
+}
+
+// rebuildIndex reconstructs the index map from the current heap items
+func (t *TopKByValue) rebuildIndex() {
+	t.h.index = make(map[int64]int, len(t.h.items))
+	for i, item := range t.h.items {
+		t.h.index[item.Tid] = i
+	}
 }
 
 func (t *TopKByValue) Eligible(value float64) bool {
@@ -110,6 +144,7 @@ func (t *TopKByValue) CleanupExpired() {
 
 	now := time.Now()
 	j := 0
+
 	for i := 0; i < len(t.h.items); i++ {
 		item := t.h.items[i]
 		if now.Sub(item.LastSeen) <= t.ttl {
@@ -120,8 +155,16 @@ func (t *TopKByValue) CleanupExpired() {
 			delete(t.items, item.Tid)
 		}
 	}
+
 	t.h.items = t.h.items[:j]
-	heap.Init(t.h)
+
+	// Only reinitialize heap if we have items
+	if len(t.h.items) > 0 {
+		heap.Init(t.h)
+	} else {
+		// Clear the index if no items remain
+		t.h.index = make(map[int64]int)
+	}
 }
 
 func (t *TopKByValue) SortedSlice() []itemWithValue {
