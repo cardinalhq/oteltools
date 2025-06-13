@@ -55,16 +55,20 @@ func TestGenericSketchCache_Flush_TopKChurn(t *testing.T) {
 	}
 
 	// Collect and sort the returned TIDs
-	var got []int64
+	got := make(map[int64]struct{})
 	for _, proto := range flushed.Sketches {
-		got = append(got, proto.Tid)
+		got[proto.Tid] = struct{}{}
 	}
-	//slices.Sort(got)
 
-	want := []int64{tid4, tid3}
-	for i, w := range want {
-		if got[i] != w {
-			t.Errorf("at index %d, got %d, want %d", i, got[i], w)
+	want := map[int64]struct{}{tid4: {}, tid3: {}}
+
+	if len(got) != len(want) {
+		t.Fatalf("expected %d sketches, got %d", len(want), len(got))
+	}
+
+	for tid := range want {
+		if _, ok := got[tid]; !ok {
+			t.Errorf("missing expected tid %d in flushed output", tid)
 		}
 	}
 }
