@@ -339,6 +339,7 @@ func ParseMetricSketchExtractorConfigs(extractorConfigs []MetricSketchExtractorC
 			tagFamilyID := int64(h.Sum64())
 			lineDimensionsByTagFamilyID[tagFamilyID] = lineDimensions
 		}
+		m.LineDimensions = lineDimensionsByTagFamilyID
 		aggregateDimensions := make(map[string]*ottl.Statement[ottldatapoint.TransformContext])
 		for key, value := range extractorConfig.AggregateDimensions {
 			statement, statementParseError := parser.ParseStatement(valueStatement(value))
@@ -347,6 +348,7 @@ func ParseMetricSketchExtractorConfigs(extractorConfigs []MetricSketchExtractorC
 			}
 			aggregateDimensions[key] = statement
 		}
+		m.AggregateDimensions = aggregateDimensions
 		configsByMetricName[extractorConfig.MetricName] = m
 	}
 	return configsByMetricName, nil

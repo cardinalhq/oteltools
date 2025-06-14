@@ -1,11 +1,23 @@
 {
   "rule_id": "204af2be-4fd8-4953-baea-c4f6af569132",
   "metric_name": "api-gateway.movie_play_errors",
-  "metric_type": "counter_int",
+  "metric_type": "count",
+  "line_dimensions": [
+    {
+      "state": "attributes[\"state\"]"
+    },
+    {
+      "reason": "attributes[\"reason\"]"
+    },
+    {
+      "reason": "attributes[\"reason\"]",
+      "state": "attributes[\"state\"]"
+    }
+  ],
   "aggregate_dimensions": {
-    "resource.k8s.cluster.name": "aws-test-us-east-2-global",
-    "resource.k8s.namespace.name": "chq-demo-apps",
-    "resource.service.name": "api-gateway"
+    "resource.k8s.cluster.name": "resource.attributes[\"k8s.cluster.name\"]",
+    "resource.k8s.namespace.name": "resource.attributes[\"k8s.namespace.name\"]",
+    "resource.service.name": "resource.attributes[\"service.name\"]"
   },
   "output_metric_name": "api-gateway.movie_play_errors",
   "version": 1
