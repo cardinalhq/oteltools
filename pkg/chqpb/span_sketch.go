@@ -110,13 +110,19 @@ func (c *SpanSketchCache) loop() {
 	}
 }
 
-func (c *SpanSketchCache) getErrorCountTopK(metricName string) *TopKByFrequency {
-	topK, _ := c.errorCountTopKs.LoadOrStore(metricName, NewTopKByFrequency(c.maxK, 2*c.interval))
+func getKey(metricName string, parentTid int64, tagFamilyId int64) string {
+	return fmt.Sprintf("%s:%d:%d", metricName, parentTid, tagFamilyId)
+}
+
+func (c *SpanSketchCache) getErrorCountTopK(metricName string, parentTid int64, tagFamilyId int64) *TopKByFrequency {
+	key := getKey(metricName, parentTid, tagFamilyId)
+	topK, _ := c.errorCountTopKs.LoadOrStore(key, NewTopKByFrequency(c.maxK, 2*c.interval))
 	return topK.(*TopKByFrequency)
 }
 
-func (c *SpanSketchCache) getLatencyTopK(metricName string) *TopKByValue {
-	topK, _ := c.latencyTopKs.LoadOrStore(metricName, NewTopKByValue(c.maxK, 2*c.interval))
+func (c *SpanSketchCache) getLatencyTopK(metricName string, parentTid int64, tagFamilyId int64) *TopKByValue {
+	key := getKey(metricName, parentTid, tagFamilyId)
+	topK, _ := c.latencyTopKs.LoadOrStore(key, NewTopKByValue(c.maxK, 2*c.interval))
 	return topK.(*TopKByValue)
 }
 
@@ -138,10 +144,10 @@ func (c *SpanSketchCache) Update(
 
 	var shouldEligible = false
 	if span.Status().Code() == ptrace.StatusCodeError {
-		errorCountTopK := c.getErrorCountTopK(metricName)
+		errorCountTopK := c.getErrorCountTopK(metricName, parentTID, tagFamilyId)
 		shouldEligible = errorCountTopK.EligibleWithCount(tid, 1)
 	} else {
-		latencyTopK := c.getLatencyTopK(metricName)
+		latencyTopK := c.getLatencyTopK(metricName, parentTID, tagFamilyId)
 		shouldEligible = latencyTopK.Eligible(spanDuration)
 	}
 
@@ -292,9 +298,9 @@ func (c *SpanSketchCache) flush() {
 			mn, tid := entry.proto.MetricName, entry.proto.Tid
 
 			// Expire old entries
-			errTK := c.getErrorCountTopK(mn)
+			errTK := c.getErrorCountTopK(mn, entry.proto.ParentTID, entry.proto.TagFamilyId)
 			errTK.CleanupExpired()
-			latTK := c.getLatencyTopK(mn)
+			latTK := c.getLatencyTopK(mn, entry.proto.ParentTID, entry.proto.TagFamilyId)
 			latTK.CleanupExpired()
 
 			// Update both heaps based on this interval’s data
@@ -310,8 +316,8 @@ func (c *SpanSketchCache) flush() {
 			entry := val.(*spanSketchEntry)
 			mn, tid := entry.proto.MetricName, entry.proto.Tid
 
-			errTK := c.getErrorCountTopK(mn)
-			latTK := c.getLatencyTopK(mn)
+			errTK := c.getErrorCountTopK(mn, entry.proto.ParentTID, entry.proto.TagFamilyId)
+			latTK := c.getLatencyTopK(mn, entry.proto.ParentTID, entry.proto.TagFamilyId)
 
 			// Check membership in each heap’s index
 			_, inErr := errTK.h.index[tid]

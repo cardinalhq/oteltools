@@ -73,13 +73,15 @@ const (
 	Count = "count"
 )
 
-func (c *GenericSketchCache) getFreqTopK(metricName string) *TopKByFrequency {
-	topK, _ := c.freqTopKs.LoadOrStore(metricName, NewTopKByFrequency(c.maxK, 2*c.interval))
+func (c *GenericSketchCache) getFreqTopK(metricName string, parentTid int64, tagFamilyId int64) *TopKByFrequency {
+	key := getKey(metricName, parentTid, tagFamilyId)
+	topK, _ := c.freqTopKs.LoadOrStore(key, NewTopKByFrequency(c.maxK, 2*c.interval))
 	return topK.(*TopKByFrequency)
 }
 
-func (c *GenericSketchCache) getValueTopK(metricName string) *TopKByValue {
-	topK, _ := c.valueTopKs.LoadOrStore(metricName, NewTopKByValue(c.maxK, 2*c.interval))
+func (c *GenericSketchCache) getValueTopK(metricName string, parentTid int64, tagFamilyId int64) *TopKByValue {
+	key := getKey(metricName, parentTid, tagFamilyId)
+	topK, _ := c.valueTopKs.LoadOrStore(key, NewTopKByValue(c.maxK, 2*c.interval))
 	return topK.(*TopKByValue)
 }
 
@@ -104,10 +106,10 @@ func (c *GenericSketchCache) UpdateWithCount(
 	var shouldAdd = false
 	switch metricType {
 	case Count:
-		freqTopK := c.getFreqTopK(metricName)
+		freqTopK := c.getFreqTopK(metricName, parentTID, tagFamilyID)
 		shouldAdd = freqTopK.EligibleWithCount(tid, int(count))
 	default:
-		valueTopK := c.getValueTopK(metricName)
+		valueTopK := c.getValueTopK(metricName, parentTID, tagFamilyID)
 		shouldAdd = valueTopK.Eligible(value)
 	}
 
@@ -159,10 +161,10 @@ func (c *GenericSketchCache) Update(
 	var shouldAdd = false
 	switch metricType {
 	case Count:
-		freqTopK := c.getFreqTopK(metricName)
+		freqTopK := c.getFreqTopK(metricName, parentTID, tagFamilyId)
 		shouldAdd = freqTopK.Eligible(tid)
 	default:
-		valueTopK := c.getValueTopK(metricName)
+		valueTopK := c.getValueTopK(metricName, parentTID, tagFamilyId)
 		shouldAdd = valueTopK.Eligible(value)
 	}
 
@@ -217,9 +219,9 @@ func (c *GenericSketchCache) flush() {
 			mn, tid := entry.proto.MetricName, entry.proto.Tid
 
 			// 1a) Expire old entries
-			freqTK := c.getFreqTopK(mn)
+			freqTK := c.getFreqTopK(mn, entry.proto.ParentTID, entry.proto.TagFamilyId)
 			freqTK.CleanupExpired()
-			valTK := c.getValueTopK(mn)
+			valTK := c.getValueTopK(mn, entry.proto.ParentTID, entry.proto.TagFamilyId)
 			valTK.CleanupExpired()
 
 			// 1b) Update with this TID’s final score for the interval
@@ -240,8 +242,8 @@ func (c *GenericSketchCache) flush() {
 			entry := val.(*genericSketchEntry)
 			mn, tid := entry.proto.MetricName, entry.proto.Tid
 
-			freqTK := c.getFreqTopK(mn)
-			valTK := c.getValueTopK(mn)
+			freqTK := c.getFreqTopK(mn, entry.proto.ParentTID, entry.proto.TagFamilyId)
+			valTK := c.getValueTopK(mn, entry.proto.ParentTID, entry.proto.TagFamilyId)
 
 			inFreq := false
 			if entry.proto.MetricType == Count {

@@ -72,3 +72,43 @@ func TestGenericSketchCache_Flush_TopKChurn(t *testing.T) {
 		}
 	}
 }
+
+func TestTopKByFrequency_AddCount_And_Eligibility(t *testing.T) {
+	ttl := 2 * time.Second
+	k := 2
+	topK := NewTopKByFrequency(k, ttl)
+
+	// Add counts for two tids
+	if !topK.AddCount(1001, 5) {
+		t.Fatal("expected AddCount to return true for tid 1001")
+	}
+	if !topK.AddCount(1002, 10) {
+		t.Fatal("expected AddCount to return true for tid 1002")
+	}
+
+	// Now add a new TID with a count high enough to evict the current min (1001)
+	if !topK.AddCount(1003, 6) {
+		t.Fatal("expected AddCount to return true for tid 1003 (should evict 1001)")
+	}
+
+	// Only top 2 should remain
+	sorted := topK.SortedSlice()
+	if len(sorted) != 2 {
+		t.Fatalf("expected 2 items in heap, got %d", len(sorted))
+	}
+
+	// Expect topK to have 1002 and 1003
+	got := map[int64]struct{}{sorted[0].Tid: {}, sorted[1].Tid: {}}
+	want := map[int64]struct{}{1002: {}, 1003: {}}
+
+	for tid := range want {
+		if _, ok := got[tid]; !ok {
+			t.Errorf("expected tid %d to be in top K", tid)
+		}
+	}
+
+	// Test that an unqualified low-count TID is not added
+	if topK.AddCount(9999, 1) {
+		t.Errorf("expected AddCount to return false for low-count tid 9999")
+	}
+}
