@@ -95,7 +95,7 @@ func TestSketchCache_FlushAndGrouping(t *testing.T) {
 	spanA.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 100)
 	spanA.Status().SetCode(ptrace.StatusCodeOk)
 	tagsA := map[string]string{"service.name": "auth"}
-	cache.Update("db.calls", tagsA, spanA, res, 0, 0)
+	cache.Update("db.calls", "count", tagsA, spanA, res, 0, 0)
 
 	// Span B: billing service
 	res = pcommon.NewResource()
@@ -104,7 +104,7 @@ func TestSketchCache_FlushAndGrouping(t *testing.T) {
 	spanB.Attributes().PutDouble(translate.CardinalFieldSpanDuration, 200)
 	spanB.Status().SetCode(ptrace.StatusCodeOk)
 	tagsB := map[string]string{"service.name": "billing"}
-	cache.Update("db.calls", tagsB, spanB, res, 0, 0)
+	cache.Update("db.calls", "count", tagsB, spanB, res, 0, 0)
 
 	// Flush manually
 	cache.flush()

@@ -128,6 +128,7 @@ func (c *SpanSketchCache) getLatencyTopK(metricName string, parentTid int64, tag
 
 func (c *SpanSketchCache) Update(
 	metricName string,
+	metricType string,
 	tagValues map[string]string,
 	span ptrace.Span,
 	resource pcommon.Resource,
@@ -159,6 +160,7 @@ func (c *SpanSketchCache) Update(
 		}
 		proto := &SpanSketchProto{
 			MetricName:         metricName,
+			MetricType:         metricType,
 			Tid:                tid,
 			Interval:           interval,
 			Tags:               tagValues,
