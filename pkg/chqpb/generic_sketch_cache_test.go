@@ -42,10 +42,10 @@ func TestGenericSketchCache_Flush_TopKChurn(t *testing.T) {
 	oldTime := time.Now().Add(-2 * interval)
 
 	// Submit three entries with increasing values
-	_ = cache.Update(metricName, metricType, tags1, 0, 0, 1.0, oldTime)
-	_ = cache.Update(metricName, metricType, tags2, 0, 0, 2.0, oldTime)
-	tid3 := cache.Update(metricName, metricType, tags3, 0, 0, 3.0, oldTime)
-	tid4 := cache.Update(metricName, metricType, tags4, 0, 0, 4.0, oldTime)
+	_ = cache.Update(metricName, metricType, Direction_UP, tags1, 0, 0, 1.0, oldTime)
+	_ = cache.Update(metricName, metricType, Direction_UP, tags2, 0, 0, 2.0, oldTime)
+	tid3 := cache.Update(metricName, metricType, Direction_UP, tags3, 0, 0, 3.0, oldTime)
+	tid4 := cache.Update(metricName, metricType, Direction_UP, tags4, 0, 0, 4.0, oldTime)
 
 	// Manually invoke flush
 	cache.flush()
@@ -76,7 +76,7 @@ func TestGenericSketchCache_Flush_TopKChurn(t *testing.T) {
 func TestTopKByFrequency_AddCount_And_Eligibility(t *testing.T) {
 	ttl := 2 * time.Second
 	k := 2
-	topK := NewTopKByFrequency(k, ttl)
+	topK := NewTopKByFrequency(k, ttl, Direction_UP)
 
 	// Add counts for two tids
 	if !topK.AddCount(1001, 5) {

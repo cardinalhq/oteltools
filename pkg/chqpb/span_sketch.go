@@ -110,19 +110,19 @@ func (c *SpanSketchCache) loop() {
 	}
 }
 
-func getKey(metricName string, parentTid int64, tagFamilyId int64) string {
-	return fmt.Sprintf("%s:%d:%d", metricName, parentTid, tagFamilyId)
+func getKey(metricName string, direction Direction, parentTid int64, tagFamilyId int64) string {
+	return fmt.Sprintf("%s:%s:%d:%d", metricName, direction.String(), parentTid, tagFamilyId)
 }
 
 func (c *SpanSketchCache) getErrorCountTopK(metricName string, parentTid int64, tagFamilyId int64) *TopKByFrequency {
-	key := getKey(metricName, parentTid, tagFamilyId)
-	topK, _ := c.errorCountTopKs.LoadOrStore(key, NewTopKByFrequency(c.maxK, 2*c.interval))
+	key := getKey(metricName, Direction_UP, parentTid, tagFamilyId)
+	topK, _ := c.errorCountTopKs.LoadOrStore(key, NewTopKByFrequency(c.maxK, 2*c.interval, Direction_UP))
 	return topK.(*TopKByFrequency)
 }
 
 func (c *SpanSketchCache) getLatencyTopK(metricName string, parentTid int64, tagFamilyId int64) *TopKByValue {
-	key := getKey(metricName, parentTid, tagFamilyId)
-	topK, _ := c.latencyTopKs.LoadOrStore(key, NewTopKByValue(c.maxK, 2*c.interval))
+	key := getKey(metricName, Direction_UP, parentTid, tagFamilyId)
+	topK, _ := c.latencyTopKs.LoadOrStore(key, NewTopKByValue(c.maxK, 2*c.interval, Direction_UP))
 	return topK.(*TopKByValue)
 }
 

@@ -16,7 +16,7 @@ import (
 )
 
 func TestTopKByFrequency_EligibleWithCount(t *testing.T) {
-	topK := NewTopKByFrequency(3, time.Second)
+	topK := NewTopKByFrequency(3, time.Second, Direction_UP)
 
 	// Test 1: heap not full → any tid is eligible
 	assert.True(t, topK.EligibleWithCount(42, 1))
@@ -55,7 +55,7 @@ func TestTopKByFrequency_EligibleWithCount(t *testing.T) {
 
 func TestTopKByFrequency_CleanupExpired(t *testing.T) {
 	ttl := 100 * time.Millisecond
-	topK := NewTopKByFrequency(5, ttl)
+	topK := NewTopKByFrequency(5, ttl, Direction_UP)
 
 	// Add TID 1 and let it age out
 	topK.Add(1)
@@ -79,7 +79,7 @@ func TestTopKByFrequency_CleanupExpired(t *testing.T) {
 }
 
 func TestTopKByFrequency_AddCount(t *testing.T) {
-	topK := NewTopKByFrequency(3, time.Second)
+	topK := NewTopKByFrequency(3, time.Second, Direction_UP)
 
 	// Add tid=100 with count=5 in one shot
 	topK.AddCount(100, 5)
@@ -110,7 +110,7 @@ func TestTopKByFrequency_AddCount(t *testing.T) {
 }
 
 func TestTopKByFrequency_AddAndEligible(t *testing.T) {
-	topK := NewTopKByFrequency(3, time.Second)
+	topK := NewTopKByFrequency(3, time.Second, Direction_UP)
 
 	// Fill to k with one hit each.
 	topK.Add(1)
@@ -126,8 +126,47 @@ func TestTopKByFrequency_AddAndEligible(t *testing.T) {
 	assert.False(t, topK.Eligible(4))
 }
 
+func TestTopKByFrequency_DownDirection(t *testing.T) {
+	// Keep bottom-3 tids (smallest counts)
+	topK := NewTopKByFrequency(3, time.Second, Direction_DOWN)
+
+	// Add four tids with different counts
+	topK.AddCount(100, 5) // highest
+	topK.AddCount(200, 2)
+	topK.AddCount(300, 7) // highest
+	topK.AddCount(400, 1) // lowest
+
+	// At this point counts are: 100→5, 200→2, 300→7, 400→1.
+	// Bottom 3 by count are: 400(1), 200(2), 100(5). 300(7) should be evicted.
+	sorted := topK.SortedSlice()
+	assert.Len(t, sorted, 3, "should only keep 3 entries")
+
+	// For DOWN, SortedSlice is ascending
+	assert.Equal(t, int64(400), sorted[0].Tid)
+	assert.Equal(t, int64(1), sorted[0].Count)
+
+	assert.Equal(t, int64(200), sorted[1].Tid)
+	assert.Equal(t, int64(2), sorted[1].Count)
+
+	assert.Equal(t, int64(100), sorted[2].Tid)
+	assert.Equal(t, int64(5), sorted[2].Count)
+
+	// Eligibility: only those three are eligible
+	assert.True(t, topK.Eligible(400))
+	assert.True(t, topK.Eligible(200))
+	assert.True(t, topK.Eligible(100))
+	assert.False(t, topK.Eligible(300))
+
+	// Now bump 300 up to count=0 (i.e. nonexistent) → it still shouldn’t re-enter
+	assert.False(t, topK.EligibleWithCount(300, 0))
+
+	// But if we add a new tid with a very low count, e.g. count=0, it should enter
+	topK.AddCount(500, 0)
+	assert.True(t, topK.Eligible(500))
+}
+
 func TestTopKByFrequency_Eviction(t *testing.T) {
-	topK := NewTopKByFrequency(3, time.Second)
+	topK := NewTopKByFrequency(3, time.Second, Direction_UP)
 
 	// All start with count = 1
 	topK.Add(1)
@@ -149,7 +188,7 @@ func TestTopKByFrequency_Eviction(t *testing.T) {
 }
 
 func TestTopKByFrequency_UpdateInPlace(t *testing.T) {
-	topK := NewTopKByFrequency(3, time.Second)
+	topK := NewTopKByFrequency(3, time.Second, Direction_UP)
 
 	topK.Add(10)
 	topK.Add(20)
@@ -165,7 +204,7 @@ func TestTopKByFrequency_UpdateInPlace(t *testing.T) {
 }
 
 func TestTopKByFrequency_EvictionWithTie(t *testing.T) {
-	topK := NewTopKByFrequency(2, time.Second)
+	topK := NewTopKByFrequency(2, time.Second, Direction_UP)
 
 	// Two tids with count 1 each
 	topK.Add(1)
@@ -186,7 +225,7 @@ func TestTopKByFrequency_EvictionWithTie(t *testing.T) {
 }
 
 func TestTopKByFrequency_SortedOrder(t *testing.T) {
-	topK := NewTopKByFrequency(5, time.Second)
+	topK := NewTopKByFrequency(5, time.Second, Direction_UP)
 
 	// 10 seen 3×
 	topK.Add(10)
@@ -219,7 +258,7 @@ func TestTopKByFrequency_SortedOrder(t *testing.T) {
 func TestTopKByFrequency_AddCount_Bool(t *testing.T) {
 	k := 3
 	ttl := time.Minute
-	topK := NewTopKByFrequency(k, ttl)
+	topK := NewTopKByFrequency(k, ttl, Direction_UP)
 
 	// Add initial entries: expect true
 	if !topK.AddCount(1, 1) {

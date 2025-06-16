@@ -9,7 +9,7 @@ import (
 )
 
 func TestTopKByValue_AddAndSortedSlice(t *testing.T) {
-	topK := NewTopKByValue(3, time.Second)
+	topK := NewTopKByValue(3, time.Second, Direction_UP)
 
 	topK.Add(1, 10)
 	topK.Add(2, 20)
@@ -24,7 +24,7 @@ func TestTopKByValue_AddAndSortedSlice(t *testing.T) {
 }
 
 func TestTopKByValue_Eviction(t *testing.T) {
-	topK := NewTopKByValue(3, time.Second)
+	topK := NewTopKByValue(3, time.Second, Direction_UP)
 
 	topK.Add(1, 10)
 	topK.Add(2, 20)
@@ -38,7 +38,7 @@ func TestTopKByValue_Eviction(t *testing.T) {
 }
 
 func TestTopKByValue_UpdateImproved(t *testing.T) {
-	topK := NewTopKByValue(3, time.Second)
+	topK := NewTopKByValue(3, time.Second, Direction_UP)
 
 	topK.Add(1, 10)
 	topK.Add(2, 20)
@@ -52,7 +52,7 @@ func TestTopKByValue_UpdateImproved(t *testing.T) {
 }
 
 func TestTopKByValue_UpdateWorse(t *testing.T) {
-	topK := NewTopKByValue(3, time.Second)
+	topK := NewTopKByValue(3, time.Second, Direction_UP)
 
 	topK.Add(1, 10)
 	topK.Add(2, 20)
@@ -65,7 +65,7 @@ func TestTopKByValue_UpdateWorse(t *testing.T) {
 }
 
 func TestTopKByValue_Eligible(t *testing.T) {
-	topK := NewTopKByValue(3, time.Second)
+	topK := NewTopKByValue(3, time.Second, Direction_UP)
 
 	// Warmup: less than k items, any value is eligible
 	assert.True(t, topK.Eligible(1))
@@ -89,7 +89,7 @@ func TestTopKByValue_Eligible(t *testing.T) {
 func TestTopKByValue_Add(t *testing.T) {
 	k := 3
 	ttl := time.Minute
-	topK := NewTopKByValue(k, ttl)
+	topK := NewTopKByValue(k, ttl, Direction_UP)
 
 	// Add initial entries: expect true
 	if !topK.Add(1, 10.0) {
@@ -133,9 +133,49 @@ func TestTopKByValue_Add(t *testing.T) {
 }
 
 func extractTids(items []itemWithValue) []int64 {
-	var out []int64
-	for _, item := range items {
-		out = append(out, item.Tid)
+	out := make([]int64, len(items))
+	for i, it := range items {
+		out[i] = it.Tid
 	}
 	return out
+}
+
+func TestTopKByValue_DownDirection(t *testing.T) {
+	const k = 3
+	ttl := time.Second
+	topK := NewTopKByValue(k, ttl, Direction_DOWN)
+
+	// Before capacity: everything is eligible
+	assert.True(t, topK.Eligible(100), "warmup: any value should be eligible")
+
+	// Fill with three entries
+	topK.Add(1, 100)
+	topK.Add(2, 200)
+	topK.Add(3, 300)
+
+	// Now at capacity: should keep the bottom-K smallest, sorted ascending
+	sorted := topK.SortedSlice()
+	assert.Len(t, sorted, k)
+	assert.Equal(t, []int64{1, 2, 3}, extractTids(sorted), "initial bottom-K in ascending order")
+
+	// A new SMALLER value (50) should evict the current largest (300)
+	topK.Add(4, 50)
+	sorted = topK.SortedSlice()
+	assert.Len(t, sorted, k)
+	assert.NotContains(t, extractTids(sorted), int64(3), "300 should have been evicted")
+	assert.Equal(t, []int64{4, 1, 2}, extractTids(sorted), "after eviction, should be [4,1,2]")
+
+	// A new LARGER value should NOT be accepted
+	assert.False(t, topK.Add(5, 500), "500 is too large to enter bottom-K")
+	assert.NotContains(t, extractTids(topK.SortedSlice()), int64(5))
+
+	// Eligibility after capacity:
+	//  - values smaller than current max (200) should be eligible
+	//  - values ≥ 200 should not
+	assert.True(t, topK.Eligible(150), "150 < root(200) ⇒ eligible")
+	assert.False(t, topK.Eligible(250), "250 ≥ root(200) ⇒ not eligible")
+
+	// Updating an existing entry to a WORSE value (higher for DOWN) should keep it, but may demote its rank
+	assert.True(t, topK.Add(1, 250), "existing tid=1 should still be accepted")
+	assert.True(t, topK.Eligible(1), "tid=1 remains eligible after update")
 }

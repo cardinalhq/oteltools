@@ -35,6 +35,52 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type Direction int32
+
+const (
+	Direction_UP   Direction = 0
+	Direction_DOWN Direction = 1
+)
+
+// Enum value maps for Direction.
+var (
+	Direction_name = map[int32]string{
+		0: "UP",
+		1: "DOWN",
+	}
+	Direction_value = map[string]int32{
+		"UP":   0,
+		"DOWN": 1,
+	}
+)
+
+func (x Direction) Enum() *Direction {
+	p := new(Direction)
+	*p = x
+	return p
+}
+
+func (x Direction) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Direction) Descriptor() protoreflect.EnumDescriptor {
+	return file_genericsketch_proto_enumTypes[0].Descriptor()
+}
+
+func (Direction) Type() protoreflect.EnumType {
+	return &file_genericsketch_proto_enumTypes[0]
+}
+
+func (x Direction) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Direction.Descriptor instead.
+func (Direction) EnumDescriptor() ([]byte, []int) {
+	return file_genericsketch_proto_rawDescGZIP(), []int{0}
+}
+
 // A single span sketch for a metric and timeseries
 type GenericSketchProto struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
@@ -47,6 +93,7 @@ type GenericSketchProto struct {
 	Sketch        []byte            `protobuf:"bytes,6,opt,name=sketch,proto3" json:"sketch,omitempty"`
 	ParentTID     int64             `protobuf:"varint,7,opt,name=parentTID,proto3" json:"parentTID,omitempty"`
 	TagFamilyId   int64             `protobuf:"varint,8,opt,name=tagFamilyId,proto3" json:"tagFamilyId,omitempty"`
+	Direction     Direction         `protobuf:"varint,9,opt,name=direction,proto3,enum=chqpb.Direction" json:"direction,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -137,6 +184,13 @@ func (x *GenericSketchProto) GetTagFamilyId() int64 {
 	return 0
 }
 
+func (x *GenericSketchProto) GetDirection() Direction {
+	if x != nil {
+		return x.Direction
+	}
+	return Direction_UP
+}
+
 // Wrapper for a list of span sketches to emit in a single batch
 type GenericSketchList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -202,7 +256,7 @@ var File_genericsketch_proto protoreflect.FileDescriptor
 
 const file_genericsketch_proto_rawDesc = "" +
 	"\n" +
-	"\x13genericsketch.proto\x12\x05chqpb\"\xce\x02\n" +
+	"\x13genericsketch.proto\x12\x05chqpb\"\xfe\x02\n" +
 	"\x12GenericSketchProto\x12\x1f\n" +
 	"\vmetric_name\x18\x01 \x01(\tR\n" +
 	"metricName\x12\x1f\n" +
@@ -213,7 +267,8 @@ const file_genericsketch_proto_rawDesc = "" +
 	"\x04tags\x18\x05 \x03(\v2#.chqpb.GenericSketchProto.TagsEntryR\x04tags\x12\x16\n" +
 	"\x06sketch\x18\x06 \x01(\fR\x06sketch\x12\x1c\n" +
 	"\tparentTID\x18\a \x01(\x03R\tparentTID\x12 \n" +
-	"\vtagFamilyId\x18\b \x01(\x03R\vtagFamilyId\x1a7\n" +
+	"\vtagFamilyId\x18\b \x01(\x03R\vtagFamilyId\x12.\n" +
+	"\tdirection\x18\t \x01(\x0e2\x10.chqpb.DirectionR\tdirection\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x91\x01\n" +
@@ -221,7 +276,10 @@ const file_genericsketch_proto_rawDesc = "" +
 	"\bsketches\x18\x01 \x03(\v2\x19.chqpb.GenericSketchProtoR\bsketches\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
 	"customerId\x12$\n" +
-	"\rtelemetryType\x18\x03 \x01(\tR\rtelemetryTypeB\tZ\a.;chqpbb\x06proto3"
+	"\rtelemetryType\x18\x03 \x01(\tR\rtelemetryType*\x1d\n" +
+	"\tDirection\x12\x06\n" +
+	"\x02UP\x10\x00\x12\b\n" +
+	"\x04DOWN\x10\x01B\tZ\a.;chqpbb\x06proto3"
 
 var (
 	file_genericsketch_proto_rawDescOnce sync.Once
@@ -235,20 +293,23 @@ func file_genericsketch_proto_rawDescGZIP() []byte {
 	return file_genericsketch_proto_rawDescData
 }
 
+var file_genericsketch_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_genericsketch_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_genericsketch_proto_goTypes = []any{
-	(*GenericSketchProto)(nil), // 0: chqpb.GenericSketchProto
-	(*GenericSketchList)(nil),  // 1: chqpb.GenericSketchList
-	nil,                        // 2: chqpb.GenericSketchProto.TagsEntry
+	(Direction)(0),             // 0: chqpb.Direction
+	(*GenericSketchProto)(nil), // 1: chqpb.GenericSketchProto
+	(*GenericSketchList)(nil),  // 2: chqpb.GenericSketchList
+	nil,                        // 3: chqpb.GenericSketchProto.TagsEntry
 }
 var file_genericsketch_proto_depIdxs = []int32{
-	2, // 0: chqpb.GenericSketchProto.tags:type_name -> chqpb.GenericSketchProto.TagsEntry
-	0, // 1: chqpb.GenericSketchList.sketches:type_name -> chqpb.GenericSketchProto
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 0: chqpb.GenericSketchProto.tags:type_name -> chqpb.GenericSketchProto.TagsEntry
+	0, // 1: chqpb.GenericSketchProto.direction:type_name -> chqpb.Direction
+	1, // 2: chqpb.GenericSketchList.sketches:type_name -> chqpb.GenericSketchProto
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_genericsketch_proto_init() }
@@ -261,13 +322,14 @@ func file_genericsketch_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_genericsketch_proto_rawDesc), len(file_genericsketch_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_genericsketch_proto_goTypes,
 		DependencyIndexes: file_genericsketch_proto_depIdxs,
+		EnumInfos:         file_genericsketch_proto_enumTypes,
 		MessageInfos:      file_genericsketch_proto_msgTypes,
 	}.Build()
 	File_genericsketch_proto = out.File

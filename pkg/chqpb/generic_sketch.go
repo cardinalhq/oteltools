@@ -73,21 +73,22 @@ const (
 	Count = "count"
 )
 
-func (c *GenericSketchCache) getFreqTopK(metricName string, parentTid int64, tagFamilyId int64) *TopKByFrequency {
-	key := getKey(metricName, parentTid, tagFamilyId)
-	topK, _ := c.freqTopKs.LoadOrStore(key, NewTopKByFrequency(c.maxK, 2*c.interval))
+func (c *GenericSketchCache) getFreqTopK(metricName string, direction Direction, parentTid int64, tagFamilyId int64) *TopKByFrequency {
+	key := getKey(metricName, direction, parentTid, tagFamilyId)
+	topK, _ := c.freqTopKs.LoadOrStore(key, NewTopKByFrequency(c.maxK, 2*c.interval, direction))
 	return topK.(*TopKByFrequency)
 }
 
-func (c *GenericSketchCache) getValueTopK(metricName string, parentTid int64, tagFamilyId int64) *TopKByValue {
-	key := getKey(metricName, parentTid, tagFamilyId)
-	topK, _ := c.valueTopKs.LoadOrStore(key, NewTopKByValue(c.maxK, 2*c.interval))
+func (c *GenericSketchCache) getValueTopK(metricName string, direction Direction, parentTid int64, tagFamilyId int64) *TopKByValue {
+	key := getKey(metricName, direction, parentTid, tagFamilyId)
+	topK, _ := c.valueTopKs.LoadOrStore(key, NewTopKByValue(c.maxK, 2*c.interval, direction))
 	return topK.(*TopKByValue)
 }
 
 func (c *GenericSketchCache) UpdateWithCount(
 	metricName string,
 	metricType string,
+	direction Direction,
 	tagValues map[string]string,
 	parentTID int64,
 	tagFamilyID int64,
@@ -106,10 +107,10 @@ func (c *GenericSketchCache) UpdateWithCount(
 	var shouldAdd = false
 	switch metricType {
 	case Count:
-		freqTopK := c.getFreqTopK(metricName, parentTID, tagFamilyID)
+		freqTopK := c.getFreqTopK(metricName, direction, parentTID, tagFamilyID)
 		shouldAdd = freqTopK.EligibleWithCount(tid, int(count))
 	default:
-		valueTopK := c.getValueTopK(metricName, parentTID, tagFamilyID)
+		valueTopK := c.getValueTopK(metricName, direction, parentTID, tagFamilyID)
 		shouldAdd = valueTopK.Eligible(value)
 	}
 
@@ -129,6 +130,7 @@ func (c *GenericSketchCache) UpdateWithCount(
 				Tags:        tagValues,
 				ParentTID:   parentTID,
 				TagFamilyId: tagFamilyID,
+				Direction:   direction,
 			},
 		}
 		skMap.Store(tid, entry)
@@ -146,6 +148,7 @@ func (c *GenericSketchCache) UpdateWithCount(
 func (c *GenericSketchCache) Update(
 	metricName string,
 	metricType string,
+	direction Direction,
 	tagValues map[string]string,
 	parentTID int64,
 	tagFamilyId int64,
@@ -161,10 +164,10 @@ func (c *GenericSketchCache) Update(
 	var shouldAdd = false
 	switch metricType {
 	case Count:
-		freqTopK := c.getFreqTopK(metricName, parentTID, tagFamilyId)
+		freqTopK := c.getFreqTopK(metricName, direction, parentTID, tagFamilyId)
 		shouldAdd = freqTopK.Eligible(tid)
 	default:
-		valueTopK := c.getValueTopK(metricName, parentTID, tagFamilyId)
+		valueTopK := c.getValueTopK(metricName, direction, parentTID, tagFamilyId)
 		shouldAdd = valueTopK.Eligible(value)
 	}
 
@@ -185,6 +188,7 @@ func (c *GenericSketchCache) Update(
 				Tags:        tagValues,
 				ParentTID:   parentTID,
 				TagFamilyId: tagFamilyId,
+				Direction:   direction,
 			},
 		}
 		skMap.Store(tid, entry)
@@ -219,9 +223,9 @@ func (c *GenericSketchCache) flush() {
 			mn, tid := entry.proto.MetricName, entry.proto.Tid
 
 			// 1a) Expire old entries
-			freqTK := c.getFreqTopK(mn, entry.proto.ParentTID, entry.proto.TagFamilyId)
+			freqTK := c.getFreqTopK(mn, entry.proto.Direction, entry.proto.ParentTID, entry.proto.TagFamilyId)
 			freqTK.CleanupExpired()
-			valTK := c.getValueTopK(mn, entry.proto.ParentTID, entry.proto.TagFamilyId)
+			valTK := c.getValueTopK(mn, entry.proto.Direction, entry.proto.ParentTID, entry.proto.TagFamilyId)
 			valTK.CleanupExpired()
 
 			// 1b) Update with this TID’s final score for the interval
@@ -242,8 +246,8 @@ func (c *GenericSketchCache) flush() {
 			entry := val.(*genericSketchEntry)
 			mn, tid := entry.proto.MetricName, entry.proto.Tid
 
-			freqTK := c.getFreqTopK(mn, entry.proto.ParentTID, entry.proto.TagFamilyId)
-			valTK := c.getValueTopK(mn, entry.proto.ParentTID, entry.proto.TagFamilyId)
+			freqTK := c.getFreqTopK(mn, entry.proto.Direction, entry.proto.ParentTID, entry.proto.TagFamilyId)
+			valTK := c.getValueTopK(mn, entry.proto.Direction, entry.proto.ParentTID, entry.proto.TagFamilyId)
 
 			inFreq := false
 			if entry.proto.MetricType == Count {
