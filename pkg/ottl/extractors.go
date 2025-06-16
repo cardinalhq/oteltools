@@ -16,6 +16,7 @@ package ottl
 
 import (
 	"context"
+	"github.com/cardinalhq/oteltools/pkg/chqpb"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
 	"hash/fnv"
 	"slices"
@@ -41,6 +42,7 @@ type LogExtractor struct {
 	MetricUnit          string
 	MetricType          string
 	MetricValue         *ottl.Statement[ottllog.TransformContext]
+	Direction           chqpb.Direction
 }
 
 func (l LogExtractor) ExtractLineAttributes(ctx context.Context, tCtx ottllog.TransformContext) map[int64]map[string]any {
@@ -128,6 +130,7 @@ func parseLogExtractorConfig(extractorConfig MetricExtractorConfig, parser ottl.
 		MetricUnit:          extractorConfig.MetricUnit,
 		MetricType:          extractorConfig.MetricType,
 		MetricValue:         metricValue,
+		Direction:           chqpb.Direction(extractorConfig.Direction),
 	}, nil
 }
 
@@ -173,6 +176,7 @@ type SpanExtractor struct {
 	MetricUnit          string
 	MetricType          string
 	MetricValue         *ottl.Statement[ottlspan.TransformContext]
+	Direction           chqpb.Direction
 }
 
 type MetricSketchExtractor struct {
@@ -184,6 +188,7 @@ type MetricSketchExtractor struct {
 	LineDimensions      map[int64]map[string]*ottl.Statement[ottldatapoint.TransformContext]
 	AggregateDimensions map[string]*ottl.Statement[ottldatapoint.TransformContext]
 	OutputMetricName    string
+	Direction           chqpb.Direction
 }
 
 func (l LogExtractor) EvalLogConditions(ctx context.Context, transformCtx ottllog.TransformContext) (bool, error) {
@@ -270,6 +275,7 @@ func parseSpanExtractorConfig(
 		MetricUnit:          extractorConfig.MetricUnit,
 		MetricType:          extractorConfig.MetricType,
 		MetricValue:         metricValue,
+		Direction:           chqpb.Direction(extractorConfig.Direction),
 	}, nil
 }
 
@@ -318,6 +324,7 @@ func ParseMetricSketchExtractorConfigs(extractorConfigs []MetricSketchExtractorC
 			MetricType:       extractorConfig.MetricType,
 			OutputMetricName: extractorConfig.OutputMetricName,
 			MetricUnit:       extractorConfig.MetricUnit,
+			Direction:        chqpb.Direction(extractorConfig.Direction),
 		}
 		lineDimensionsByTagFamilyID := make(map[int64]map[string]*ottl.Statement[ottldatapoint.TransformContext])
 		for _, dim := range extractorConfig.LineDimensions {

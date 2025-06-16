@@ -77,6 +77,7 @@ type MetricExtractorConfig struct {
 	MetricType          string              `json:"metric_type,omitempty" yaml:"metric_type,omitempty"`
 	MetricValue         string              `json:"metric_value,omitempty" yaml:"metric_value,omitempty"`
 	Version             int                 `json:"version,omitempty" yaml:"version,omitempty"`
+	Direction           int                 `json:"direction,omitempty" yaml:"direction,omitempty"` // 0 for UP, 1 for DOWN
 }
 
 type MetricSketchExtractorConfig struct {
@@ -89,6 +90,7 @@ type MetricSketchExtractorConfig struct {
 	AggregateDimensions map[string]string   `json:"aggregate_dimensions,omitempty" yaml:"aggregate_dimensions,omitempty"`
 	OutputMetricName    string              `json:"output_metric_name,omitempty" yaml:"output_metric_name,omitempty"`
 	Version             int                 `json:"version,omitempty" yaml:"version,omitempty"`
+	Direction           int                 `json:"direction,omitempty" yaml:"direction,omitempty"` // 0 for UP, 1 for DOWN
 }
 
 type StatsEnrichment struct {
