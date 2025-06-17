@@ -33,6 +33,7 @@ const (
 	BelongsToRegion          = "belongs to region"
 	BelongsToZone            = "belongs to zone"
 	CallsEndpoint            = "calls endpoint"
+	CallsGRPCEndpoint        = "calls gRPC endpoint"
 	ConsumesFrom             = "consumes from"
 	ExecutesQuery            = "executes query"
 	ContainsAvailabilityZone = "contains availability zone"
@@ -101,6 +102,7 @@ const (
 	RunsOnOperatingSystem    = "runs on operating system"
 	RunsProcess              = "runs process"
 	ServesEndpoint           = "serves endpoint"
+	ServesGRPCEndpoint       = "serves gRPC endpoint"
 	SettlesMessagesTo        = "settles messages to"
 	UsesConfigMap            = "uses configmap"
 	UsesDatabase             = "uses database"
@@ -156,6 +158,7 @@ const (
 	Endpoint                       = "endpoint"
 	FaasFunction                   = "faas.function"
 	FaasInstance                   = "faas.instance"
+	GRPC                           = "grpc"
 	Host                           = "host"
 	HostIp                         = "host.ip"
 	K8SPodIp                       = "k8s.pod.ip"
@@ -300,6 +303,37 @@ var EntityRelationships = RelationshipMap{
 		},
 	},
 
+	// gRPC endpoints
+	string(semconv.RPCMethodKey): {
+		Type: Endpoint,
+		DeriveRelationshipCallbacks: map[string]func(pcommon.Map) string{
+			string(semconv.ServiceNameKey): func(m pcommon.Map) string {
+				spanKindCode, spanKindCodeFound := m.Get(SpanKindString)
+				if spanKindCodeFound {
+					spanKind := spanKindCode.AsString()
+					if spanKind == ptrace.SpanKindServer.String() {
+						return IsServedByService
+					} else if spanKind == ptrace.SpanKindClient.String() {
+						return IsCalledByService
+					}
+				}
+				return ""
+			},
+		},
+		ShouldCreateCallBack: func(m pcommon.Map) bool {
+			rpcSystem, rpcSystemFound := m.Get(string(semconv.RPCSystemKey))
+			return rpcSystemFound && rpcSystem.AsString() == GRPC
+		},
+		AttributeNames: []string{
+			string(semconv.RPCSystemKey),
+			string(semconv.RPCServiceKey),
+		},
+		OtherIDAttributes: []string{
+			string(semconv.RPCSystemKey),
+			string(semconv.RPCServiceKey),
+		},
+	},
+
 	// Service
 	string(semconv.ServiceNameKey): {
 		Type: Service,
@@ -397,6 +431,19 @@ var EntityRelationships = RelationshipMap{
 						return ServesEndpoint
 					} else if spanKind == ptrace.SpanKindClient.String() {
 						return CallsEndpoint
+					}
+				}
+				return ""
+			},
+			string(semconv.RPCMethodKey): func(m pcommon.Map) string {
+				spanKindCode, spanKindCodeFound := m.Get(SpanKindString)
+				rpcSystem, rpcSystemFound := m.Get(string(semconv.RPCSystemKey))
+				if spanKindCodeFound && rpcSystemFound && rpcSystem.AsString() == GRPC {
+					spanKind := spanKindCode.AsString()
+					if spanKind == ptrace.SpanKindServer.String() {
+						return ServesGRPCEndpoint
+					} else if spanKind == ptrace.SpanKindClient.String() {
+						return CallsGRPCEndpoint
 					}
 				}
 				return ""
