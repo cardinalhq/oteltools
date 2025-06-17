@@ -40,7 +40,7 @@ type Exemplar struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Payload       string                 `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`
 	Attributes    map[string]string      `protobuf:"bytes,2,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	PartitionId   string                 `protobuf:"bytes,3,opt,name=partition_id,json=partitionId,proto3" json:"partition_id,omitempty"`
+	PartitionId   int64                  `protobuf:"varint,3,opt,name=partition_id,json=partitionId,proto3" json:"partition_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -89,11 +89,11 @@ func (x *Exemplar) GetAttributes() map[string]string {
 	return nil
 }
 
-func (x *Exemplar) GetPartitionId() string {
+func (x *Exemplar) GetPartitionId() int64 {
 	if x != nil {
 		return x.PartitionId
 	}
-	return ""
+	return 0
 }
 
 // Represents a report containing a batch of exemplars to be published.
@@ -101,7 +101,7 @@ type ExemplarPublishReport struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	OrganizationId string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	ProcessorId    string                 `protobuf:"bytes,2,opt,name=processor_id,json=processorId,proto3" json:"processor_id,omitempty"`
-	TelemetryType  string                 `protobuf:"bytes,3,opt,name=telemetry_type,json=telemetryType,proto3" json:"telemetry_type,omitempty"` // Adjust if signalnames.Name is an enum.
+	TelemetryType  string                 `protobuf:"bytes,3,opt,name=telemetry_type,json=telemetryType,proto3" json:"telemetry_type,omitempty"`
 	Exemplars      []*Exemplar            `protobuf:"bytes,4,rep,name=exemplars,proto3" json:"exemplars,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -175,7 +175,7 @@ const file_exemplar_report_proto_rawDesc = "" +
 	"\n" +
 	"attributes\x18\x02 \x03(\v2\x1f.chqpb.Exemplar.AttributesEntryR\n" +
 	"attributes\x12!\n" +
-	"\fpartition_id\x18\x03 \x01(\tR\vpartitionId\x1a=\n" +
+	"\fpartition_id\x18\x03 \x01(\x03R\vpartitionId\x1a=\n" +
 	"\x0fAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb9\x01\n" +
