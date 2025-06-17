@@ -22,7 +22,7 @@ option go_package = ".;chqpb";
 message Exemplar {
   string payload = 1;
   map<string, string> attributes = 2;
-  string partition_id = 3;
+  int64 partition_id = 3;
 }
 
 // Represents a report containing a batch of exemplars to be published.
