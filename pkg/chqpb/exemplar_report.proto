@@ -30,5 +30,6 @@ message ExemplarPublishReport {
   string organization_id = 1;
   string processor_id = 2;
   string telemetry_type = 3;
-  repeated Exemplar exemplars = 4;
+  string collector_id = 4;
+  repeated Exemplar exemplars = 5;
 }
