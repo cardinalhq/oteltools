@@ -102,7 +102,8 @@ type ExemplarPublishReport struct {
 	OrganizationId string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	ProcessorId    string                 `protobuf:"bytes,2,opt,name=processor_id,json=processorId,proto3" json:"processor_id,omitempty"`
 	TelemetryType  string                 `protobuf:"bytes,3,opt,name=telemetry_type,json=telemetryType,proto3" json:"telemetry_type,omitempty"`
-	Exemplars      []*Exemplar            `protobuf:"bytes,4,rep,name=exemplars,proto3" json:"exemplars,omitempty"`
+	CollectorId    string                 `protobuf:"bytes,4,opt,name=collector_id,json=collectorId,proto3" json:"collector_id,omitempty"`
+	Exemplars      []*Exemplar            `protobuf:"bytes,5,rep,name=exemplars,proto3" json:"exemplars,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -158,6 +159,13 @@ func (x *ExemplarPublishReport) GetTelemetryType() string {
 	return ""
 }
 
+func (x *ExemplarPublishReport) GetCollectorId() string {
+	if x != nil {
+		return x.CollectorId
+	}
+	return ""
+}
+
 func (x *ExemplarPublishReport) GetExemplars() []*Exemplar {
 	if x != nil {
 		return x.Exemplars
@@ -178,12 +186,13 @@ const file_exemplar_report_proto_rawDesc = "" +
 	"\fpartition_id\x18\x03 \x01(\x03R\vpartitionId\x1a=\n" +
 	"\x0fAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb9\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xdc\x01\n" +
 	"\x15ExemplarPublishReport\x12'\n" +
 	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\x12!\n" +
 	"\fprocessor_id\x18\x02 \x01(\tR\vprocessorId\x12%\n" +
-	"\x0etelemetry_type\x18\x03 \x01(\tR\rtelemetryType\x12-\n" +
-	"\texemplars\x18\x04 \x03(\v2\x0f.chqpb.ExemplarR\texemplarsB\tZ\a.;chqpbb\x06proto3"
+	"\x0etelemetry_type\x18\x03 \x01(\tR\rtelemetryType\x12!\n" +
+	"\fcollector_id\x18\x04 \x01(\tR\vcollectorId\x12-\n" +
+	"\texemplars\x18\x05 \x03(\v2\x0f.chqpb.ExemplarR\texemplarsB\tZ\a.;chqpbb\x06proto3"
 
 var (
 	file_exemplar_report_proto_rawDescOnce sync.Once
