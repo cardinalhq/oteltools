@@ -13,6 +13,7 @@ import (
 	"github.com/cardinalhq/oteltools/pkg/translate"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"hash/fnv"
+	"strings"
 	"sync"
 	"time"
 
@@ -141,6 +142,13 @@ func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog
 	}
 }
 
+var errorLevels = map[string]bool{
+	"error":    true,
+	"fatal":    true,
+	"critical": true,
+	"warn":     true,
+}
+
 func isError(lr plog.LogRecord) bool {
 	severity := lr.SeverityNumber()
 	isSevere := severity >= plog.SeverityNumberWarn
@@ -151,8 +159,8 @@ func isError(lr plog.LogRecord) bool {
 	if !ok {
 		return false
 	}
-	cLvlStr := cLvl.AsString()
-	return cLvlStr == "ERROR" || cLvlStr == "FATAL" || cLvlStr == "CRITICAL" || cLvlStr == "WARN"
+	cLvlStr := strings.ToLower(cLvl.AsString())
+	return errorLevels[cLvlStr]
 }
 
 func (c *ServiceLogCountsCache) flush() {
