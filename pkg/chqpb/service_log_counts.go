@@ -143,7 +143,16 @@ func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog
 
 func isError(lr plog.LogRecord) bool {
 	severity := lr.SeverityNumber()
-	return severity >= plog.SeverityNumberWarn
+	isSevere := severity >= plog.SeverityNumberWarn
+	if isSevere {
+		return true
+	}
+	cLvl, ok := lr.Attributes().Get(translate.CardinalFieldLevel)
+	if !ok {
+		return false
+	}
+	cLvlStr := cLvl.AsString()
+	return cLvlStr == "ERROR" || cLvlStr == "FATAL" || cLvlStr == "CRITICAL" || cLvlStr == "WARN"
 }
 
 func (c *ServiceLogCountsCache) flush() {
