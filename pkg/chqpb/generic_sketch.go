@@ -23,7 +23,6 @@
 package chqpb
 
 import (
-	"math"
 	"sync"
 	"time"
 
@@ -73,11 +72,11 @@ const (
 	Count = "count"
 )
 
-func (c *GenericSketchCache) getFreqTopK(metricName string, direction Direction, parentTid int64, tagFamilyId int64) *TopKByFrequency {
-	key := getKey(metricName, direction, parentTid, tagFamilyId)
-	topK, _ := c.freqTopKs.LoadOrStore(key, NewTopKByFrequency(c.maxK, 2*c.interval, direction))
-	return topK.(*TopKByFrequency)
-}
+//func (c *GenericSketchCache) getFreqTopK(metricName string, direction Direction, parentTid int64, tagFamilyId int64) *TopKByFrequency {
+//	key := getKey(metricName, direction, parentTid, tagFamilyId)
+//	topK, _ := c.freqTopKs.LoadOrStore(key, NewTopKByFrequency(c.maxK, 2*c.interval, direction))
+//	return topK.(*TopKByFrequency)
+//}
 
 func (c *GenericSketchCache) getValueTopK(metricName string, direction Direction, parentTid int64, tagFamilyId int64) *TopKByValue {
 	key := getKey(metricName, direction, parentTid, tagFamilyId)
@@ -105,14 +104,17 @@ func (c *GenericSketchCache) UpdateWithCount(
 	val, ok := skMap.Load(tid)
 
 	var shouldAdd = false
-	switch metricType {
-	case Count:
-		freqTopK := c.getFreqTopK(metricName, direction, parentTID, tagFamilyID)
-		shouldAdd = freqTopK.EligibleWithCount(tid, int(count))
-	default:
-		valueTopK := c.getValueTopK(metricName, direction, parentTID, tagFamilyID)
-		shouldAdd = valueTopK.Eligible(value)
-	}
+	//switch metricType {
+	//case Count:
+	//	freqTopK := c.getFreqTopK(metricName, direction, parentTID, tagFamilyID)
+	//	shouldAdd = freqTopK.EligibleWithCount(tid, int(count))
+	//default:
+	//	valueTopK := c.getValueTopK(metricName, direction, parentTID, tagFamilyID)
+	//	shouldAdd = valueTopK.Eligible(value)
+	//}
+
+	valueTopK := c.getValueTopK(metricName, direction, parentTID, tagFamilyID)
+	shouldAdd = valueTopK.Eligible(value)
 
 	var entry *genericSketchEntry
 	if !ok {
@@ -162,14 +164,17 @@ func (c *GenericSketchCache) Update(
 	skMap := bucketIface.(*sync.Map)
 
 	var shouldAdd = false
-	switch metricType {
-	case Count:
-		freqTopK := c.getFreqTopK(metricName, direction, parentTID, tagFamilyId)
-		shouldAdd = freqTopK.Eligible(tid)
-	default:
-		valueTopK := c.getValueTopK(metricName, direction, parentTID, tagFamilyId)
-		shouldAdd = valueTopK.Eligible(value)
-	}
+	//switch metricType {
+	//case Count:
+	//	freqTopK := c.getFreqTopK(metricName, direction, parentTID, tagFamilyId)
+	//	shouldAdd = freqTopK.Eligible(tid)
+	//default:
+	//	valueTopK := c.getValueTopK(metricName, direction, parentTID, tagFamilyId)
+	//	shouldAdd = valueTopK.Eligible(value)
+	//}
+
+	valueTopK := c.getValueTopK(metricName, direction, parentTID, tagFamilyId)
+	shouldAdd = valueTopK.Eligible(value)
 
 	val, ok := skMap.Load(tid)
 	var entry *genericSketchEntry
@@ -223,20 +228,23 @@ func (c *GenericSketchCache) flush() {
 			mn, tid := entry.proto.MetricName, entry.proto.Tid
 
 			// 1a) Expire old entries
-			freqTK := c.getFreqTopK(mn, entry.proto.Direction, entry.proto.ParentTID, entry.proto.TagFamilyId)
-			freqTK.CleanupExpired()
+			//freqTK := c.getFreqTopK(mn, entry.proto.Direction, entry.proto.ParentTID, entry.proto.TagFamilyId)
+			//freqTK.CleanupExpired()
 			valTK := c.getValueTopK(mn, entry.proto.Direction, entry.proto.ParentTID, entry.proto.TagFamilyId)
 			valTK.CleanupExpired()
 
 			// 1b) Update with this TID’s final score for the interval
-			switch entry.proto.MetricType {
-			case Count:
-				cnt := int(math.Ceil(entry.internal.GetCount()))
-				freqTK.AddCount(tid, cnt)
-			default:
-				if p50, err := entry.internal.GetValueAtQuantile(0.5); err == nil {
-					valTK.Add(tid, p50)
-				}
+			//switch entry.proto.MetricType {
+			//case Count:
+			//	cnt := int(math.Ceil(entry.internal.GetCount()))
+			//	freqTK.AddCount(tid, cnt)
+			//default:
+			//	if p50, err := entry.internal.GetValueAtQuantile(0.5); err == nil {
+			//		valTK.Add(tid, p50)
+			//	}
+			//}
+			if p50, err := entry.internal.GetValueAtQuantile(0.5); err == nil {
+				valTK.Add(tid, p50)
 			}
 			return true
 		})
@@ -246,21 +254,26 @@ func (c *GenericSketchCache) flush() {
 			entry := val.(*genericSketchEntry)
 			mn, tid := entry.proto.MetricName, entry.proto.Tid
 
-			freqTK := c.getFreqTopK(mn, entry.proto.Direction, entry.proto.ParentTID, entry.proto.TagFamilyId)
+			//freqTK := c.getFreqTopK(mn, entry.proto.Direction, entry.proto.ParentTID, entry.proto.TagFamilyId)
 			valTK := c.getValueTopK(mn, entry.proto.Direction, entry.proto.ParentTID, entry.proto.TagFamilyId)
 
-			inFreq := false
-			if entry.proto.MetricType == Count {
-				// if tid sits in the heap’s index, it’s one of the top-K
-				_, inFreq = freqTK.h.index[tid]
-			}
+			//inFreq := false
+			//if entry.proto.MetricType == Count {
+			//	// if tid sits in the heap’s index, it’s one of the top-K
+			//	_, inFreq = freqTK.h.index[tid]
+			//}
 
-			inVal := false
-			if entry.proto.MetricType != Count {
-				_, inVal = valTK.h.index[tid]
-			}
+			//inVal := false
+			//if entry.proto.MetricType != Count {
+			//	_, inVal = valTK.h.index[tid]
+			//}
+			_, inVal := valTK.h.index[tid]
 
-			if !inFreq && !inVal {
+			//if !inFreq && !inVal {
+			//	// neither top-K by count nor by value → skip
+			//	return true
+			//}
+			if !inVal {
 				// neither top-K by count nor by value → skip
 				return true
 			}
