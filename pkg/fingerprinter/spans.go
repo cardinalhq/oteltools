@@ -107,7 +107,7 @@ func CalculateSpanFingerprint(res pcommon.Resource, sr ptrace.Span, fpr Fingerpr
 	spanKindStr := sr.Kind().String()
 	fingerprintAttributes = append(fingerprintAttributes, spanKindStr)
 
-	spanHasError := sr.Status().Code() == ptrace.StatusCodeError
-	fingerprintAttributes = append(fingerprintAttributes, strconv.FormatBool(spanHasError))
+	//spanHasError := sr.Status().Code() == ptrace.StatusCodeError
+	//fingerprintAttributes = append(fingerprintAttributes, strconv.FormatBool(spanHasError))
 	return int64(xxhash.Sum64String(strings.Join(fingerprintAttributes, "##")))
 }
