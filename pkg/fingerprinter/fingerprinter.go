@@ -38,27 +38,24 @@ const (
 
 type Fingerprinter interface {
 	IsWord(word string) bool
-	Fingerprint(input string) (fingerprint int64, level string, js map[string]any, err error)
+	Fingerprint(input string, clusterManager *TrieClusterManager) (fingerprint int64, level string, js map[string]any, err error)
 	TokenizeInput(input string) (*TokenSeq, string, map[string]any, error)
 	Tokenize(input string) (*TokenSeq, string, error)
-	GetClusterManager() *TrieClusterManager
 }
 
 type fingerprinterImpl struct {
-	clusterManager *TrieClusterManager
-	maxTokens      int
-	wordlist       map[string]struct{}
+	maxTokens int
+	wordlist  map[string]struct{}
 }
 
 var _ Fingerprinter = (*fingerprinterImpl)(nil)
 
 // Use a pattern where options can be passed into the constructor as a series of functional options.
 
-func NewFingerprinter(clusterManager *TrieClusterManager, opts ...Option) *fingerprinterImpl {
+func NewFingerprinter(opts ...Option) *fingerprinterImpl {
 	fp := fingerprinterImpl{
-		clusterManager: clusterManager,
-		maxTokens:      15,
-		wordlist:       make(map[string]struct{}),
+		maxTokens: 15,
+		wordlist:  make(map[string]struct{}),
 	}
 	for _, word := range englishWords {
 		fp.wordlist[word] = struct{}{}
@@ -76,10 +73,6 @@ func WithMaxTokens(maxlen int) Option {
 	return func(fp *fingerprinterImpl) {
 		fp.maxTokens = maxlen
 	}
-}
-
-func (fp *fingerprinterImpl) GetClusterManager() *TrieClusterManager {
-	return fp.clusterManager
 }
 
 func findJSONContent(input string) (string, string, string) {
@@ -148,14 +141,14 @@ func (fp *fingerprinterImpl) tokenizeJSONContent(prefix string, data map[string]
 	return s, level, nil
 }
 
-func (fp *fingerprinterImpl) Fingerprint(input string) (fingerprint int64, level string, js map[string]any, err error) {
+func (fp *fingerprinterImpl) Fingerprint(input string, clusterManager *TrieClusterManager) (fingerprint int64, level string, js map[string]any, err error) {
 	t, level, js, err := fp.TokenizeInput(input)
 	if err != nil {
 		return 0, "", nil, err
 	}
 	names := maputils.DeepKeys(js)
 	t.JSONKeys = names
-	return fp.clusterManager.Cluster(t), level, js, nil
+	return clusterManager.Cluster(t), level, js, nil
 }
 
 func (fp *fingerprinterImpl) TokenizeInput(input string) (*TokenSeq, string, map[string]any, error) {
