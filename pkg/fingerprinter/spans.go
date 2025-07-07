@@ -22,7 +22,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
-	"strconv"
 	"strings"
 )
 
@@ -86,20 +85,20 @@ func GetExceptionMessage(sr ptrace.Span) string {
 	return exceptionMessage
 }
 
-func CalculateSpanFingerprint(res pcommon.Resource, sr ptrace.Span, fpr Fingerprinter) int64 {
+func CalculateSpanFingerprint(res pcommon.Resource, sr ptrace.Span) int64 {
 	fingerprintAttributes := make([]string, 0)
 	clusterName := GetFromResource(res.Attributes(), clusterNameKey)
 	namespaceName := GetFromResource(res.Attributes(), namespaceNameKey)
 	serviceName := GetFromResource(res.Attributes(), serviceNameKey)
 	fingerprintAttributes = append(fingerprintAttributes, clusterName, namespaceName, serviceName)
 
-	exceptionMessage := GetExceptionMessage(sr)
-	if exceptionMessage != "" {
-		computedFp, _, _, err := fpr.Fingerprint(exceptionMessage)
-		if err == nil {
-			fingerprintAttributes = append(fingerprintAttributes, strconv.FormatInt(computedFp, 10))
-		}
-	}
+	//exceptionMessage := GetExceptionMessage(sr)
+	//if exceptionMessage != "" {
+	//	computedFp, _, _, err := fpr.Fingerprint(exceptionMessage)
+	//	if err == nil {
+	//		fingerprintAttributes = append(fingerprintAttributes, strconv.FormatInt(computedFp, 10))
+	//	}
+	//}
 
 	sanitizedName := functions.ScrubWord(sr.Name())
 	fingerprintAttributes = append(fingerprintAttributes, sanitizedName)
