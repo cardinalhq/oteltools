@@ -82,7 +82,7 @@ type SpanSketchCache struct {
 	buckets         sync.Map // map[int64]*sync.Map where each inner sync.Map: map[string]*spanSketchEntry
 	customerId      string
 	interval        time.Duration
-	fpr             fingerprinter.Fingerprinter
+	clusterManager  *fingerprinter.TrieClusterManager
 	flushFunc       func(*SpanSketchList) error
 	marshaller      ptrace.JSONMarshaler
 	errorCountTopKs sync.Map
@@ -92,12 +92,12 @@ type SpanSketchCache struct {
 
 func NewSpanSketchCache(interval time.Duration, cid string, maxK int, flushFunc func(*SpanSketchList) error) *SpanSketchCache {
 	c := &SpanSketchCache{
-		interval:   interval,
-		customerId: cid,
-		fpr:        fingerprinter.NewFingerprinter(fingerprinter.NewTrieClusterManager(0.5)),
-		flushFunc:  flushFunc,
-		maxK:       maxK,
-		marshaller: ptrace.JSONMarshaler{},
+		interval:       interval,
+		customerId:     cid,
+		clusterManager: fingerprinter.NewTrieClusterManager(0.5),
+		flushFunc:      flushFunc,
+		maxK:           maxK,
+		marshaller:     ptrace.JSONMarshaler{},
 	}
 	go c.loop()
 	return c
@@ -201,8 +201,8 @@ func (c *SpanSketchCache) Update(
 		hasException = true
 		exMsg := extractExceptionMessage(e.Attributes())
 		entry.proto.ExceptionCount++
-		if c.fpr != nil {
-			fp, _, _, err := c.fpr.Fingerprint(exMsg)
+		if c.clusterManager != nil {
+			fp, _, _, err := fingerprinter.Fingerprint(exMsg, c.clusterManager)
 			if err == nil {
 				bytes, err := c.spanToJson(span, resource)
 				if err == nil {
@@ -223,8 +223,8 @@ func (c *SpanSketchCache) Update(
 			if ok {
 				c.putException(span, resource, entry, fp.Int())
 			}
-		} else if c.fpr != nil {
-			fp, _, _, err := c.fpr.Fingerprint(exMsg)
+		} else if c.clusterManager != nil {
+			fp, _, _, err := fingerprinter.Fingerprint(exMsg, c.clusterManager)
 			if err == nil {
 				c.putException(span, resource, entry, fp)
 			}
