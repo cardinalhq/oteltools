@@ -90,8 +90,6 @@ type SpanSketchCache struct {
 	maxK            int
 }
 
-var fpr = fingerprinter.NewFingerprinter()
-
 func NewSpanSketchCache(interval time.Duration, cid string, maxK int, flushFunc func(*SpanSketchList) error) *SpanSketchCache {
 	c := &SpanSketchCache{
 		interval:       interval,
@@ -204,7 +202,7 @@ func (c *SpanSketchCache) Update(
 		exMsg := extractExceptionMessage(e.Attributes())
 		entry.proto.ExceptionCount++
 		if c.clusterManager != nil {
-			fp, _, _, err := fpr.Fingerprint(exMsg, c.clusterManager)
+			fp, _, _, err := fingerprinter.Fingerprint(exMsg, c.clusterManager)
 			if err == nil {
 				bytes, err := c.spanToJson(span, resource)
 				if err == nil {
@@ -226,7 +224,7 @@ func (c *SpanSketchCache) Update(
 				c.putException(span, resource, entry, fp.Int())
 			}
 		} else if c.clusterManager != nil {
-			fp, _, _, err := fpr.Fingerprint(exMsg, c.clusterManager)
+			fp, _, _, err := fingerprinter.Fingerprint(exMsg, c.clusterManager)
 			if err == nil {
 				c.putException(span, resource, entry, fp)
 			}
