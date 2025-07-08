@@ -30,11 +30,11 @@ func TestSimpleClustering(t *testing.T) {
 
 	// threshold = 0.5
 	clusterManager := NewTrieClusterManager(0.5)
-	fpr := NewFingerprinter(clusterManager, WithMaxTokens(50))
+	fpr := NewFingerprinter(WithMaxTokens(50))
 
 	fps := make([]int64, len(messages))
 	for i, msg := range messages {
-		fp, _, _, err := fpr.Fingerprint(msg)
+		fp, _, _, err := fpr.Fingerprint(msg, clusterManager)
 		assert.NoError(t, err)
 		fps[i] = fp
 	}
@@ -57,12 +57,12 @@ func TestEnvoyAccessLogClustering(t *testing.T) {
 	message7 := "[2025-01-15T01:47:27.309Z] \"GET /metrics HTTP/1.1\" 200 - via_upstream - \"-\" 0 2260 1 1 \"-\" \"Prometheus/v0.18.2\" \"93068269-58a4-4258-a451-ff9ec522ab20\" \"172.25.26.133:9394\" \"172.25.26.133:9394\" inbound|9394|| 127.0.0.6:54671 172.25.26.133:9394 172.25.26.165:36862 - default\n"
 
 	clusterManager := NewTrieClusterManager(0.5)
-	fpr := NewFingerprinter(clusterManager, WithMaxTokens(50))
+	fpr := NewFingerprinter(WithMaxTokens(50))
 
 	// Fingerprint the messages, and ensure they all have the same fingerprint.
 	fps := make([]int64, 0)
 	for _, msg := range []string{message1, message2, message3, message4, message5, message6, message7} {
-		fp, _, _, err := fpr.Fingerprint(msg)
+		fp, _, _, err := fpr.Fingerprint(msg, clusterManager)
 		assert.NoError(t, err)
 		fps = append(fps, fp)
 	}
@@ -80,12 +80,12 @@ func TestClusteringOnReadingGlob(t *testing.T) {
 	message2 := "[786a039]Error in reading glob, sql = SELECT \\\"metric.app\\\" as \\\"metric.app\\\", COUNT(*) AS count FROM read_parquet(['./db/415c9d63-5d29-4b7a-92ac-5c2c7ba0d672/chq-ccstats/20241219/metrics/21/tbl_14547073845256.parquet', './db/415c9d63-5d29-4b7a-92ac-5c2c7ba0d672/chq-ccstats/20241219/metrics/21/tbl_14641144825111.parquet'], union_by_name=True) WHERE ((\\\"_cardinalhq.name\\\" = 'ruby.http.requests.total' and \\\"_cardinalhq.telemetry_type\\\" = 'metrics') and \\\"metric.app\\\" IS NOT NULL) AND \\\"_cardinalhq.timestamp\\\" > 1734642320000 AND \\\"_cardinalhq.timestamp\\\" <= 1734643060000 GROUP BY \\\"metric.app\\\" java.sql.SQLException: Binder Error: Referenced column \\\"metric.app\\\" not found in FROM clause!\\\\nCandidate bindings: \\\"read_parquet.metric.data_type\\\", \\\"read_parquet.metric.transport\\\", \\\"read_parquet.metric.signal\\\"\\\\nLINE 1: SELECT \\\"metric.app\\\" as \\\"metric.app\\\", COUNT(*) ...\\\\n "
 
 	clusterManager := NewTrieClusterManager(0.5)
-	fpr := NewFingerprinter(clusterManager, WithMaxTokens(50))
+	fpr := NewFingerprinter(WithMaxTokens(50))
 
 	// Fingerprint the messages, and ensure they all have the same fingerprint.
 	fps := make([]int64, 0)
 	for _, msg := range []string{message1, message2} {
-		fp, _, _, err := fpr.Fingerprint(msg)
+		fp, _, _, err := fpr.Fingerprint(msg, clusterManager)
 		assert.NoError(t, err)
 		fps = append(fps, fp)
 	}
@@ -101,12 +101,12 @@ func TestClusteringOnLorenIpsum(t *testing.T) {
 	message5 := "[1a41a6cb-28e9-4806-a40b-822a38fb4630]   [1m[36mTicket Create (1.6ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Dignissimos repellendus et quam.', 'Minima laboriosam aut. Quas sapiente ut. Facilis ipsa animi.', 585165, 11, '2025-01-13 14:07:36.160576', '2025-01-13 14:07:36.160576')[0m"
 
 	clusterManager := NewTrieClusterManager(0.5)
-	fpr := NewFingerprinter(clusterManager, WithMaxTokens(50))
+	fpr := NewFingerprinter(WithMaxTokens(50))
 
 	// Fingerprint the messages, and ensure they all have the same fingerprint.
 	fps := make([]int64, 0)
 	for _, msg := range []string{message1, message2, message3, message4, message5} {
-		fp, _, _, err := fpr.Fingerprint(msg)
+		fp, _, _, err := fpr.Fingerprint(msg, clusterManager)
 		assert.NoError(t, err)
 		fps = append(fps, fp)
 	}
@@ -119,9 +119,9 @@ func TestClusteringOnLorenIpsum(t *testing.T) {
 
 func TestPartialPrefixDivergence(t *testing.T) {
 	cm := NewTrieClusterManager(0.8)
-	fpr := NewFingerprinter(cm, WithMaxTokens(50))
-	fp1, _, _, _ := fpr.Fingerprint("foo bar baz qux")
-	fp2, _, _, _ := fpr.Fingerprint("foo bar baz quux")
+	fpr := NewFingerprinter(WithMaxTokens(50))
+	fp1, _, _, _ := fpr.Fingerprint("foo bar baz qux", cm)
+	fp2, _, _, _ := fpr.Fingerprint("foo bar baz quux", cm)
 	// share prefix “foo bar baz”
 	assert.NotEqual(t, fp1, fp2, "should be distinct clusters under the same subtrie")
 }

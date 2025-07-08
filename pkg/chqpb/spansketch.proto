@@ -38,6 +38,7 @@ message SpanSketchProto {
   int64 parentTID = 14;
   int64 tagFamilyId = 15;
   string metric_type = 16;
+  map<int64, bool> fingerprints = 17; // Map of fingerprint to boolean indicating if it is a span fingerprint
 }
 
 // Wrapper for a list of span sketches to emit in a single batch

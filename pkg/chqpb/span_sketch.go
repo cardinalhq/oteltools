@@ -171,6 +171,7 @@ func (c *SpanSketchCache) Update(
 			ExceptionCountsMap: make(map[int64]int64),
 			TagFamilyId:        tagFamilyId,
 			ParentTID:          parentTID,
+			Fingerprints:       make(map[int64]bool),
 		}
 		ps, _ := ddsketch.NewDefaultDDSketch(0.01)
 		entry = &spanSketchEntry{
@@ -185,6 +186,7 @@ func (c *SpanSketchCache) Update(
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
 
+	entry.proto.Fingerprints[fingerprinter.GetFingerprintAttribute(span.Attributes())] = true
 	entry.proto.TotalCount++
 	if span.Status().Code() == ptrace.StatusCodeError {
 		entry.proto.ErrorCount++
