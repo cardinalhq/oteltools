@@ -55,6 +55,7 @@ type SpanSketchProto struct {
 	ParentTID          int64           `protobuf:"varint,14,opt,name=parentTID,proto3" json:"parentTID,omitempty"`
 	TagFamilyId        int64           `protobuf:"varint,15,opt,name=tagFamilyId,proto3" json:"tagFamilyId,omitempty"`
 	MetricType         string          `protobuf:"bytes,16,opt,name=metric_type,json=metricType,proto3" json:"metric_type,omitempty"`
+	Fingerprints       map[int64]bool  `protobuf:"bytes,17,rep,name=fingerprints,proto3" json:"fingerprints,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"` // Map of fingerprint to boolean indicating if it is a span fingerprint
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -180,6 +181,13 @@ func (x *SpanSketchProto) GetMetricType() string {
 	return ""
 }
 
+func (x *SpanSketchProto) GetFingerprints() map[int64]bool {
+	if x != nil {
+		return x.Fingerprints
+	}
+	return nil
+}
+
 // Wrapper for a list of span sketches to emit in a single batch
 type SpanSketchList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -237,7 +245,7 @@ var File_spansketch_proto protoreflect.FileDescriptor
 
 const file_spansketch_proto_rawDesc = "" +
 	"\n" +
-	"\x10spansketch.proto\x12\x05chqpb\"\xf0\x05\n" +
+	"\x10spansketch.proto\x12\x05chqpb\"\xff\x06\n" +
 	"\x0fSpanSketchProto\x12\x1f\n" +
 	"\vmetric_name\x18\x01 \x01(\tR\n" +
 	"metricName\x12\x10\n" +
@@ -256,7 +264,8 @@ const file_spansketch_proto_rawDesc = "" +
 	"\tparentTID\x18\x0e \x01(\x03R\tparentTID\x12 \n" +
 	"\vtagFamilyId\x18\x0f \x01(\x03R\vtagFamilyId\x12\x1f\n" +
 	"\vmetric_type\x18\x10 \x01(\tR\n" +
-	"metricType\x1a7\n" +
+	"metricType\x12L\n" +
+	"\ffingerprints\x18\x11 \x03(\v2(.chqpb.SpanSketchProto.FingerprintsEntryR\ffingerprints\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a@\n" +
@@ -265,7 +274,10 @@ const file_spansketch_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aE\n" +
 	"\x17ExceptionCountsMapEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x03R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"e\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\x1a?\n" +
+	"\x11FingerprintsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x03R\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\bR\x05value:\x028\x01\"e\n" +
 	"\x0eSpanSketchList\x122\n" +
 	"\bsketches\x18\x01 \x03(\v2\x16.chqpb.SpanSketchProtoR\bsketches\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
@@ -283,24 +295,26 @@ func file_spansketch_proto_rawDescGZIP() []byte {
 	return file_spansketch_proto_rawDescData
 }
 
-var file_spansketch_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_spansketch_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_spansketch_proto_goTypes = []any{
 	(*SpanSketchProto)(nil), // 0: chqpb.SpanSketchProto
 	(*SpanSketchList)(nil),  // 1: chqpb.SpanSketchList
 	nil,                     // 2: chqpb.SpanSketchProto.TagsEntry
 	nil,                     // 3: chqpb.SpanSketchProto.ExceptionsMapEntry
 	nil,                     // 4: chqpb.SpanSketchProto.ExceptionCountsMapEntry
+	nil,                     // 5: chqpb.SpanSketchProto.FingerprintsEntry
 }
 var file_spansketch_proto_depIdxs = []int32{
 	2, // 0: chqpb.SpanSketchProto.tags:type_name -> chqpb.SpanSketchProto.TagsEntry
 	3, // 1: chqpb.SpanSketchProto.exceptions_map:type_name -> chqpb.SpanSketchProto.ExceptionsMapEntry
 	4, // 2: chqpb.SpanSketchProto.exception_counts_map:type_name -> chqpb.SpanSketchProto.ExceptionCountsMapEntry
-	0, // 3: chqpb.SpanSketchList.sketches:type_name -> chqpb.SpanSketchProto
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 3: chqpb.SpanSketchProto.fingerprints:type_name -> chqpb.SpanSketchProto.FingerprintsEntry
+	0, // 4: chqpb.SpanSketchList.sketches:type_name -> chqpb.SpanSketchProto
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_spansketch_proto_init() }
@@ -314,7 +328,7 @@ func file_spansketch_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_spansketch_proto_rawDesc), len(file_spansketch_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

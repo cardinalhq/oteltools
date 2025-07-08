@@ -85,28 +85,52 @@ func GetExceptionMessage(sr ptrace.Span) string {
 	return exceptionMessage
 }
 
+func GetStringAttribute(sr ptrace.Span, key string) string {
+	attrValue, found := sr.Attributes().Get(key)
+	if !found {
+		return ""
+	}
+	return attrValue.AsString()
+}
+
 func CalculateSpanFingerprint(res pcommon.Resource, sr ptrace.Span) int64 {
 	fingerprintAttributes := make([]string, 0)
 	clusterName := GetFromResource(res.Attributes(), clusterNameKey)
 	namespaceName := GetFromResource(res.Attributes(), namespaceNameKey)
 	serviceName := GetFromResource(res.Attributes(), serviceNameKey)
-	fingerprintAttributes = append(fingerprintAttributes, clusterName, namespaceName, serviceName)
+	spanKindStr := sr.Kind().String()
+	fingerprintAttributes = append(fingerprintAttributes, clusterName, namespaceName, serviceName, spanKindStr)
 
-	//exceptionMessage := GetExceptionMessage(sr)
-	//if exceptionMessage != "" {
-	//	computedFp, _, _, err := fpr.Fingerprint(exceptionMessage)
-	//	if err == nil {
-	//		fingerprintAttributes = append(fingerprintAttributes, strconv.FormatInt(computedFp, 10))
-	//	}
-	//}
+	dbSystem := GetStringAttribute(sr, string(semconv.DBSystemNameKey))
+	messagingSystem := GetStringAttribute(sr, string(semconv.MessagingSystemKey))
+	httpRequestMethod := GetStringAttribute(sr, string(semconv.HTTPRequestMethodKey))
+
+	if messagingSystem != "" {
+		messagingOperationType := GetStringAttribute(sr, string(semconv.MessagingOperationTypeKey))
+		messagingDestinationName := GetStringAttribute(sr, string(semconv.MessagingDestinationNameKey))
+		fingerprintAttributes = append(fingerprintAttributes, messagingSystem, messagingOperationType, messagingDestinationName)
+		return toHash(fingerprintAttributes)
+	}
+	if dbSystem != "" {
+		dbNamespace := GetStringAttribute(sr, string(semconv.DBNamespaceKey))
+		dbOperationName := GetStringAttribute(sr, string(semconv.DBOperationNameKey))
+		serverAddress := GetStringAttribute(sr, string(semconv.ServerAddressKey))
+		collectionName := GetStringAttribute(sr, string(semconv.DBCollectionNameKey))
+		fingerprintAttributes = append(fingerprintAttributes, sr.Name(), dbSystem, dbNamespace, dbOperationName, serverAddress, collectionName)
+		return toHash(fingerprintAttributes)
+	}
+	if httpRequestMethod != "" {
+		httpUrlTemplate := GetStringAttribute(sr, string(semconv.URLTemplateKey))
+		fingerprintAttributes = append(fingerprintAttributes, httpRequestMethod, httpUrlTemplate)
+		return toHash(fingerprintAttributes)
+	}
 
 	sanitizedName := functions.ScrubWord(sr.Name())
 	fingerprintAttributes = append(fingerprintAttributes, sanitizedName)
 
-	spanKindStr := sr.Kind().String()
-	fingerprintAttributes = append(fingerprintAttributes, spanKindStr)
+	return toHash(fingerprintAttributes)
+}
 
-	//spanHasError := sr.Status().Code() == ptrace.StatusCodeError
-	//fingerprintAttributes = append(fingerprintAttributes, strconv.FormatBool(spanHasError))
+func toHash(fingerprintAttributes []string) int64 {
 	return int64(xxhash.Sum64String(strings.Join(fingerprintAttributes, "##")))
 }
