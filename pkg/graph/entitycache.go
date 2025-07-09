@@ -215,6 +215,10 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 			ec.entityMap.Delete(key)
 			return true
 		}
+		if len(edges) == 0 {
+			entity.mu.Unlock()
+			return true
+		}
 		var edgesProtoList []*chqpb.EdgeProto
 		for k, v := range edges {
 			edge := entity.Edges[k]
