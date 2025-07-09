@@ -36,10 +36,12 @@ type EdgeInfo struct {
 	Target       *EntityId
 	Relationship string
 	LastSeen     int64
+	LastEmitted  int64
 }
 
 const (
-	defaultExpiry = 600000 // 10 minutes
+	defaultExpiry  = 600000 // 10 minutes
+	defaultCoolOff = 60 * 1000 * 20
 )
 
 type EntityId struct {
@@ -203,6 +205,9 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 				delete(entity.Edges, k)
 				continue
 			}
+			if currentTime-v.LastEmitted < defaultCoolOff {
+				continue
+			}
 			edges[k] = v.Relationship
 		}
 		if currentTime-entity.lastSeen > defaultExpiry {
@@ -210,9 +215,14 @@ func (ec *ResourceEntityCache) GetAllEntities() []byte {
 			ec.entityMap.Delete(key)
 			return true
 		}
+		if len(edges) == 0 {
+			entity.mu.Unlock()
+			return true
+		}
 		var edgesProtoList []*chqpb.EdgeProto
 		for k, v := range edges {
 			edge := entity.Edges[k]
+			edge.LastEmitted = currentTime
 			edgesProtoList = append(edgesProtoList, &chqpb.EdgeProto{
 				Relationship: v,
 				Source:       edge.Source.toProto(),
