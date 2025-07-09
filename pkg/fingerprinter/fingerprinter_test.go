@@ -512,37 +512,37 @@ func TestFindJSONContent(t *testing.T) {
 		},
 		{
 			"JSON content with prefix and suffix",
-			"Message: {\"key\": \"value\"} Extra",
+			`Message: {"key": "value"} Extra`,
 			"Message: ",
-			"{\"key\": \"value\"}",
+			`{"key": "value"}`,
 			" Extra",
 		},
 		{
 			"JSON content with prefix",
-			"Prefix: {\"key\": \"value\"}",
+			`Prefix: {"key": "value"}`,
 			"Prefix: ",
-			"{\"key\": \"value\"}",
+			`{"key": "value"}`,
 			"",
 		},
 		{
 			"JSON content with suffix",
-			"{\"key\": \"value\"} Suffix",
+			`{"key": "value"} Suffix`,
 			"",
-			"{\"key\": \"value\"}",
+			`{"key": "value"}`,
 			" Suffix",
 		},
 		{
 			"JSON content without prefix and suffix",
-			"{\"key\": \"value\"}",
+			`{"key": "value"}`,
 			"",
-			"{\"key\": \"value\"}",
+			`{"key": "value"}`,
 			"",
 		},
 		{
 			"nested JSON content",
-			"Message: {\"key\": {\"nested\": \"value\"}} Extra",
+			`Message: {"key": {"nested": "value"}} Extra`,
 			"Message: ",
-			"{\"key\": {\"nested\": \"value\"}}",
+			`{"key": {"nested": "value"}}`,
 			" Extra",
 		},
 	}
@@ -636,7 +636,7 @@ func TestJSONBodyFingerprint(t *testing.T) {
 	fp := NewFingerprinter()
 	fingerprint, _, js, err := fp.Fingerprint(msg, clusterManager)
 	assert.NoError(t, err)
-	assert.NotEqual(t, 0, fingerprint)
+	assert.Equal(t, int64(-2925397474039508433), fingerprint)
 	assert.NotEmpty(t, js)
 }
 
@@ -772,6 +772,41 @@ func TestFingerprintIdenticality(t *testing.T) {
 					require.NotNil(t, js)
 				}
 			}
+		})
+	}
+}
+
+func TestFingerprintJSON(t *testing.T) {
+	tests := []struct {
+		name                string
+		input               string
+		expectedFingerprint int64
+	}{
+		{
+			"simple JSON 'alice bob'",
+			`{"msg": "alice bob", "key": "value"}`,
+			-4799080351441142732,
+		},
+		{
+			"complex JSON 'alice john'",
+			`{"msg": "alice john", "user": {"id": 123, "name": "John Doe"}, "action": "login", "timestamp": "2024-06-16T18:41:32.309Z"}`,
+			-1298215320945995457,
+		},
+		{
+			"complex JSON 'alice nancy'",
+			`{"msg": "alice nancy", "user": {"id": 123, "name": "John Doe"}, "action": "login", "timestamp": "2024-06-16T18:41:32.309Z"}`,
+			-4204312781059083134,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clusterManager := NewTrieClusterManager(0.5)
+			fp := NewFingerprinter()
+			fingerprint, _, js, err := fp.Fingerprint(tt.input, clusterManager)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedFingerprint, fingerprint, "input: %s", tt.input)
+			assert.NotNil(t, js, "input: %s", tt.input)
 		})
 	}
 }

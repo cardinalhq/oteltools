@@ -24,6 +24,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/db47h/ragel/v2"
 
 	"github.com/cardinalhq/oteltools/maputils"
@@ -146,9 +147,26 @@ func (fp *fingerprinterImpl) Fingerprint(input string, clusterManager *TrieClust
 	if err != nil {
 		return 0, "", nil, err
 	}
-	names := maputils.DeepKeys(js)
-	t.JSONKeys = names
+	t.JSONKeys = maputils.DeepKeys(js)
+	if len(t.JSONKeys) > 0 {
+		return fp.FingerprintItemsAndJSONKeys(t), level, js, nil
+	}
 	return clusterManager.Cluster(t), level, js, nil
+}
+
+func (fp *fingerprinterImpl) FingerprintItemsAndJSONKeys(t *TokenSeq) int64 {
+	h := xxhash.New()
+	for i, item := range t.Items {
+		if i > 0 {
+			_, _ = h.Write([]byte(":"))
+		}
+		_, _ = h.WriteString(item)
+	}
+	for _, key := range t.JSONKeys {
+		_, _ = h.Write([]byte(":"))
+		_, _ = h.WriteString(key)
+	}
+	return int64(h.Sum64())
 }
 
 func (fp *fingerprinterImpl) TokenizeInput(input string) (*TokenSeq, string, map[string]any, error) {
