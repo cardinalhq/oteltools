@@ -17,8 +17,6 @@ package fingerprinter
 import (
 	"sync"
 	"time"
-
-	"github.com/cespare/xxhash/v2"
 )
 
 // ----------------------------------------------------------------------------
@@ -108,18 +106,7 @@ func (lc *LeafClusterer) Add(ts *TokenSeq) int64 {
 	}
 
 	// no match → new fingerprint
-	h := xxhash.New()
-	for i, item := range ts.Items {
-		if i > 0 {
-			_, _ = h.Write([]byte(":"))
-		}
-		_, _ = h.WriteString(item)
-	}
-	for _, key := range ts.JSONKeys {
-		_, _ = h.Write([]byte(":"))
-		_, _ = h.WriteString(key)
-	}
-	newFP := int64(h.Sum64())
+	newFP := fpr.FingerprintItemsAndJSONKeys(ts)
 
 	cl := &cluster{
 		Fingerprint: newFP,
