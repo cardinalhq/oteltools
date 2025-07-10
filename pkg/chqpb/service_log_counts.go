@@ -27,7 +27,6 @@ import (
 	"github.com/cardinalhq/oteltools/pkg/translate"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"hash/fnv"
-	"strings"
 	"sync"
 	"time"
 
@@ -113,16 +112,13 @@ func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog
 	var entry *logEntry
 	if !ok {
 		proto := &ServiceLogCountProto{
-			ServiceName:     svc,
-			NamespaceName:   ns,
-			ClusterName:     clus,
-			Tid:             tid,
-			Interval:        interval,
-			TotalCount:      0,
-			ErrorCount:      0,
-			ExceptionCount:  0,
-			ExceptionMap:    make(map[int64]string),
-			ExceptionCounts: make(map[int64]int64),
+			ServiceName:         svc,
+			NamespaceName:       ns,
+			ClusterName:         clus,
+			Tid:                 tid,
+			Interval:            interval,
+			CountsByFingerprint: make(map[int64]int64),
+			LevelByFingerprint:  make(map[int64]string),
 		}
 		entry = &logEntry{
 			serviceName:   svc,
@@ -138,43 +134,33 @@ func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
 
-	entry.proto.TotalCount++
-	if isError(logRecord) {
-		fpVal, fpFound := logRecord.Attributes().Get(translate.CardinalFieldFingerprint)
-		if fpFound {
-			fp := fpVal.Int()
-			entry.proto.ErrorCount++
-			entry.proto.ExceptionCount++ // only bump for first‐time fp
-			if _, exists := entry.proto.ExceptionMap[fp]; !exists {
-				bytes, err := c.logToJson(logRecord, resource)
-				if err == nil {
-					entry.proto.ExceptionMap[fp] = string(bytes)
-				}
-			}
-			entry.proto.ExceptionCounts[fp]++
-		}
+	levelStr := ToLevelStr(logRecord.SeverityNumber())
+
+	fpVal, fpFound := logRecord.Attributes().Get(translate.CardinalFieldFingerprint)
+	if fpFound {
+		fp := fpVal.Int()
+		entry.proto.CountsByFingerprint[fp]++
+		entry.proto.LevelByFingerprint[fp] = levelStr
 	}
 }
 
-var errorLevels = map[string]bool{
-	"error":    true,
-	"fatal":    true,
-	"critical": true,
-	"warn":     true,
-}
-
-func isError(lr plog.LogRecord) bool {
-	severity := lr.SeverityNumber()
-	isSevere := severity >= plog.SeverityNumberWarn
-	if isSevere {
-		return true
+func ToLevelStr(sn plog.SeverityNumber) string {
+	switch {
+	case sn >= plog.SeverityNumberTrace && sn <= plog.SeverityNumberTrace4:
+		return "trace"
+	case sn >= plog.SeverityNumberDebug && sn <= plog.SeverityNumberDebug4:
+		return "debug"
+	case sn >= plog.SeverityNumberInfo && sn <= plog.SeverityNumberInfo4:
+		return "info"
+	case sn >= plog.SeverityNumberWarn && sn <= plog.SeverityNumberWarn4:
+		return "warn"
+	case sn >= plog.SeverityNumberError && sn <= plog.SeverityNumberError4:
+		return "error"
+	case sn >= plog.SeverityNumberFatal && sn <= plog.SeverityNumberFatal4:
+		return "fatal"
+	default:
+		return "unspecified"
 	}
-	cLvl, ok := lr.Attributes().Get(translate.CardinalFieldLevel)
-	if !ok {
-		return false
-	}
-	cLvlStr := strings.ToLower(cLvl.AsString())
-	return errorLevels[cLvlStr]
 }
 
 func (c *ServiceLogCountsCache) flush() {
