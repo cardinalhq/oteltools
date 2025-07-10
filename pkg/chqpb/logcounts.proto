@@ -25,16 +25,9 @@ message ServiceLogCountProto {
   string cluster_name = 3;
   string tid = 4;
   int64 interval = 5;
-  // Total number of log records in this interval
-  int64 total_count = 6;
-  // Number of logs with severity >= WARN
-  int64 error_count = 7;
-  // Number of logs that were considered exceptions
-  int64 exception_count = 8;
-  // fingerprint -> example log (JSON string)
-  map<int64, string> exception_map = 9;
-  // fingerprint -> count of how many times it occurred
-  map<int64, int64> exception_counts = 10;
+
+  map<int64, int64> countsByFingerprint = 11;
+  map<int64, int32> levelByFingerprint = 12;
 }
 
 // Wrapper for a list of log counts to emit in a single batch
