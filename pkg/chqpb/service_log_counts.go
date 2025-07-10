@@ -118,7 +118,7 @@ func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog
 			Tid:                 tid,
 			Interval:            interval,
 			CountsByFingerprint: make(map[int64]int64),
-			LevelByFingerprint:  make(map[int64]string),
+			LevelByFingerprint:  make(map[int64]int32),
 		}
 		entry = &logEntry{
 			serviceName:   svc,
@@ -134,32 +134,12 @@ func (c *ServiceLogCountsCache) Update(resource pcommon.Resource, logRecord plog
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
 
-	levelStr := ToLevelStr(logRecord.SeverityNumber())
-
 	fpVal, fpFound := logRecord.Attributes().Get(translate.CardinalFieldFingerprint)
 	if fpFound {
 		fp := fpVal.Int()
 		entry.proto.CountsByFingerprint[fp]++
-		entry.proto.LevelByFingerprint[fp] = levelStr
-	}
-}
-
-func ToLevelStr(sn plog.SeverityNumber) string {
-	switch {
-	case sn >= plog.SeverityNumberTrace && sn <= plog.SeverityNumberTrace4:
-		return "trace"
-	case sn >= plog.SeverityNumberDebug && sn <= plog.SeverityNumberDebug4:
-		return "debug"
-	case sn >= plog.SeverityNumberInfo && sn <= plog.SeverityNumberInfo4:
-		return "info"
-	case sn >= plog.SeverityNumberWarn && sn <= plog.SeverityNumberWarn4:
-		return "warn"
-	case sn >= plog.SeverityNumberError && sn <= plog.SeverityNumberError4:
-		return "error"
-	case sn >= plog.SeverityNumberFatal && sn <= plog.SeverityNumberFatal4:
-		return "fatal"
-	default:
-		return "unspecified"
+		sn := logRecord.SeverityNumber()
+		entry.proto.LevelByFingerprint[fp] = int32(sn)
 	}
 }
 

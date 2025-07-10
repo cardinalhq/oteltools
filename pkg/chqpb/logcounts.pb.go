@@ -43,7 +43,7 @@ type ServiceLogCountProto struct {
 	Tid                 string                 `protobuf:"bytes,4,opt,name=tid,proto3" json:"tid,omitempty"`
 	Interval            int64                  `protobuf:"varint,5,opt,name=interval,proto3" json:"interval,omitempty"`
 	CountsByFingerprint map[int64]int64        `protobuf:"bytes,11,rep,name=countsByFingerprint,proto3" json:"countsByFingerprint,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
-	LevelByFingerprint  map[int64]string       `protobuf:"bytes,12,rep,name=levelByFingerprint,proto3" json:"levelByFingerprint,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	LevelByFingerprint  map[int64]int32        `protobuf:"bytes,12,rep,name=levelByFingerprint,proto3" json:"levelByFingerprint,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -120,7 +120,7 @@ func (x *ServiceLogCountProto) GetCountsByFingerprint() map[int64]int64 {
 	return nil
 }
 
-func (x *ServiceLogCountProto) GetLevelByFingerprint() map[int64]string {
+func (x *ServiceLogCountProto) GetLevelByFingerprint() map[int64]int32 {
 	if x != nil {
 		return x.LevelByFingerprint
 	}
@@ -198,7 +198,7 @@ const file_logcounts_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\x1aE\n" +
 	"\x17LevelByFingerprintEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x03R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"o\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"o\n" +
 	"\x13ServiceLogCountList\x127\n" +
 	"\bsketches\x18\x01 \x03(\v2\x1b.chqpb.ServiceLogCountProtoR\bsketches\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +

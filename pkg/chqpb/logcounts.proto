@@ -27,7 +27,7 @@ message ServiceLogCountProto {
   int64 interval = 5;
 
   map<int64, int64> countsByFingerprint = 11;
-  map<int64, string> levelByFingerprint = 12;
+  map<int64, int32> levelByFingerprint = 12;
 }
 
 // Wrapper for a list of log counts to emit in a single batch
