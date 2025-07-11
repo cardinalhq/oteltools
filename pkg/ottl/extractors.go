@@ -307,8 +307,8 @@ func ParseSpanExtractorConfigs(extractorConfigs []MetricExtractorConfig, logger 
 	return spanExtractors, nil
 }
 
-func ParseMetricSketchExtractorConfigs(extractorConfigs []MetricSketchExtractorConfig, logger *zap.Logger) (map[string]*MetricSketchExtractor, error) {
-	configsByMetricName := make(map[string]*MetricSketchExtractor, len(extractorConfigs))
+func ParseMetricSketchExtractorConfigs(extractorConfigs []MetricSketchExtractorConfig, logger *zap.Logger) (map[string][]*MetricSketchExtractor, error) {
+	configsByMetricName := make(map[string][]*MetricSketchExtractor, len(extractorConfigs))
 	parser, _ := ottldatapoint.NewParser(ToFactory[ottldatapoint.TransformContext](), component.TelemetrySettings{Logger: logger})
 
 	for _, extractorConfig := range extractorConfigs {
@@ -356,7 +356,7 @@ func ParseMetricSketchExtractorConfigs(extractorConfigs []MetricSketchExtractorC
 			aggregateDimensions[key] = statement
 		}
 		m.AggregateDimensions = aggregateDimensions
-		configsByMetricName[extractorConfig.MetricName] = m
+		configsByMetricName[extractorConfig.MetricName] = append(configsByMetricName[extractorConfig.MetricName], m)
 	}
 	return configsByMetricName, nil
 }
