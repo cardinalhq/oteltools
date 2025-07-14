@@ -1,0 +1,245 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "host.name",
+            "value": {
+              "stringValue": "cardinal-ui-57bc784fcf-s9ktx"
+            }
+          },
+          {
+            "key": "host.arch",
+            "value": {
+              "stringValue": "amd64"
+            }
+          },
+          {
+            "key": "process.pid",
+            "value": {
+              "intValue": "31"
+            }
+          },
+          {
+            "key": "process.executable.name",
+            "value": {
+              "stringValue": "/usr/local/bin/node"
+            }
+          },
+          {
+            "key": "process.executable.path",
+            "value": {
+              "stringValue": "/usr/local/bin/node"
+            }
+          },
+          {
+            "key": "process.command_args",
+            "value": {
+              "arrayValue": {
+                "values": [
+                  {
+                    "stringValue": "/usr/local/bin/node"
+                  },
+                  {
+                    "stringValue": "--require"
+                  },
+                  {
+                    "stringValue": "/node_modules/tsx/dist/preflight.cjs"
+                  },
+                  {
+                    "stringValue": "--import"
+                  },
+                  {
+                    "stringValue": "file:///node_modules/tsx/dist/loader.mjs"
+                  },
+                  {
+                    "stringValue": "--require"
+                  },
+                  {
+                    "stringValue": "./src/server/instrumentation.ts"
+                  },
+                  {
+                    "stringValue": "/src/server/main.ts"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "key": "process.runtime.version",
+            "value": {
+              "stringValue": "22.17.0"
+            }
+          },
+          {
+            "key": "process.runtime.name",
+            "value": {
+              "stringValue": "nodejs"
+            }
+          },
+          {
+            "key": "process.runtime.description",
+            "value": {
+              "stringValue": "Node.js"
+            }
+          },
+          {
+            "key": "process.command",
+            "value": {
+              "stringValue": "/src/server/main.ts"
+            }
+          },
+          {
+            "key": "process.owner",
+            "value": {
+              "stringValue": "root"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "cardinal-ui"
+            }
+          },
+          {
+            "key": "k8s.pod.ip",
+            "value": {
+              "stringValue": "10.180.2.85"
+            }
+          },
+          {
+            "key": "k8s.node.name",
+            "value": {
+              "stringValue": "ip-10-180-5-233.us-east-2.compute.internal"
+            }
+          },
+          {
+            "key": "app.kubernetes.io/name",
+            "value": {
+              "stringValue": "cardinal-ui"
+            }
+          },
+          {
+            "key": "app.kubernetes.io/component",
+            "value": {
+              "stringValue": "ui"
+            }
+          },
+          {
+            "key": "k8s.namespace.name",
+            "value": {
+              "stringValue": "cardinalhq"
+            }
+          },
+          {
+            "key": "pod-template-hash",
+            "value": {
+              "stringValue": "57bc784fcf"
+            }
+          },
+          {
+            "key": "k8s.pod.name",
+            "value": {
+              "stringValue": "cardinal-ui-57bc784fcf-s9ktx"
+            }
+          },
+          {
+            "key": "k8s.replicaset.name",
+            "value": {
+              "stringValue": "cardinal-ui-57bc784fcf"
+            }
+          },
+          {
+            "key": "k8s.deployment.name",
+            "value": {
+              "stringValue": "cardinal-ui"
+            }
+          },
+          {
+            "key": "k8s.container.name",
+            "value": {
+              "stringValue": "cardinal-ui-node"
+            }
+          },
+          {
+            "key": "container.image.name",
+            "value": {
+              "stringValue": "033263751764.dkr.ecr.us-east-2.amazonaws.com/cardinalhq/cardinal-ui-node"
+            }
+          },
+          {
+            "key": "container.image.tag",
+            "value": {
+              "stringValue": "latest"
+            }
+          },
+          {
+            "key": "container.id",
+            "value": {
+              "stringValue": "8fa257beb7fe8a0437eb15fb9de3fd747850c54a3c74f80ce740af7476e80e4b"
+            }
+          },
+          {
+            "key": "k8s.cluster.name",
+            "value": {
+              "stringValue": "aws-prod-us-east-2-global"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "@opentelemetry/instrumentation-express",
+            "version": "0.52.0"
+          },
+          "spans": [
+            {
+              "kind": 1,
+              "name": "request handler - /capi/v1/notify/chip/anomaly",
+              "spanId": "f540160a00d090ff",
+              "status": {},
+              "traceId": "851665909b278544a8aea5cb27696123",
+              "attributes": [
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/capi/v1/notify/chip/anomaly"
+                  }
+                },
+                {
+                  "key": "express.name",
+                  "value": {
+                    "stringValue": "/capi/v1/notify/chip/anomaly"
+                  }
+                },
+                {
+                  "key": "express.type",
+                  "value": {
+                    "stringValue": "request_handler"
+                  }
+                },
+                {
+                  "key": "_cardinalhq.fingerprint",
+                  "value": {
+                    "intValue": "-3566353467899159929"
+                  }
+                },
+                {
+                  "key": "_cardinalhq.span_duration",
+                  "value": {
+                    "doubleValue": 5
+                  }
+                }
+              ],
+              "parentSpanId": "c1e8312532f231ff",
+              "endTimeUnixNano": "1752528727888356873",
+              "startTimeUnixNano": "1752528727883000000"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

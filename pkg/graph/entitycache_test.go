@@ -15,7 +15,10 @@
 package graph
 
 import (
+	"github.com/cardinalhq/oteltools/pkg/fingerprinter"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	"maps"
+	"os"
 	"testing"
 
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
@@ -775,4 +778,18 @@ func TestBuildEntities_HandlesStatefulSetSummary(t *testing.T) {
 	require.NotNil(t, statefulSet)
 	assert.Equal(t, attrs, statefulSet.Attributes)
 	assert.Len(t, statefulSet.Edges, 0)
+}
+
+func TestSpanFingerprinting(t *testing.T) {
+	// read span.json from testdata using os.ReadFile
+	data, err := os.ReadFile("testdata/span.json")
+	if err != nil {
+		t.Fatalf("failed to read test data: %v", err)
+	}
+	unmarshaller := ptrace.JSONUnmarshaler{}
+	traces, err := unmarshaller.UnmarshalTraces(data)
+	if err != nil {
+		t.Fatalf("failed to unmarshal traces: %v", err)
+	}
+	assert.Equal(t, int64(5431417725423336916), fingerprinter.CalculateSpanFingerprint(traces.ResourceSpans().At(0).Resource(), traces.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0)))
 }

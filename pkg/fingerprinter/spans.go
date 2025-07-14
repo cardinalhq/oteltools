@@ -16,7 +16,6 @@ package fingerprinter
 
 import (
 	"github.com/cardinalhq/oteltools/hashutils"
-	"github.com/cardinalhq/oteltools/pkg/ottl/functions"
 	"github.com/cardinalhq/oteltools/pkg/translate"
 	"github.com/cespare/xxhash/v2"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -125,7 +124,7 @@ func CalculateSpanFingerprint(res pcommon.Resource, sr ptrace.Span) int64 {
 		return toHash(fingerprintAttributes)
 	}
 
-	sanitizedName := functions.ScrubWord(sr.Name())
+	sanitizedName := sr.Name()
 	fingerprintAttributes = append(fingerprintAttributes, sanitizedName)
 
 	return toHash(fingerprintAttributes)
