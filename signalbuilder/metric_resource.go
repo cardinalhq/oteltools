@@ -42,3 +42,18 @@ func (mrb *MetricResourceBuilder) Scope(sattr pcommon.Map) *MetricScopeBuilder {
 	mrb.scopes[key] = item
 	return item
 }
+
+func (mrb *MetricResourceBuilder) ScopeWithInfo(name, version, schemaURL string, sattr pcommon.Map) *MetricScopeBuilder {
+	key := attrkey(sattr)
+	if item, ok := mrb.scopes[key]; ok {
+		return item
+	}
+	scope := mrb.resource.ScopeMetrics().AppendEmpty()
+	sattr.CopyTo(scope.Scope().Attributes())
+	scope.Scope().SetName(name)
+	scope.Scope().SetVersion(version)
+	scope.SetSchemaUrl(schemaURL)
+	item := NewMetricScopeBuilder(scope)
+	mrb.scopes[key] = item
+	return item
+}

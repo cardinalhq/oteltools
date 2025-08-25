@@ -24,6 +24,14 @@ type MetricSumBuilder struct {
 	datapoints map[uint64]pmetric.NumberDataPoint
 }
 
+func (msb *MetricSumBuilder) SetDescription(description string) {
+	msb.metric.SetDescription(description)
+}
+
+func (msb *MetricSumBuilder) SetUnit(unit string) {
+	msb.metric.SetUnit(unit)
+}
+
 var _ MetricDatapointBuilder = (*MetricSumBuilder)(nil)
 
 func NewMetricSumBuilder(metric pmetric.Metric) *MetricSumBuilder {

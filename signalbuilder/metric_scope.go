@@ -58,6 +58,30 @@ func (msb *MetricScopeBuilder) Metric(name string, units string, ty pmetric.Metr
 	return item, nil
 }
 
+func (msb *MetricScopeBuilder) Gauge(name string) *MetricGaugeBuilder {
+	key := metrickey(name, "", pmetric.MetricTypeGauge)
+	if item, ok := msb.metrics[key]; ok {
+		return item.(*MetricGaugeBuilder)
+	}
+	metric := msb.scope.Metrics().AppendEmpty()
+	metric.SetName(name)
+	item := NewMetricGaugeBuilder(metric)
+	msb.metrics[key] = item
+	return item
+}
+
+func (msb *MetricScopeBuilder) Sum(name string) *MetricSumBuilder {
+	key := metrickey(name, "", pmetric.MetricTypeSum)
+	if item, ok := msb.metrics[key]; ok {
+		return item.(*MetricSumBuilder)
+	}
+	metric := msb.scope.Metrics().AppendEmpty()
+	metric.SetName(name)
+	item := NewMetricSumBuilder(metric)
+	msb.metrics[key] = item
+	return item
+}
+
 func (msb *MetricScopeBuilder) Get() pmetric.ScopeMetrics {
 	return msb.scope
 }

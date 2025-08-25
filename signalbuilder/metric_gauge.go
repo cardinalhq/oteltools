@@ -24,6 +24,14 @@ type MetricGaugeBuilder struct {
 	datapoints map[uint64]pmetric.NumberDataPoint
 }
 
+func (mgb *MetricGaugeBuilder) SetDescription(description string) {
+	mgb.metric.SetDescription(description)
+}
+
+func (mgb *MetricGaugeBuilder) SetUnit(unit string) {
+	mgb.metric.SetUnit(unit)
+}
+
 var _ MetricDatapointBuilder = (*MetricGaugeBuilder)(nil)
 
 func NewMetricGaugeBuilder(metric pmetric.Metric) *MetricGaugeBuilder {
