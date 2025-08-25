@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"gopkg.in/yaml.v3"
 )
 
@@ -57,8 +56,8 @@ type ParseOptions struct {
 	StrictMode bool // If true, fail on unknown fields (default: true)
 }
 
-// Parse parses YAML (or JSON) data into ResourceLogs
-func Parse(data []byte, opts ...ParseOptions) (*ResourceLogs, error) {
+// ParseLogs parses YAML (or JSON) data into ResourceLogs
+func ParseLogs(data []byte, opts ...ParseOptions) (*ResourceLogs, error) {
 	strictMode := true
 	if len(opts) > 0 {
 		strictMode = opts[0].StrictMode
@@ -73,25 +72,24 @@ func Parse(data []byte, opts ...ParseOptions) (*ResourceLogs, error) {
 		return nil, fmt.Errorf("failed to parse YAML: %w", err)
 	}
 
-	if err := validate(&rl); err != nil {
+	if err := validateLogs(&rl); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
 	return &rl, nil
 }
 
-// MustParse parses YAML bytes into ResourceLogs, panicking on error.
+// MustParseLogs parses YAML bytes into ResourceLogs, panicking on error.
 // This is useful for unit tests where parsing is expected to succeed.
-func MustParse(data []byte, opts ...ParseOptions) *ResourceLogs {
-	rl, err := Parse(data, opts...)
+func MustParseLogs(data []byte, opts ...ParseOptions) *ResourceLogs {
+	rl, err := ParseLogs(data, opts...)
 	if err != nil {
-		panic(fmt.Sprintf("MustParse failed: %v", err))
+		panic(fmt.Sprintf("MustParseLogs failed: %v", err))
 	}
 	return rl
 }
 
-// validate performs validation on the parsed ResourceLogs
-func validate(rl *ResourceLogs) error {
+func validateLogs(rl *ResourceLogs) error {
 	if len(rl.ScopeLogs) == 0 {
 		return fmt.Errorf("at least one scopes entry is required")
 	}
@@ -105,16 +103,3 @@ func validate(rl *ResourceLogs) error {
 	return nil
 }
 
-// fromRaw converts a map[string]any to pcommon.Map
-func fromRaw(attrs map[string]any) (pcommon.Map, error) {
-	result := pcommon.NewMap()
-	if attrs == nil {
-		return result, nil
-	}
-
-	// Use FromRaw for direct conversion
-	if err := result.FromRaw(attrs); err != nil {
-		return pcommon.NewMap(), fmt.Errorf("failed to convert attributes: %w", err)
-	}
-	return result, nil
-}

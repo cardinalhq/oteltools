@@ -24,7 +24,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
 
-func TestParse(t *testing.T) {
+func TestParseLogs(t *testing.T) {
 	yamlData := `
 resource:
   service.name: "my-service"
@@ -47,7 +47,7 @@ scopes:
         span_id: "1234567890123456"
 `
 
-	rl, err := Parse([]byte(yamlData))
+	rl, err := ParseLogs([]byte(yamlData))
 	assert.NoError(t, err)
 	assert.NotNil(t, rl)
 
@@ -76,7 +76,7 @@ scopes:
 	assert.Equal(t, "1234567890123456", record.SpanID)
 }
 
-func TestParseWithJSON(t *testing.T) {
+func TestParseLogsWithJSON(t *testing.T) {
 	jsonData := `{
 		"resource": {
 			"service.name": "json-service"
@@ -89,14 +89,14 @@ func TestParseWithJSON(t *testing.T) {
 		}]
 	}`
 
-	rl, err := Parse([]byte(jsonData))
+	rl, err := ParseLogs([]byte(jsonData))
 	assert.NoError(t, err)
 	assert.Equal(t, "json-service", rl.Resource["service.name"])
 	assert.Equal(t, "JSON log message", rl.ScopeLogs[0].LogRecords[0].Body)
 	assert.Equal(t, "ERROR", rl.ScopeLogs[0].LogRecords[0].SeverityText)
 }
 
-func TestMustParse(t *testing.T) {
+func TestMustParseLogs(t *testing.T) {
 	// Test successful parsing
 	yamlData := `
 resource:
@@ -105,97 +105,16 @@ scopes:
   - records:
       - body: "message"
 `
-	rl := MustParse([]byte(yamlData))
+	rl := MustParseLogs([]byte(yamlData))
 	assert.NotNil(t, rl)
 	assert.Equal(t, "test", rl.Resource["service.name"])
 
 	// Test panic on invalid YAML
 	assert.Panics(t, func() {
-		MustParse([]byte("invalid: yaml: content: ["))
+		MustParseLogs([]byte("invalid: yaml: content: ["))
 	})
 }
 
-func TestFromRaw(t *testing.T) {
-	attrs := map[string]any{
-		"string_val":  "test_value",
-		"bool_val":    true,
-		"int_val":     42,
-		"float_val":   3.14,
-		"nested_val":  map[string]any{"key": "value"},
-		"array_val":   []any{"a", 1, true},
-		"bytes_val":   []byte("hello"),
-	}
-
-	result, err := fromRaw(attrs)
-	assert.NoError(t, err)
-	assert.Equal(t, 7, result.Len())
-
-	// Check converted values
-	stringVal, exists := result.Get("string_val")
-	assert.True(t, exists)
-	assert.Equal(t, "test_value", stringVal.Str())
-
-	boolVal, exists := result.Get("bool_val")
-	assert.True(t, exists)
-	assert.Equal(t, true, boolVal.Bool())
-
-	intVal, exists := result.Get("int_val")
-	assert.True(t, exists)
-	assert.Equal(t, int64(42), intVal.Int())
-
-	floatVal, exists := result.Get("float_val")
-	assert.True(t, exists)
-	assert.InDelta(t, 3.14, floatVal.Double(), 0.001)
-
-	nestedVal, exists := result.Get("nested_val")
-	assert.True(t, exists)
-	nestedMap := nestedVal.Map()
-	keyVal, keyExists := nestedMap.Get("key")
-	assert.True(t, keyExists)
-	assert.Equal(t, "value", keyVal.Str())
-
-	arrayVal, exists := result.Get("array_val")
-	assert.True(t, exists)
-	arraySlice := arrayVal.Slice()
-	assert.Equal(t, 3, arraySlice.Len())
-	assert.Equal(t, "a", arraySlice.At(0).Str())
-	assert.Equal(t, int64(1), arraySlice.At(1).Int())
-	assert.Equal(t, true, arraySlice.At(2).Bool())
-
-	bytesVal, exists := result.Get("bytes_val")
-	assert.True(t, exists)
-	assert.Equal(t, []byte("hello"), bytesVal.Bytes().AsRaw())
-}
-
-func TestFromRawCapabilities(t *testing.T) {
-	// Test what FromRaw can and cannot handle
-	tests := []struct {
-		name    string
-		input   any
-		wantErr bool
-	}{
-		{"string", "test", false},
-		{"int", 42, false},
-		{"float", 3.14, false},
-		{"bool", true, false},
-		{"map", map[string]any{"key": "value"}, false},
-		{"slice", []any{"a", "b"}, false},
-		{"bytes", []byte("hello"), false},
-		{"nil", nil, false},
-		{"complex", complex(1, 2), true}, // Should fail
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			val := pcommon.NewValueEmpty()
-			err := val.FromRaw(tt.input)
-			if tt.wantErr {
-				assert.Error(t, err, "Expected FromRaw to fail for %T", tt.input)
-			} else {
-				assert.NoError(t, err, "Expected FromRaw to succeed for %T", tt.input)
-			}
-		})
-	}
-}
 
 func TestLogBuilder_AddFromYAML(t *testing.T) {
 	builder := NewLogBuilder()

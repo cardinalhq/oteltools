@@ -47,54 +47,33 @@ func (lb *LogBuilder) Resource(rattr pcommon.Map) *LogResourceBuilder {
 }
 
 func (lb *LogBuilder) Add(rl *ResourceLogs) error {
-	// Convert resource attributes to pcommon.Map
 	resourceAttrs, err := fromRaw(rl.Resource)
 	if err != nil {
 		return fmt.Errorf("failed to convert resource attributes: %w", err)
 	}
 
-	// Get or create resource
 	resourceBuilder := lb.Resource(resourceAttrs)
 
-	// Process each scope
 	for _, scopeLog := range rl.ScopeLogs {
-		// Convert scope attributes to pcommon.Map
 		scopeAttrs, err := fromRaw(scopeLog.Attributes)
 		if err != nil {
 			return fmt.Errorf("failed to convert scope attributes: %w", err)
 		}
 
-		// Get or create scope with name, version, and schema URL
 		scopeBuilder := resourceBuilder.ScopeWithInfo(
 			scopeLog.Name,
 			scopeLog.Version,
 			scopeLog.SchemaURL,
 			scopeAttrs,
 		)
-
-		// Process each log record
 		for _, lr := range scopeLog.LogRecords {
 			record := scopeBuilder.AddRecord()
 
-			// Set timestamp
-			if lr.Timestamp != 0 {
-				record.SetTimestamp(pcommon.Timestamp(lr.Timestamp))
-			}
+			record.SetTimestamp(pcommon.Timestamp(lr.Timestamp))
+			record.SetObservedTimestamp(pcommon.Timestamp(lr.ObservedTimestamp))
+			record.SetSeverityText(lr.SeverityText)
+			record.SetSeverityNumber(plog.SeverityNumber(lr.SeverityNumber))
 
-			// Set observed timestamp
-			if lr.ObservedTimestamp != 0 {
-				record.SetObservedTimestamp(pcommon.Timestamp(lr.ObservedTimestamp))
-			}
-
-			// Set severity
-			if lr.SeverityText != "" {
-				record.SetSeverityText(lr.SeverityText)
-			}
-			if lr.SeverityNumber != 0 {
-				record.SetSeverityNumber(plog.SeverityNumber(lr.SeverityNumber))
-			}
-
-			// Set body
 			if lr.Body != nil {
 				body := record.Body()
 				if err := body.FromRaw(lr.Body); err != nil {
@@ -102,8 +81,7 @@ func (lb *LogBuilder) Add(rl *ResourceLogs) error {
 				}
 			}
 
-			// Set attributes
-			if lr.Attributes != nil {
+			if len(lr.Attributes) > 0 {
 				attrs := record.Attributes()
 				logAttrs, err := fromRaw(lr.Attributes)
 				if err != nil {
@@ -112,22 +90,10 @@ func (lb *LogBuilder) Add(rl *ResourceLogs) error {
 				logAttrs.CopyTo(attrs)
 			}
 
-			// Set flags
-			if lr.Flags != 0 {
-				record.SetFlags(plog.LogRecordFlags(lr.Flags))
-			}
+			record.SetFlags(plog.LogRecordFlags(lr.Flags))
+			record.SetDroppedAttributesCount(lr.DroppedAttributesCount)
+			record.SetEventName(lr.EventName)
 
-			// Set dropped attributes count
-			if lr.DroppedAttributesCount != 0 {
-				record.SetDroppedAttributesCount(lr.DroppedAttributesCount)
-			}
-
-			// Set event name
-			if lr.EventName != "" {
-				record.SetEventName(lr.EventName)
-			}
-
-			// Set trace/span IDs if provided
 			if lr.TraceID != "" {
 				traceID, err := hex.DecodeString(lr.TraceID)
 				if err != nil {
@@ -160,7 +126,7 @@ func (lb *LogBuilder) Add(rl *ResourceLogs) error {
 // AddFromYAML parses YAML data and adds the logs to the builder.
 // Note: JSON is a subset of YAML, so this function can also accept JSON format data.
 func (lb *LogBuilder) AddFromYAML(data []byte, opts ...ParseOptions) error {
-	rl, err := Parse(data, opts...)
+	rl, err := ParseLogs(data, opts...)
 	if err != nil {
 		return err
 	}
