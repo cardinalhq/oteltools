@@ -15,6 +15,9 @@
 package signalbuilder
 
 import (
+	"encoding/hex"
+	"fmt"
+
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 )
@@ -41,6 +44,127 @@ func (lb *LogBuilder) Resource(rattr pcommon.Map) *LogResourceBuilder {
 	item := NewLogResourceBuilder(resource)
 	lb.builders[key] = item
 	return item
+}
+
+func (lb *LogBuilder) Add(rl *ResourceLogs) error {
+	// Convert resource attributes to pcommon.Map
+	resourceAttrs, err := fromRaw(rl.Resource)
+	if err != nil {
+		return fmt.Errorf("failed to convert resource attributes: %w", err)
+	}
+
+	// Get or create resource
+	resourceBuilder := lb.Resource(resourceAttrs)
+
+	// Process each scope
+	for _, scopeLog := range rl.ScopeLogs {
+		// Convert scope attributes to pcommon.Map
+		scopeAttrs, err := fromRaw(scopeLog.Attributes)
+		if err != nil {
+			return fmt.Errorf("failed to convert scope attributes: %w", err)
+		}
+
+		// Get or create scope with name, version, and schema URL
+		scopeBuilder := resourceBuilder.ScopeWithInfo(
+			scopeLog.Name,
+			scopeLog.Version,
+			scopeLog.SchemaURL,
+			scopeAttrs,
+		)
+
+		// Process each log record
+		for _, lr := range scopeLog.LogRecords {
+			record := scopeBuilder.AddRecord()
+
+			// Set timestamp
+			if lr.Timestamp != 0 {
+				record.SetTimestamp(pcommon.Timestamp(lr.Timestamp))
+			}
+
+			// Set observed timestamp
+			if lr.ObservedTimestamp != 0 {
+				record.SetObservedTimestamp(pcommon.Timestamp(lr.ObservedTimestamp))
+			}
+
+			// Set severity
+			if lr.SeverityText != "" {
+				record.SetSeverityText(lr.SeverityText)
+			}
+			if lr.SeverityNumber != 0 {
+				record.SetSeverityNumber(plog.SeverityNumber(lr.SeverityNumber))
+			}
+
+			// Set body
+			if lr.Body != nil {
+				body := record.Body()
+				if err := body.FromRaw(lr.Body); err != nil {
+					return fmt.Errorf("failed to convert log record body: %w", err)
+				}
+			}
+
+			// Set attributes
+			if lr.Attributes != nil {
+				attrs := record.Attributes()
+				logAttrs, err := fromRaw(lr.Attributes)
+				if err != nil {
+					return fmt.Errorf("failed to convert log record attributes: %w", err)
+				}
+				logAttrs.CopyTo(attrs)
+			}
+
+			// Set flags
+			if lr.Flags != 0 {
+				record.SetFlags(plog.LogRecordFlags(lr.Flags))
+			}
+
+			// Set dropped attributes count
+			if lr.DroppedAttributesCount != 0 {
+				record.SetDroppedAttributesCount(lr.DroppedAttributesCount)
+			}
+
+			// Set event name
+			if lr.EventName != "" {
+				record.SetEventName(lr.EventName)
+			}
+
+			// Set trace/span IDs if provided
+			if lr.TraceID != "" {
+				traceID, err := hex.DecodeString(lr.TraceID)
+				if err != nil {
+					return fmt.Errorf("invalid trace_id '%s': %w", lr.TraceID, err)
+				}
+				if len(traceID) == 16 {
+					record.SetTraceID(pcommon.TraceID(traceID))
+				} else {
+					return fmt.Errorf("trace_id '%s' must be 32 hex characters (16 bytes)", lr.TraceID)
+				}
+			}
+
+			if lr.SpanID != "" {
+				spanID, err := hex.DecodeString(lr.SpanID)
+				if err != nil {
+					return fmt.Errorf("invalid span_id '%s': %w", lr.SpanID, err)
+				}
+				if len(spanID) == 8 {
+					record.SetSpanID(pcommon.SpanID(spanID))
+				} else {
+					return fmt.Errorf("span_id '%s' must be 16 hex characters (8 bytes)", lr.SpanID)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// AddFromYAML parses YAML data and adds the logs to the builder.
+// Note: JSON is a subset of YAML, so this function can also accept JSON format data.
+func (lb *LogBuilder) AddFromYAML(data []byte, opts ...ParseOptions) error {
+	rl, err := Parse(data, opts...)
+	if err != nil {
+		return err
+	}
+	return lb.Add(rl)
 }
 
 func (lb *LogBuilder) Build() plog.Logs {
