@@ -107,7 +107,11 @@ func (tb *TracesBuilder) Add(rt *ResourceTraces) error {
 				}
 			}
 
-			span.SetKind(ptrace.SpanKind(sp.Kind))
+			kind := ptrace.SpanKind(sp.Kind)
+			if kind.String() == "" {
+				return fmt.Errorf("invalid span kind %d", sp.Kind)
+			}
+			span.SetKind(kind)
 			span.SetStartTimestamp(pcommon.Timestamp(sp.StartTimestamp))
 			span.SetEndTimestamp(pcommon.Timestamp(sp.EndTimestamp))
 

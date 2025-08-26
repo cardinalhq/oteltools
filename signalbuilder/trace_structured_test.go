@@ -380,3 +380,22 @@ func TestInvalidTraceSpanIDsInTraces(t *testing.T) {
 	err = builder.Add(rt3)
 	assert.NoError(t, err)
 }
+
+func TestInvalidSpanKindInTraces(t *testing.T) {
+	builder := NewTracesBuilder()
+	rt := &ResourceTraces{
+		ScopeTraces: []ScopeTraces{
+			{
+				Spans: []Span{
+					{
+						Name: "Test span",
+						Kind: 99,
+					},
+				},
+			},
+		},
+	}
+	err := builder.Add(rt)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid span kind")
+}
