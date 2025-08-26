@@ -38,13 +38,15 @@ type ScopeMetrics struct {
 
 // Metric represents a single metric
 type Metric struct {
-	Name        string         `json:"name" yaml:"name"`
-	Description string         `json:"description,omitempty" yaml:"description,omitempty"`
-	Unit        string         `json:"unit,omitempty" yaml:"unit,omitempty"`
-	Type        string         `json:"type" yaml:"type"`
-	Gauge       *GaugeMetric   `json:"gauge,omitempty" yaml:"gauge,omitempty"`
-	Sum         *SumMetric     `json:"sum,omitempty" yaml:"sum,omitempty"`
-	Summary     *SummaryMetric `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Name                   string                      `json:"name" yaml:"name"`
+	Description            string                      `json:"description,omitempty" yaml:"description,omitempty"`
+	Unit                   string                      `json:"unit,omitempty" yaml:"unit,omitempty"`
+	Type                   string                      `json:"type" yaml:"type"`
+	Gauge                  *GaugeMetric                `json:"gauge,omitempty" yaml:"gauge,omitempty"`
+	Sum                    *SumMetric                  `json:"sum,omitempty" yaml:"sum,omitempty"`
+	Summary                *SummaryMetric              `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Histogram              *HistogramMetric            `json:"histogram,omitempty" yaml:"histogram,omitempty"`
+	ExponentialHistogram   *ExponentialHistogramMetric `json:"exponential_histogram,omitempty" yaml:"exponential_histogram,omitempty"`
 }
 
 // GaugeMetric represents a gauge metric
@@ -88,6 +90,54 @@ type SummaryDataPoint struct {
 type QuantileValue struct {
 	Quantile float64 `json:"quantile" yaml:"quantile"`
 	Value    float64 `json:"value" yaml:"value"`
+}
+
+// HistogramMetric represents a histogram metric
+type HistogramMetric struct {
+	AggregationTemporality string                `json:"aggregation_temporality,omitempty" yaml:"aggregation_temporality,omitempty"`
+	DataPoints             []HistogramDataPoint  `json:"data_points" yaml:"data_points"`
+}
+
+// HistogramDataPoint represents a histogram data point
+type HistogramDataPoint struct {
+	Attributes         map[string]any  `json:"attributes,omitempty" yaml:"attributes,omitempty"`
+	StartTimestamp     int64           `json:"start_timestamp,omitempty" yaml:"start_timestamp,omitempty"`
+	Timestamp          int64           `json:"timestamp" yaml:"timestamp"`
+	Count              uint64          `json:"count" yaml:"count"`
+	Sum                *float64        `json:"sum,omitempty" yaml:"sum,omitempty"`
+	Min                *float64        `json:"min,omitempty" yaml:"min,omitempty"`
+	Max                *float64        `json:"max,omitempty" yaml:"max,omitempty"`
+	BucketCounts       []uint64        `json:"bucket_counts,omitempty" yaml:"bucket_counts,omitempty"`
+	ExplicitBounds     []float64       `json:"explicit_bounds,omitempty" yaml:"explicit_bounds,omitempty"`
+	Flags              uint32          `json:"flags,omitempty" yaml:"flags,omitempty"`
+}
+
+// ExponentialHistogramMetric represents an exponential histogram metric
+type ExponentialHistogramMetric struct {
+	AggregationTemporality string                           `json:"aggregation_temporality,omitempty" yaml:"aggregation_temporality,omitempty"`
+	DataPoints             []ExponentialHistogramDataPoint  `json:"data_points" yaml:"data_points"`
+}
+
+// ExponentialHistogramDataPoint represents an exponential histogram data point
+type ExponentialHistogramDataPoint struct {
+	Attributes     map[string]any        `json:"attributes,omitempty" yaml:"attributes,omitempty"`
+	StartTimestamp int64                 `json:"start_timestamp,omitempty" yaml:"start_timestamp,omitempty"`
+	Timestamp      int64                 `json:"timestamp" yaml:"timestamp"`
+	Count          uint64                `json:"count" yaml:"count"`
+	Sum            *float64              `json:"sum,omitempty" yaml:"sum,omitempty"`
+	Min            *float64              `json:"min,omitempty" yaml:"min,omitempty"`
+	Max            *float64              `json:"max,omitempty" yaml:"max,omitempty"`
+	Scale          int32                 `json:"scale,omitempty" yaml:"scale,omitempty"`
+	ZeroCount      uint64                `json:"zero_count,omitempty" yaml:"zero_count,omitempty"`
+	PositiveBuckets *ExponentialBuckets  `json:"positive_buckets,omitempty" yaml:"positive_buckets,omitempty"`
+	NegativeBuckets *ExponentialBuckets  `json:"negative_buckets,omitempty" yaml:"negative_buckets,omitempty"`
+	Flags          uint32                `json:"flags,omitempty" yaml:"flags,omitempty"`
+}
+
+// ExponentialBuckets represents exponential histogram buckets
+type ExponentialBuckets struct {
+	Offset       int32    `json:"offset,omitempty" yaml:"offset,omitempty"`
+	BucketCounts []uint64 `json:"bucket_counts,omitempty" yaml:"bucket_counts,omitempty"`
 }
 
 // ParseMetrics parses YAML (or JSON) data into ResourceMetrics
@@ -166,8 +216,22 @@ func validateMetric(m *Metric, prefix string) error {
 		if len(m.Summary.DataPoints) == 0 {
 			return fmt.Errorf("%s: at least one data point is required for summary", prefix)
 		}
+	case "histogram":
+		if m.Histogram == nil {
+			return fmt.Errorf("%s: histogram field is required when type is 'histogram'", prefix)
+		}
+		if len(m.Histogram.DataPoints) == 0 {
+			return fmt.Errorf("%s: at least one data point is required for histogram", prefix)
+		}
+	case "exponential_histogram":
+		if m.ExponentialHistogram == nil {
+			return fmt.Errorf("%s: exponential_histogram field is required when type is 'exponential_histogram'", prefix)
+		}
+		if len(m.ExponentialHistogram.DataPoints) == 0 {
+			return fmt.Errorf("%s: at least one data point is required for exponential_histogram", prefix)
+		}
 	default:
-		return fmt.Errorf("%s: unsupported metric type '%s', only 'gauge', 'sum', and 'summary' are supported", prefix, m.Type)
+		return fmt.Errorf("%s: unsupported metric type '%s', supported types are 'gauge', 'sum', 'summary', 'histogram', 'exponential_histogram'", prefix, m.Type)
 	}
 	return nil
 }

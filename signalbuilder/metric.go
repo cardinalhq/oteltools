@@ -80,6 +80,14 @@ func (mb *MetricsBuilder) Add(rm *ResourceMetrics) error {
 				if err := mb.addSummaryMetric(scopeBuilder, &m); err != nil {
 					return fmt.Errorf("failed to add summary metric '%s': %w", m.Name, err)
 				}
+			case "histogram":
+				if err := mb.addHistogramMetric(scopeBuilder, &m); err != nil {
+					return fmt.Errorf("failed to add histogram metric '%s': %w", m.Name, err)
+				}
+			case "exponential_histogram":
+				if err := mb.addExponentialHistogramMetric(scopeBuilder, &m); err != nil {
+					return fmt.Errorf("failed to add exponential histogram metric '%s': %w", m.Name, err)
+				}
 			default:
 				return fmt.Errorf("unsupported metric type '%s' for metric '%s'", m.Type, m.Name)
 			}
@@ -165,6 +173,123 @@ func (mb *MetricsBuilder) addSummaryMetric(scopeBuilder *MetricScopeBuilder, m *
 			quantile := quantiles.AppendEmpty()
 			quantile.SetQuantile(qv.Quantile)
 			quantile.SetValue(qv.Value)
+		}
+	}
+
+	return nil
+}
+
+func (mb *MetricsBuilder) addHistogramMetric(scopeBuilder *MetricScopeBuilder, m *Metric) error {
+	histogramBuilder := scopeBuilder.Histogram(m.Name)
+	histogramBuilder.SetDescription(m.Description)
+	histogramBuilder.SetUnit(m.Unit)
+
+	histogram := histogramBuilder.metric.Histogram()
+	
+	switch m.Histogram.AggregationTemporality {
+	case "cumulative":
+		histogram.SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
+	case "delta":
+		histogram.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+	case "":
+		// Keep default from NewMetricHistogramBuilder (delta)
+	default:
+		return fmt.Errorf("unsupported aggregation temporality '%s'", m.Histogram.AggregationTemporality)
+	}
+
+	for _, dp := range m.Histogram.DataPoints {
+		attrs, err := fromRaw(dp.Attributes)
+		if err != nil {
+			return fmt.Errorf("failed to convert data point attributes: %w", err)
+		}
+
+		datapoint := histogramBuilder.Datapoint(attrs, pcommon.Timestamp(dp.Timestamp))
+		datapoint.SetCount(dp.Count)
+		datapoint.SetStartTimestamp(pcommon.Timestamp(dp.StartTimestamp))
+		datapoint.SetFlags(pmetric.DataPointFlags(dp.Flags))
+
+		if dp.Sum != nil {
+			datapoint.SetSum(*dp.Sum)
+		}
+		if dp.Min != nil {
+			datapoint.SetMin(*dp.Min)
+		}
+		if dp.Max != nil {
+			datapoint.SetMax(*dp.Max)
+		}
+
+		if len(dp.ExplicitBounds) > 0 {
+			bounds := datapoint.ExplicitBounds()
+			bounds.FromRaw(dp.ExplicitBounds)
+		}
+
+		if len(dp.BucketCounts) > 0 {
+			counts := datapoint.BucketCounts()
+			counts.FromRaw(dp.BucketCounts)
+		}
+	}
+
+	return nil
+}
+
+func (mb *MetricsBuilder) addExponentialHistogramMetric(scopeBuilder *MetricScopeBuilder, m *Metric) error {
+	expHistogramBuilder := scopeBuilder.ExponentialHistogram(m.Name)
+	expHistogramBuilder.SetDescription(m.Description)
+	expHistogramBuilder.SetUnit(m.Unit)
+
+	expHistogram := expHistogramBuilder.metric.ExponentialHistogram()
+	
+	switch m.ExponentialHistogram.AggregationTemporality {
+	case "cumulative":
+		expHistogram.SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
+	case "delta":
+		expHistogram.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+	case "":
+		// Keep default from NewMetricExponentialHistogramBuilder (delta)
+	default:
+		return fmt.Errorf("unsupported aggregation temporality '%s'", m.ExponentialHistogram.AggregationTemporality)
+	}
+
+	for _, dp := range m.ExponentialHistogram.DataPoints {
+		attrs, err := fromRaw(dp.Attributes)
+		if err != nil {
+			return fmt.Errorf("failed to convert data point attributes: %w", err)
+		}
+
+		datapoint := expHistogramBuilder.Datapoint(attrs, pcommon.Timestamp(dp.Timestamp))
+		datapoint.SetCount(dp.Count)
+		datapoint.SetStartTimestamp(pcommon.Timestamp(dp.StartTimestamp))
+		datapoint.SetFlags(pmetric.DataPointFlags(dp.Flags))
+
+		if dp.Sum != nil {
+			datapoint.SetSum(*dp.Sum)
+		}
+		if dp.Min != nil {
+			datapoint.SetMin(*dp.Min)
+		}
+		if dp.Max != nil {
+			datapoint.SetMax(*dp.Max)
+		}
+
+		datapoint.SetScale(dp.Scale)
+		datapoint.SetZeroCount(dp.ZeroCount)
+
+		if dp.PositiveBuckets != nil {
+			positive := datapoint.Positive()
+			positive.SetOffset(dp.PositiveBuckets.Offset)
+			if len(dp.PositiveBuckets.BucketCounts) > 0 {
+				counts := positive.BucketCounts()
+				counts.FromRaw(dp.PositiveBuckets.BucketCounts)
+			}
+		}
+
+		if dp.NegativeBuckets != nil {
+			negative := datapoint.Negative()
+			negative.SetOffset(dp.NegativeBuckets.Offset)
+			if len(dp.NegativeBuckets.BucketCounts) > 0 {
+				counts := negative.BucketCounts()
+				counts.FromRaw(dp.NegativeBuckets.BucketCounts)
+			}
 		}
 	}
 

@@ -27,13 +27,13 @@ type MetricDatapointBuilder interface {
 
 type MetricScopeBuilder struct {
 	scope   pmetric.ScopeMetrics
-	metrics map[uint64]interface{}
+	metrics map[uint64]any
 }
 
 func NewMetricScopeBuilder(scope pmetric.ScopeMetrics) *MetricScopeBuilder {
 	return &MetricScopeBuilder{
 		scope:   scope,
-		metrics: make(map[uint64]interface{}),
+		metrics: make(map[uint64]any),
 	}
 }
 
@@ -48,7 +48,7 @@ func (msb *MetricScopeBuilder) Metric(name string, units string, ty pmetric.Metr
 	metric := msb.scope.Metrics().AppendEmpty()
 	metric.SetName(name)
 	metric.SetUnit(units)
-	var item interface{}
+	var item any
 	switch ty {
 	case pmetric.MetricTypeGauge:
 		item = NewMetricGaugeBuilder(metric)
@@ -56,6 +56,10 @@ func (msb *MetricScopeBuilder) Metric(name string, units string, ty pmetric.Metr
 		item = NewMetricSumBuilder(metric)
 	case pmetric.MetricTypeSummary:
 		item = NewMetricSummaryBuilder(metric)
+	case pmetric.MetricTypeHistogram:
+		item = NewMetricHistogramBuilder(metric)
+	case pmetric.MetricTypeExponentialHistogram:
+		item = NewMetricExponentialHistogramBuilder(metric)
 	default:
 		return nil, fmt.Errorf("unsupported metric type %s", ty.String())
 	}
@@ -98,6 +102,30 @@ func (msb *MetricScopeBuilder) Summary(name string) *MetricSummaryBuilder {
 	metric := msb.scope.Metrics().AppendEmpty()
 	metric.SetName(name)
 	item := NewMetricSummaryBuilder(metric)
+	msb.metrics[key] = item
+	return item
+}
+
+func (msb *MetricScopeBuilder) Histogram(name string) *MetricHistogramBuilder {
+	key := metrickey(name, "", pmetric.MetricTypeHistogram)
+	if item, ok := msb.metrics[key]; ok {
+		return item.(*MetricHistogramBuilder)
+	}
+	metric := msb.scope.Metrics().AppendEmpty()
+	metric.SetName(name)
+	item := NewMetricHistogramBuilder(metric)
+	msb.metrics[key] = item
+	return item
+}
+
+func (msb *MetricScopeBuilder) ExponentialHistogram(name string) *MetricExponentialHistogramBuilder {
+	key := metrickey(name, "", pmetric.MetricTypeExponentialHistogram)
+	if item, ok := msb.metrics[key]; ok {
+		return item.(*MetricExponentialHistogramBuilder)
+	}
+	metric := msb.scope.Metrics().AppendEmpty()
+	metric.SetName(name)
+	item := NewMetricExponentialHistogramBuilder(metric)
 	msb.metrics[key] = item
 	return item
 }

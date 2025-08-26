@@ -47,21 +47,21 @@ func NewPackagedObject(obj any, rla map[string]string, la map[string]string) *Pa
 
 	switch s := obj.(type) {
 	case *AppsDaemonSetSummary:
-		result.Object = &PackagedObject_AppsDaemonSetSummary{AppsDaemonSetSummary: s}
+		result.Object = &PackagedObject_AppsDaemonSetSummary{ AppsDaemonSetSummary: s }
 	case *AppsDeploymentSummary:
-		result.Object = &PackagedObject_AppsDeploymentSummary{AppsDeploymentSummary: s}
+		result.Object = &PackagedObject_AppsDeploymentSummary{ AppsDeploymentSummary: s }
 	case *AppsReplicaSetSummary:
-		result.Object = &PackagedObject_AppsReplicaSetSummary{AppsReplicaSetSummary: s}
+		result.Object = &PackagedObject_AppsReplicaSetSummary{ AppsReplicaSetSummary: s }
 	case *AppsStatefulSetSummary:
-		result.Object = &PackagedObject_AppsStatefulSetSummary{AppsStatefulSetSummary: s}
+		result.Object = &PackagedObject_AppsStatefulSetSummary{ AppsStatefulSetSummary: s }
 	case *AutoscalingHpaSummary:
-		result.Object = &PackagedObject_AutoscalingHpaSummary{AutoscalingHpaSummary: s}
+		result.Object = &PackagedObject_AutoscalingHpaSummary{ AutoscalingHpaSummary: s }
 	case *ConfigMapSummary:
-		result.Object = &PackagedObject_ConfigMapSummary{ConfigMapSummary: s}
+		result.Object = &PackagedObject_ConfigMapSummary{ ConfigMapSummary: s }
 	case *PodSummary:
-		result.Object = &PackagedObject_PodSummary{PodSummary: s}
+		result.Object = &PackagedObject_PodSummary{ PodSummary: s }
 	case *SecretSummary:
-		result.Object = &PackagedObject_SecretSummary{SecretSummary: s}
+		result.Object = &PackagedObject_SecretSummary{ SecretSummary: s }
 	default:
 		return nil
 	}

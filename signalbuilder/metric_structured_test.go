@@ -276,16 +276,48 @@ scopes:
 			wantErr: false,
 		},
 		{
-			name: "unsupported type",
+			name: "valid histogram",
 			yaml: `
 resource: {}
 scopes:
   - metrics:
       - name: test
         type: histogram
+        histogram:
+          data_points:
+            - timestamp: 1609459200000000000
+              count: 100
+              sum: 500.0
+`,
+			wantErr: false,
+		},
+		{
+			name: "valid exponential histogram",
+			yaml: `
+resource: {}
+scopes:
+  - metrics:
+      - name: test
+        type: exponential_histogram
+        exponential_histogram:
+          data_points:
+            - timestamp: 1609459200000000000
+              count: 100
+              sum: 500.0
+`,
+			wantErr: false,
+		},
+		{
+			name: "unsupported type",
+			yaml: `
+resource: {}
+scopes:
+  - metrics:
+      - name: test
+        type: unsupported_type
 `,
 			wantErr: true,
-			errMsg:  "unsupported metric type 'histogram'",
+			errMsg:  "unsupported metric type 'unsupported_type'",
 		},
 		{
 			name: "gauge without gauge field",
@@ -364,6 +396,58 @@ scopes:
 `,
 			wantErr: true,
 			errMsg:  "at least one data point is required for summary",
+		},
+		{
+			name: "histogram without histogram field",
+			yaml: `
+resource: {}
+scopes:
+  - metrics:
+      - name: test
+        type: histogram
+`,
+			wantErr: true,
+			errMsg:  "histogram field is required when type is 'histogram'",
+		},
+		{
+			name: "histogram without data points",
+			yaml: `
+resource: {}
+scopes:
+  - metrics:
+      - name: test
+        type: histogram
+        histogram:
+          data_points: []
+`,
+			wantErr: true,
+			errMsg:  "at least one data point is required for histogram",
+		},
+		{
+			name: "exponential histogram without exponential_histogram field",
+			yaml: `
+resource: {}
+scopes:
+  - metrics:
+      - name: test
+        type: exponential_histogram
+`,
+			wantErr: true,
+			errMsg:  "exponential_histogram field is required when type is 'exponential_histogram'",
+		},
+		{
+			name: "exponential histogram without data points",
+			yaml: `
+resource: {}
+scopes:
+  - metrics:
+      - name: test
+        type: exponential_histogram
+        exponential_histogram:
+          data_points: []
+`,
+			wantErr: true,
+			errMsg:  "at least one data point is required for exponential_histogram",
 		},
 	}
 
@@ -499,4 +583,233 @@ scopes:
 	q2 := summaryDP.QuantileValues().At(1)
 	assert.Equal(t, 0.99, q2.Quantile())
 	assert.Equal(t, 10.0, q2.Value())
+}
+
+func TestParseHistogramMetrics(t *testing.T) {
+	yamlData := []byte(`
+resource:
+  service.name: histogram-service
+scopes:
+  - name: histogram-scope
+    metrics:
+      - name: test_histogram
+        description: A test histogram metric
+        unit: seconds
+        type: histogram
+        histogram:
+          aggregation_temporality: cumulative
+          data_points:
+            - timestamp: 1609459200000000000
+              start_timestamp: 1609459100000000000
+              count: 1000
+              sum: 5000.0
+              min: 0.1
+              max: 50.0
+              bucket_counts: [10, 20, 50, 100, 200, 300, 200, 100, 20]
+              explicit_bounds: [0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 30.0, 40.0]
+              attributes:
+                method: GET
+      - name: test_exponential_histogram
+        description: A test exponential histogram metric
+        unit: milliseconds
+        type: exponential_histogram
+        exponential_histogram:
+          aggregation_temporality: delta
+          data_points:
+            - timestamp: 1609459200000000000
+              start_timestamp: 1609459100000000000
+              count: 500
+              sum: 2500.0
+              scale: 2
+              zero_count: 50
+              positive_buckets:
+                offset: 1
+                bucket_counts: [10, 20, 30, 40, 50]
+              negative_buckets:
+                offset: -2
+                bucket_counts: [5, 10, 15]
+              attributes:
+                endpoint: /api/v1
+`)
+
+	rm, err := ParseMetrics(yamlData)
+	require.NoError(t, err)
+	require.NotNil(t, rm)
+
+	// Verify resource
+	assert.Equal(t, "histogram-service", rm.Resource["service.name"])
+
+	// Verify scopes
+	require.Len(t, rm.ScopeMetrics, 1)
+	scope := rm.ScopeMetrics[0]
+	assert.Equal(t, "histogram-scope", scope.Name)
+
+	// Verify metrics
+	require.Len(t, scope.Metrics, 2)
+
+	// Verify histogram metric
+	histogram := scope.Metrics[0]
+	assert.Equal(t, "test_histogram", histogram.Name)
+	assert.Equal(t, "A test histogram metric", histogram.Description)
+	assert.Equal(t, "seconds", histogram.Unit)
+	assert.Equal(t, "histogram", histogram.Type)
+	require.NotNil(t, histogram.Histogram)
+	assert.Equal(t, "cumulative", histogram.Histogram.AggregationTemporality)
+	require.Len(t, histogram.Histogram.DataPoints, 1)
+
+	histDP := histogram.Histogram.DataPoints[0]
+	assert.Equal(t, int64(1609459200000000000), histDP.Timestamp)
+	assert.Equal(t, int64(1609459100000000000), histDP.StartTimestamp)
+	assert.Equal(t, uint64(1000), histDP.Count)
+	require.NotNil(t, histDP.Sum)
+	assert.Equal(t, 5000.0, *histDP.Sum)
+	require.NotNil(t, histDP.Min)
+	assert.Equal(t, 0.1, *histDP.Min)
+	require.NotNil(t, histDP.Max)
+	assert.Equal(t, 50.0, *histDP.Max)
+	assert.Equal(t, "GET", histDP.Attributes["method"])
+
+	expectedBucketCounts := []uint64{10, 20, 50, 100, 200, 300, 200, 100, 20}
+	assert.Equal(t, expectedBucketCounts, histDP.BucketCounts)
+
+	expectedBounds := []float64{0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 30.0, 40.0}
+	assert.Equal(t, expectedBounds, histDP.ExplicitBounds)
+
+	// Verify exponential histogram metric
+	expHistogram := scope.Metrics[1]
+	assert.Equal(t, "test_exponential_histogram", expHistogram.Name)
+	assert.Equal(t, "A test exponential histogram metric", expHistogram.Description)
+	assert.Equal(t, "milliseconds", expHistogram.Unit)
+	assert.Equal(t, "exponential_histogram", expHistogram.Type)
+	require.NotNil(t, expHistogram.ExponentialHistogram)
+	assert.Equal(t, "delta", expHistogram.ExponentialHistogram.AggregationTemporality)
+	require.Len(t, expHistogram.ExponentialHistogram.DataPoints, 1)
+
+	expHistDP := expHistogram.ExponentialHistogram.DataPoints[0]
+	assert.Equal(t, int64(1609459200000000000), expHistDP.Timestamp)
+	assert.Equal(t, int64(1609459100000000000), expHistDP.StartTimestamp)
+	assert.Equal(t, uint64(500), expHistDP.Count)
+	require.NotNil(t, expHistDP.Sum)
+	assert.Equal(t, 2500.0, *expHistDP.Sum)
+	assert.Equal(t, int32(2), expHistDP.Scale)
+	assert.Equal(t, uint64(50), expHistDP.ZeroCount)
+	assert.Equal(t, "/api/v1", expHistDP.Attributes["endpoint"])
+
+	// Verify positive buckets
+	require.NotNil(t, expHistDP.PositiveBuckets)
+	assert.Equal(t, int32(1), expHistDP.PositiveBuckets.Offset)
+	expectedPosBuckets := []uint64{10, 20, 30, 40, 50}
+	assert.Equal(t, expectedPosBuckets, expHistDP.PositiveBuckets.BucketCounts)
+
+	// Verify negative buckets
+	require.NotNil(t, expHistDP.NegativeBuckets)
+	assert.Equal(t, int32(-2), expHistDP.NegativeBuckets.Offset)
+	expectedNegBuckets := []uint64{5, 10, 15}
+	assert.Equal(t, expectedNegBuckets, expHistDP.NegativeBuckets.BucketCounts)
+}
+
+func TestHistogramMetricsBuilderAddFromYAML(t *testing.T) {
+	yamlData := []byte(`
+resource:
+  service.name: test-service
+scopes:
+  - name: test-scope
+    metrics:
+      - name: test_histogram
+        description: A test histogram
+        unit: seconds
+        type: histogram
+        histogram:
+          aggregation_temporality: cumulative
+          data_points:
+            - timestamp: 1609459200000000000
+              start_timestamp: 1609459100000000000
+              count: 100
+              sum: 500.0
+              bucket_counts: [10, 20, 30, 40]
+              explicit_bounds: [1.0, 5.0, 10.0]
+              attributes:
+                status: success
+      - name: test_exp_histogram
+        description: A test exponential histogram
+        unit: milliseconds
+        type: exponential_histogram
+        exponential_histogram:
+          aggregation_temporality: delta
+          data_points:
+            - timestamp: 1609459200000000000
+              start_timestamp: 1609459100000000000
+              count: 200
+              sum: 1000.0
+              scale: 1
+              zero_count: 10
+              positive_buckets:
+                offset: 0
+                bucket_counts: [5, 10, 15, 20]
+              attributes:
+                region: us-west-2
+`)
+
+	builder := NewMetricsBuilder()
+	err := builder.AddFromYAML(yamlData)
+	require.NoError(t, err)
+
+	metrics := builder.Build()
+	assert.Equal(t, 1, metrics.ResourceMetrics().Len())
+
+	rm := metrics.ResourceMetrics().At(0)
+	serviceNameVal, exists := rm.Resource().Attributes().Get("service.name")
+	assert.True(t, exists)
+	assert.Equal(t, "test-service", serviceNameVal.Str())
+
+	assert.Equal(t, 1, rm.ScopeMetrics().Len())
+	sm := rm.ScopeMetrics().At(0)
+	assert.Equal(t, "test-scope", sm.Scope().Name())
+	assert.Equal(t, 2, sm.Metrics().Len())
+
+	// Verify histogram metric
+	histogramMetric := sm.Metrics().At(0)
+	assert.Equal(t, "test_histogram", histogramMetric.Name())
+	assert.Equal(t, "A test histogram", histogramMetric.Description())
+	assert.Equal(t, "seconds", histogramMetric.Unit())
+	assert.Equal(t, pmetric.MetricTypeHistogram, histogramMetric.Type())
+	
+	histogram := histogramMetric.Histogram()
+	assert.Equal(t, pmetric.AggregationTemporalityCumulative, histogram.AggregationTemporality())
+	assert.Equal(t, 1, histogram.DataPoints().Len())
+
+	histDP := histogram.DataPoints().At(0)
+	assert.Equal(t, uint64(100), histDP.Count())
+	assert.Equal(t, 500.0, histDP.Sum())
+	assert.Equal(t, 4, histDP.BucketCounts().Len())
+	assert.Equal(t, 3, histDP.ExplicitBounds().Len())
+	
+	statusVal, exists := histDP.Attributes().Get("status")
+	assert.True(t, exists)
+	assert.Equal(t, "success", statusVal.Str())
+
+	// Verify exponential histogram metric
+	expHistogramMetric := sm.Metrics().At(1)
+	assert.Equal(t, "test_exp_histogram", expHistogramMetric.Name())
+	assert.Equal(t, "A test exponential histogram", expHistogramMetric.Description())
+	assert.Equal(t, "milliseconds", expHistogramMetric.Unit())
+	assert.Equal(t, pmetric.MetricTypeExponentialHistogram, expHistogramMetric.Type())
+	
+	expHistogram := expHistogramMetric.ExponentialHistogram()
+	assert.Equal(t, pmetric.AggregationTemporalityDelta, expHistogram.AggregationTemporality())
+	assert.Equal(t, 1, expHistogram.DataPoints().Len())
+
+	expHistDP := expHistogram.DataPoints().At(0)
+	assert.Equal(t, uint64(200), expHistDP.Count())
+	assert.Equal(t, 1000.0, expHistDP.Sum())
+	assert.Equal(t, int32(1), expHistDP.Scale())
+	assert.Equal(t, uint64(10), expHistDP.ZeroCount())
+	
+	regionVal, exists := expHistDP.Attributes().Get("region")
+	assert.True(t, exists)
+	assert.Equal(t, "us-west-2", regionVal.Str())
+
+	positive := expHistDP.Positive()
+	assert.Equal(t, int32(0), positive.Offset())
+	assert.Equal(t, 4, positive.BucketCounts().Len())
 }
