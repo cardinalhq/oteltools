@@ -32,12 +32,29 @@ func NewTraceResourceBuilder(resource ptrace.ResourceSpans) *TraceResourceBuilde
 }
 
 func (mrb *TraceResourceBuilder) Scope(sattr pcommon.Map) *TraceScopeBuilder {
-	key := attrkey(sattr)
+	return mrb.ScopeWithInfo("", "", "", sattr)
+}
+
+func (mrb *TraceResourceBuilder) ScopeWithInfo(name, version, schemaURL string, sattr pcommon.Map) *TraceScopeBuilder {
+	key := scopekey(name, version, schemaURL, sattr)
 	if item, ok := mrb.scopes[key]; ok {
 		return item
 	}
 	scope := mrb.resource.ScopeSpans().AppendEmpty()
 	sattr.CopyTo(scope.Scope().Attributes())
+
+	// Set the scope name, version, and schema URL
+	instrScope := scope.Scope()
+	if name != "" {
+		instrScope.SetName(name)
+	}
+	if version != "" {
+		instrScope.SetVersion(version)
+	}
+	if schemaURL != "" {
+		scope.SetSchemaUrl(schemaURL)
+	}
+
 	item := NewTraceScopeBuilder(scope)
 	mrb.scopes[key] = item
 	return item

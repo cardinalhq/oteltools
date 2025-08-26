@@ -143,7 +143,7 @@ func (c *SpanSketchCache) Update(
 	spanDurationVal, _ := span.Attributes().Get(translate.CardinalFieldSpanDuration)
 	spanDuration := spanDurationVal.Double()
 
-	var shouldEligible = false
+	var shouldEligible bool
 	if span.Status().Code() == ptrace.StatusCodeError {
 		errorCountTopK := c.getErrorCountTopK(metricName, parentTID, tagFamilyId)
 		shouldEligible = errorCountTopK.EligibleWithCount(tid, 1)

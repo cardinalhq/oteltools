@@ -32,12 +32,29 @@ func NewLogResourceBuilder(resource plog.ResourceLogs) *LogResourceBuilder {
 }
 
 func (lrb *LogResourceBuilder) Scope(sattr pcommon.Map) *LogScopeBuilder {
-	key := attrkey(sattr)
+	return lrb.ScopeWithInfo("", "", "", sattr)
+}
+
+func (lrb *LogResourceBuilder) ScopeWithInfo(name, version, schemaURL string, sattr pcommon.Map) *LogScopeBuilder {
+	key := scopekey(name, version, schemaURL, sattr)
 	if item, ok := lrb.scopes[key]; ok {
 		return item
 	}
 	scope := lrb.resource.ScopeLogs().AppendEmpty()
 	sattr.CopyTo(scope.Scope().Attributes())
+
+	// Set the scope name, version, and schema URL
+	instrScope := scope.Scope()
+	if name != "" {
+		instrScope.SetName(name)
+	}
+	if version != "" {
+		instrScope.SetVersion(version)
+	}
+	if schemaURL != "" {
+		scope.SetSchemaUrl(schemaURL)
+	}
+
 	item := NewLogScopeBuilder(scope)
 	lrb.scopes[key] = item
 	return item

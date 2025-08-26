@@ -19,38 +19,36 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
-type MetricGaugeBuilder struct {
+type MetricSummaryBuilder struct {
 	metric     pmetric.Metric
-	datapoints map[uint64]pmetric.NumberDataPoint
+	datapoints map[uint64]pmetric.SummaryDataPoint
 }
 
-func (mgb *MetricGaugeBuilder) SetDescription(description string) {
-	mgb.metric.SetDescription(description)
+func (msb *MetricSummaryBuilder) SetDescription(description string) {
+	msb.metric.SetDescription(description)
 }
 
-func (mgb *MetricGaugeBuilder) SetUnit(unit string) {
-	mgb.metric.SetUnit(unit)
+func (msb *MetricSummaryBuilder) SetUnit(unit string) {
+	msb.metric.SetUnit(unit)
 }
 
-var _ MetricDatapointBuilder = (*MetricGaugeBuilder)(nil)
-
-func NewMetricGaugeBuilder(metric pmetric.Metric) *MetricGaugeBuilder {
-	metric.SetEmptyGauge()
-	return &MetricGaugeBuilder{
+func NewMetricSummaryBuilder(metric pmetric.Metric) *MetricSummaryBuilder {
+	metric.SetEmptySummary()
+	return &MetricSummaryBuilder{
 		metric:     metric,
-		datapoints: map[uint64]pmetric.NumberDataPoint{},
+		datapoints: map[uint64]pmetric.SummaryDataPoint{},
 	}
 }
 
-func (mb *MetricGaugeBuilder) Datapoint(attr pcommon.Map, timestamp pcommon.Timestamp) (dp pmetric.NumberDataPoint, ty pmetric.MetricType, isNew bool) {
+func (msb *MetricSummaryBuilder) Datapoint(attr pcommon.Map, timestamp pcommon.Timestamp) pmetric.SummaryDataPoint {
 	key := attrkey(attr) + uint64(timestamp)
-	if item, ok := mb.datapoints[key]; ok {
-		return item, pmetric.MetricTypeGauge, false
+	if item, ok := msb.datapoints[key]; ok {
+		return item
 	}
-	datapoint := mb.metric.Gauge().DataPoints().AppendEmpty()
+	datapoint := msb.metric.Summary().DataPoints().AppendEmpty()
 	attr.CopyTo(datapoint.Attributes())
 	datapoint.SetStartTimestamp(timestamp)
 	datapoint.SetTimestamp(timestamp)
-	mb.datapoints[key] = datapoint
-	return datapoint, pmetric.MetricTypeGauge, true
+	msb.datapoints[key] = datapoint
+	return datapoint
 }

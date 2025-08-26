@@ -27,35 +27,107 @@ type MetricDatapointBuilder interface {
 
 type MetricScopeBuilder struct {
 	scope   pmetric.ScopeMetrics
-	metrics map[uint64]MetricDatapointBuilder
+	metrics map[uint64]any
 }
 
 func NewMetricScopeBuilder(scope pmetric.ScopeMetrics) *MetricScopeBuilder {
 	return &MetricScopeBuilder{
 		scope:   scope,
-		metrics: make(map[uint64]MetricDatapointBuilder),
+		metrics: make(map[uint64]any),
 	}
 }
 
 func (msb *MetricScopeBuilder) Metric(name string, units string, ty pmetric.MetricType) (MetricDatapointBuilder, error) {
 	key := metrickey(name, units, ty)
 	if item, ok := msb.metrics[key]; ok {
-		return item, nil
+		if builder, ok := item.(MetricDatapointBuilder); ok {
+			return builder, nil
+		}
+		return nil, fmt.Errorf("metric type mismatch")
 	}
 	metric := msb.scope.Metrics().AppendEmpty()
 	metric.SetName(name)
 	metric.SetUnit(units)
-	var item MetricDatapointBuilder
+	var item any
 	switch ty {
 	case pmetric.MetricTypeGauge:
 		item = NewMetricGaugeBuilder(metric)
 	case pmetric.MetricTypeSum:
 		item = NewMetricSumBuilder(metric)
+	case pmetric.MetricTypeSummary:
+		item = NewMetricSummaryBuilder(metric)
+	case pmetric.MetricTypeHistogram:
+		item = NewMetricHistogramBuilder(metric)
+	case pmetric.MetricTypeExponentialHistogram:
+		item = NewMetricExponentialHistogramBuilder(metric)
 	default:
 		return nil, fmt.Errorf("unsupported metric type %s", ty.String())
 	}
 	msb.metrics[key] = item
-	return item, nil
+	if builder, ok := item.(MetricDatapointBuilder); ok {
+		return builder, nil
+	}
+	return nil, fmt.Errorf("internal error: created metric builder does not implement interface")
+}
+
+func (msb *MetricScopeBuilder) Gauge(name string) *MetricGaugeBuilder {
+	key := metrickey(name, "", pmetric.MetricTypeGauge)
+	if item, ok := msb.metrics[key]; ok {
+		return item.(*MetricGaugeBuilder)
+	}
+	metric := msb.scope.Metrics().AppendEmpty()
+	metric.SetName(name)
+	item := NewMetricGaugeBuilder(metric)
+	msb.metrics[key] = item
+	return item
+}
+
+func (msb *MetricScopeBuilder) Sum(name string) *MetricSumBuilder {
+	key := metrickey(name, "", pmetric.MetricTypeSum)
+	if item, ok := msb.metrics[key]; ok {
+		return item.(*MetricSumBuilder)
+	}
+	metric := msb.scope.Metrics().AppendEmpty()
+	metric.SetName(name)
+	item := NewMetricSumBuilder(metric)
+	msb.metrics[key] = item
+	return item
+}
+
+func (msb *MetricScopeBuilder) Summary(name string) *MetricSummaryBuilder {
+	key := metrickey(name, "", pmetric.MetricTypeSummary)
+	if item, ok := msb.metrics[key]; ok {
+		return item.(*MetricSummaryBuilder)
+	}
+	metric := msb.scope.Metrics().AppendEmpty()
+	metric.SetName(name)
+	item := NewMetricSummaryBuilder(metric)
+	msb.metrics[key] = item
+	return item
+}
+
+func (msb *MetricScopeBuilder) Histogram(name string) *MetricHistogramBuilder {
+	key := metrickey(name, "", pmetric.MetricTypeHistogram)
+	if item, ok := msb.metrics[key]; ok {
+		return item.(*MetricHistogramBuilder)
+	}
+	metric := msb.scope.Metrics().AppendEmpty()
+	metric.SetName(name)
+	item := NewMetricHistogramBuilder(metric)
+	msb.metrics[key] = item
+	return item
+}
+
+func (msb *MetricScopeBuilder) ExponentialHistogram(name string) *MetricExponentialHistogramBuilder {
+	key := metrickey(name, "", pmetric.MetricTypeExponentialHistogram)
+	if item, ok := msb.metrics[key]; ok {
+		return item.(*MetricExponentialHistogramBuilder)
+	}
+	metric := msb.scope.Metrics().AppendEmpty()
+	metric.SetName(name)
+	item := NewMetricExponentialHistogramBuilder(metric)
+	msb.metrics[key] = item
+	return item
 }
 
 func (msb *MetricScopeBuilder) Get() pmetric.ScopeMetrics {

@@ -31,3 +31,17 @@ func attrkey(attr pcommon.Map) uint64 {
 func metrickey(name string, units string, ty pmetric.MetricType) uint64 {
 	return hashutils.HashStrings(nil, name, units, ty.String())
 }
+
+func scopekey(name, version, schemaURL string, attr pcommon.Map) uint64 {
+	if attr.Len() == 0 && name == "" && version == "" && schemaURL == "" {
+		return 1
+	}
+	m := attr.AsRaw()
+	// Include name, version, and schema URL in the hash for uniqueness
+	return hashutils.HashAny(nil, map[string]any{
+		"name":       name,
+		"version":    version,
+		"schema_url": schemaURL,
+		"attributes": m,
+	})
+}

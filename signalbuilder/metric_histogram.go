@@ -19,38 +19,37 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
-type MetricGaugeBuilder struct {
+type MetricHistogramBuilder struct {
 	metric     pmetric.Metric
-	datapoints map[uint64]pmetric.NumberDataPoint
+	datapoints map[uint64]pmetric.HistogramDataPoint
 }
 
-func (mgb *MetricGaugeBuilder) SetDescription(description string) {
-	mgb.metric.SetDescription(description)
+func (mhb *MetricHistogramBuilder) SetDescription(description string) {
+	mhb.metric.SetDescription(description)
 }
 
-func (mgb *MetricGaugeBuilder) SetUnit(unit string) {
-	mgb.metric.SetUnit(unit)
+func (mhb *MetricHistogramBuilder) SetUnit(unit string) {
+	mhb.metric.SetUnit(unit)
 }
 
-var _ MetricDatapointBuilder = (*MetricGaugeBuilder)(nil)
-
-func NewMetricGaugeBuilder(metric pmetric.Metric) *MetricGaugeBuilder {
-	metric.SetEmptyGauge()
-	return &MetricGaugeBuilder{
+func NewMetricHistogramBuilder(metric pmetric.Metric) *MetricHistogramBuilder {
+	histogram := metric.SetEmptyHistogram()
+	histogram.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+	return &MetricHistogramBuilder{
 		metric:     metric,
-		datapoints: map[uint64]pmetric.NumberDataPoint{},
+		datapoints: map[uint64]pmetric.HistogramDataPoint{},
 	}
 }
 
-func (mb *MetricGaugeBuilder) Datapoint(attr pcommon.Map, timestamp pcommon.Timestamp) (dp pmetric.NumberDataPoint, ty pmetric.MetricType, isNew bool) {
+func (mhb *MetricHistogramBuilder) Datapoint(attr pcommon.Map, timestamp pcommon.Timestamp) pmetric.HistogramDataPoint {
 	key := attrkey(attr) + uint64(timestamp)
-	if item, ok := mb.datapoints[key]; ok {
-		return item, pmetric.MetricTypeGauge, false
+	if item, ok := mhb.datapoints[key]; ok {
+		return item
 	}
-	datapoint := mb.metric.Gauge().DataPoints().AppendEmpty()
+	datapoint := mhb.metric.Histogram().DataPoints().AppendEmpty()
 	attr.CopyTo(datapoint.Attributes())
 	datapoint.SetStartTimestamp(timestamp)
 	datapoint.SetTimestamp(timestamp)
-	mb.datapoints[key] = datapoint
-	return datapoint, pmetric.MetricTypeGauge, true
+	mhb.datapoints[key] = datapoint
+	return datapoint
 }

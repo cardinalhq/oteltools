@@ -42,7 +42,6 @@ type GenericSketchCache struct {
 	interval      time.Duration
 	telemetryType string
 	flushFunc     func(*GenericSketchList) error
-	freqTopKs     sync.Map
 	valueTopKs    sync.Map
 	maxK          int
 }
@@ -103,18 +102,8 @@ func (c *GenericSketchCache) UpdateWithCount(
 
 	val, ok := skMap.Load(tid)
 
-	var shouldAdd = false
-	//switch metricType {
-	//case Count:
-	//	freqTopK := c.getFreqTopK(metricName, direction, parentTID, tagFamilyID)
-	//	shouldAdd = freqTopK.EligibleWithCount(tid, int(count))
-	//default:
-	//	valueTopK := c.getValueTopK(metricName, direction, parentTID, tagFamilyID)
-	//	shouldAdd = valueTopK.Eligible(value)
-	//}
-
 	valueTopK := c.getValueTopK(metricName, direction, parentTID, tagFamilyID)
-	shouldAdd = valueTopK.Eligible(value)
+	shouldAdd := valueTopK.Eligible(value)
 
 	var entry *genericSketchEntry
 	if !ok {
@@ -163,18 +152,8 @@ func (c *GenericSketchCache) Update(
 	bucketIface, _ := c.buckets.LoadOrStore(interval, &sync.Map{})
 	skMap := bucketIface.(*sync.Map)
 
-	var shouldAdd = false
-	//switch metricType {
-	//case Count:
-	//	freqTopK := c.getFreqTopK(metricName, direction, parentTID, tagFamilyId)
-	//	shouldAdd = freqTopK.Eligible(tid)
-	//default:
-	//	valueTopK := c.getValueTopK(metricName, direction, parentTID, tagFamilyId)
-	//	shouldAdd = valueTopK.Eligible(value)
-	//}
-
 	valueTopK := c.getValueTopK(metricName, direction, parentTID, tagFamilyId)
-	shouldAdd = valueTopK.Eligible(value)
+	shouldAdd := valueTopK.Eligible(value)
 
 	val, ok := skMap.Load(tid)
 	var entry *genericSketchEntry
