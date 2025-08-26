@@ -12,17 +12,65 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// SignalBuilder is a package for building signals for OpenTelemetry
-// signal types.  It maintains an internal fast lookup method so that
-// data duplication is minimized, and the result will have exactly
-// one Resource level object based on attributes, and each
-// Resource will have exactly one of each Scope level object,
-// and each Scope will have exactly one of the appropriate signal
-// types.
+// Package signalbuilder provides efficient builders for constructing OpenTelemetry signals
+// (metrics, traces, and logs) with automatic deduplication and structured organization.
 //
-// Sums are always configured to be non-monotonic and delta aggregation.
+// # Overview
 //
-// Currently, the only signal type supported is Metric.
+// SignalBuilder optimizes the creation of OpenTelemetry pdata structures by:
+//   - Deduplicating resources based on attributes using fast hash-based lookups
+//   - Organizing data hierarchically: Resource → Scope → Signal
+//   - Minimizing memory allocation through internal caching
+//   - Providing both protobuf and structured (JSON/YAML) output formats
 //
-// This package is not thread-safe.
+// # Architecture
+//
+// The package follows OpenTelemetry's data model hierarchy:
+//   Resource (service.name, host.name, etc.)
+//     ├── Scope (instrumentation library)
+//         ├── Metrics/Traces/Logs
+//
+// Each builder maintains a hash map of resources to ensure exactly one Resource
+// object per unique set of attributes, and exactly one Scope per resource.
+//
+// # Supported Signal Types
+//
+//   - Metrics: All OTEL metric types (Gauge, Sum, Histogram, ExponentialHistogram, Summary)
+//   - Traces: Span data with full trace context support
+//   - Logs: Structured log records with severity levels and attributes
+//
+// # Usage Examples
+//
+// Basic metrics usage:
+//   builder := NewMetricsBuilder()
+//   resourceAttrs := map[string]any{"service.name": "my-service"}
+//   scopeAttrs := map[string]any{"version": "1.0.0"}
+//   
+//   // Add a gauge metric
+//   builder.AddGauge("cpu_usage", "percent", "CPU usage percentage",
+//       resourceAttrs, "otelcol", "0.1.0", "", scopeAttrs,
+//       map[string]any{"cpu": "cpu0"}, 85.5, time.Now().UnixNano())
+//
+// Export to different formats:
+//   pmetrics := builder.Build()                    // OpenTelemetry pdata
+//   jsonBytes := builder.BuildStructuredJSON()     // JSON format
+//   yamlBytes := builder.BuildStructuredYAML()     // YAML format
+//
+// # Configuration Notes
+//
+//   - Sum metrics default to non-monotonic delta aggregation
+//   - Histogram metrics use explicit bounds
+//   - ExponentialHistogram metrics use base-2 exponential buckets
+//   - All timestamps should be in nanoseconds since Unix epoch
+//
+// # Thread Safety
+//
+// This package is NOT thread-safe. Use separate builder instances for
+// concurrent operations or provide external synchronization.
+//
+// # Performance Characteristics
+//
+//   - O(1) resource lookup via hash maps
+//   - Memory-efficient through resource/scope deduplication  
+//   - Optimized for high-throughput telemetry data processing
 package signalbuilder
