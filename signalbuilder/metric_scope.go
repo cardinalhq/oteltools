@@ -27,35 +27,43 @@ type MetricDatapointBuilder interface {
 
 type MetricScopeBuilder struct {
 	scope   pmetric.ScopeMetrics
-	metrics map[uint64]MetricDatapointBuilder
+	metrics map[uint64]interface{}
 }
 
 func NewMetricScopeBuilder(scope pmetric.ScopeMetrics) *MetricScopeBuilder {
 	return &MetricScopeBuilder{
 		scope:   scope,
-		metrics: make(map[uint64]MetricDatapointBuilder),
+		metrics: make(map[uint64]interface{}),
 	}
 }
 
 func (msb *MetricScopeBuilder) Metric(name string, units string, ty pmetric.MetricType) (MetricDatapointBuilder, error) {
 	key := metrickey(name, units, ty)
 	if item, ok := msb.metrics[key]; ok {
-		return item, nil
+		if builder, ok := item.(MetricDatapointBuilder); ok {
+			return builder, nil
+		}
+		return nil, fmt.Errorf("metric type mismatch")
 	}
 	metric := msb.scope.Metrics().AppendEmpty()
 	metric.SetName(name)
 	metric.SetUnit(units)
-	var item MetricDatapointBuilder
+	var item interface{}
 	switch ty {
 	case pmetric.MetricTypeGauge:
 		item = NewMetricGaugeBuilder(metric)
 	case pmetric.MetricTypeSum:
 		item = NewMetricSumBuilder(metric)
+	case pmetric.MetricTypeSummary:
+		item = NewMetricSummaryBuilder(metric)
 	default:
 		return nil, fmt.Errorf("unsupported metric type %s", ty.String())
 	}
 	msb.metrics[key] = item
-	return item, nil
+	if builder, ok := item.(MetricDatapointBuilder); ok {
+		return builder, nil
+	}
+	return nil, fmt.Errorf("internal error: created metric builder does not implement interface")
 }
 
 func (msb *MetricScopeBuilder) Gauge(name string) *MetricGaugeBuilder {
@@ -78,6 +86,18 @@ func (msb *MetricScopeBuilder) Sum(name string) *MetricSumBuilder {
 	metric := msb.scope.Metrics().AppendEmpty()
 	metric.SetName(name)
 	item := NewMetricSumBuilder(metric)
+	msb.metrics[key] = item
+	return item
+}
+
+func (msb *MetricScopeBuilder) Summary(name string) *MetricSummaryBuilder {
+	key := metrickey(name, "", pmetric.MetricTypeSummary)
+	if item, ok := msb.metrics[key]; ok {
+		return item.(*MetricSummaryBuilder)
+	}
+	metric := msb.scope.Metrics().AppendEmpty()
+	metric.SetName(name)
+	item := NewMetricSummaryBuilder(metric)
 	msb.metrics[key] = item
 	return item
 }

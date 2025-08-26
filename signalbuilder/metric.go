@@ -76,6 +76,10 @@ func (mb *MetricsBuilder) Add(rm *ResourceMetrics) error {
 				if err := mb.addSumMetric(scopeBuilder, &m); err != nil {
 					return fmt.Errorf("failed to add sum metric '%s': %w", m.Name, err)
 				}
+			case "summary":
+				if err := mb.addSummaryMetric(scopeBuilder, &m); err != nil {
+					return fmt.Errorf("failed to add summary metric '%s': %w", m.Name, err)
+				}
 			default:
 				return fmt.Errorf("unsupported metric type '%s' for metric '%s'", m.Type, m.Name)
 			}
@@ -112,7 +116,7 @@ func (mb *MetricsBuilder) addSumMetric(scopeBuilder *MetricScopeBuilder, m *Metr
 
 	sum := sumBuilder.metric.Sum()
 	sum.SetIsMonotonic(m.Sum.IsMonotonic)
-	
+
 	switch m.Sum.AggregationTemporality {
 	case "cumulative":
 		sum.SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
@@ -134,6 +138,34 @@ func (mb *MetricsBuilder) addSumMetric(scopeBuilder *MetricScopeBuilder, m *Metr
 		datapoint.SetDoubleValue(dp.Value)
 		datapoint.SetStartTimestamp(pcommon.Timestamp(dp.StartTimestamp))
 		datapoint.SetFlags(pmetric.DataPointFlags(dp.Flags))
+	}
+
+	return nil
+}
+
+func (mb *MetricsBuilder) addSummaryMetric(scopeBuilder *MetricScopeBuilder, m *Metric) error {
+	summaryBuilder := scopeBuilder.Summary(m.Name)
+	summaryBuilder.SetDescription(m.Description)
+	summaryBuilder.SetUnit(m.Unit)
+
+	for _, dp := range m.Summary.DataPoints {
+		attrs, err := fromRaw(dp.Attributes)
+		if err != nil {
+			return fmt.Errorf("failed to convert data point attributes: %w", err)
+		}
+
+		datapoint := summaryBuilder.Datapoint(attrs, pcommon.Timestamp(dp.Timestamp))
+		datapoint.SetCount(dp.Count)
+		datapoint.SetSum(dp.Sum)
+		datapoint.SetStartTimestamp(pcommon.Timestamp(dp.StartTimestamp))
+		datapoint.SetFlags(pmetric.DataPointFlags(dp.Flags))
+
+		quantiles := datapoint.QuantileValues()
+		for _, qv := range dp.Quantiles {
+			quantile := quantiles.AppendEmpty()
+			quantile.SetQuantile(qv.Quantile)
+			quantile.SetValue(qv.Value)
+		}
 	}
 
 	return nil

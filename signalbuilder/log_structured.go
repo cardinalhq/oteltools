@@ -102,4 +102,3 @@ func validateLogs(rl *ResourceLogs) error {
 
 	return nil
 }
-

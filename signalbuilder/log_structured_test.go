@@ -115,10 +115,9 @@ scopes:
 	})
 }
 
-
 func TestLogBuilder_AddFromYAML(t *testing.T) {
 	builder := NewLogBuilder()
-	
+
 	yamlData := `
 resource:
   service.name: "test-service"
@@ -135,20 +134,20 @@ scopes:
 
 	logs := builder.Build()
 	assert.Equal(t, 1, logs.ResourceLogs().Len())
-	
+
 	resource := logs.ResourceLogs().At(0)
 	serviceName, exists := resource.Resource().Attributes().Get(string(semconv.ServiceNameKey))
 	assert.True(t, exists)
 	assert.Equal(t, "test-service", serviceName.Str())
-	
+
 	assert.Equal(t, 1, resource.ScopeLogs().Len())
 	scope := resource.ScopeLogs().At(0)
 	assert.Equal(t, 1, scope.LogRecords().Len())
-	
+
 	record := scope.LogRecords().At(0)
 	assert.Equal(t, "Test message", record.Body().Str())
 	assert.Equal(t, "INFO", record.SeverityText())
-	
+
 	attrVal, exists := record.Attributes().Get("key")
 	assert.True(t, exists)
 	assert.Equal(t, "value", attrVal.Str())
@@ -173,7 +172,7 @@ func TestInvalidTraceSpanIDs(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid trace_id")
 
-	// Test invalid span ID  
+	// Test invalid span ID
 	rl2 := &ResourceLogs{
 		ScopeLogs: []ScopeLogs{
 			{
@@ -196,7 +195,7 @@ func TestInvalidTraceSpanIDs(t *testing.T) {
 			{
 				LogRecords: []LogRecord{
 					{
-						Body:    "Test message",  
+						Body:    "Test message",
 						TraceID: "1234", // Too short
 					},
 				},
@@ -273,41 +272,41 @@ scopes:
 
 	logs := builder.Build()
 	assert.Equal(t, 1, logs.ResourceLogs().Len())
-	
+
 	resource := logs.ResourceLogs().At(0)
 	assert.Equal(t, 1, resource.ScopeLogs().Len())
-	
+
 	scope := resource.ScopeLogs().At(0)
 	assert.Equal(t, "test.logger", scope.Scope().Name())
 	assert.Equal(t, "1.0", scope.Scope().Version())
 	assert.Equal(t, 1, scope.LogRecords().Len())
-	
+
 	record := scope.LogRecords().At(0)
-	
+
 	// Test all timestamps
 	assert.Equal(t, pcommon.Timestamp(1609459200000000000), record.Timestamp())
 	assert.Equal(t, pcommon.Timestamp(1609459200500000000), record.ObservedTimestamp())
-	
+
 	// Test severity
 	assert.Equal(t, "ERROR", record.SeverityText())
 	assert.Equal(t, plog.SeverityNumber(17), record.SeverityNumber())
-	
+
 	// Test body
 	assert.Equal(t, "Complete log record with all fields", record.Body().Str())
-	
+
 	// Test attributes
 	userID, exists := record.Attributes().Get("user.id")
 	assert.True(t, exists)
 	assert.Equal(t, "12345", userID.Str())
-	
+
 	errorCode, exists := record.Attributes().Get("error.code")
 	assert.True(t, exists)
 	assert.Equal(t, "E001", errorCode.Str())
-	
+
 	// Test trace/span IDs
 	assert.NotEqual(t, pcommon.NewTraceIDEmpty(), record.TraceID())
 	assert.NotEqual(t, pcommon.NewSpanIDEmpty(), record.SpanID())
-	
+
 	// Test new fields
 	assert.Equal(t, plog.LogRecordFlags(1), record.Flags())
 	assert.Equal(t, uint32(2), record.DroppedAttributesCount())

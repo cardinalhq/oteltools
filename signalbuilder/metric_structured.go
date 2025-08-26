@@ -38,12 +38,13 @@ type ScopeMetrics struct {
 
 // Metric represents a single metric
 type Metric struct {
-	Name        string       `json:"name" yaml:"name"`
-	Description string       `json:"description,omitempty" yaml:"description,omitempty"`
-	Unit        string       `json:"unit,omitempty" yaml:"unit,omitempty"`
-	Type        string       `json:"type" yaml:"type"`
-	Gauge       *GaugeMetric `json:"gauge,omitempty" yaml:"gauge,omitempty"`
-	Sum         *SumMetric   `json:"sum,omitempty" yaml:"sum,omitempty"`
+	Name        string         `json:"name" yaml:"name"`
+	Description string         `json:"description,omitempty" yaml:"description,omitempty"`
+	Unit        string         `json:"unit,omitempty" yaml:"unit,omitempty"`
+	Type        string         `json:"type" yaml:"type"`
+	Gauge       *GaugeMetric   `json:"gauge,omitempty" yaml:"gauge,omitempty"`
+	Sum         *SumMetric     `json:"sum,omitempty" yaml:"sum,omitempty"`
+	Summary     *SummaryMetric `json:"summary,omitempty" yaml:"summary,omitempty"`
 }
 
 // GaugeMetric represents a gauge metric
@@ -58,6 +59,11 @@ type SumMetric struct {
 	DataPoints             []NumberDataPoint `json:"data_points" yaml:"data_points"`
 }
 
+// SummaryMetric represents a summary metric
+type SummaryMetric struct {
+	DataPoints []SummaryDataPoint `json:"data_points" yaml:"data_points"`
+}
+
 // NumberDataPoint represents a number data point
 type NumberDataPoint struct {
 	Attributes     map[string]any `json:"attributes,omitempty" yaml:"attributes,omitempty"`
@@ -65,6 +71,23 @@ type NumberDataPoint struct {
 	Timestamp      int64          `json:"timestamp" yaml:"timestamp"`
 	Value          float64        `json:"value" yaml:"value"`
 	Flags          uint32         `json:"flags,omitempty" yaml:"flags,omitempty"`
+}
+
+// SummaryDataPoint represents a summary data point
+type SummaryDataPoint struct {
+	Attributes     map[string]any  `json:"attributes,omitempty" yaml:"attributes,omitempty"`
+	StartTimestamp int64           `json:"start_timestamp,omitempty" yaml:"start_timestamp,omitempty"`
+	Timestamp      int64           `json:"timestamp" yaml:"timestamp"`
+	Count          uint64          `json:"count" yaml:"count"`
+	Sum            float64         `json:"sum" yaml:"sum"`
+	Quantiles      []QuantileValue `json:"quantiles,omitempty" yaml:"quantiles,omitempty"`
+	Flags          uint32          `json:"flags,omitempty" yaml:"flags,omitempty"`
+}
+
+// QuantileValue represents a quantile value in a summary
+type QuantileValue struct {
+	Quantile float64 `json:"quantile" yaml:"quantile"`
+	Value    float64 `json:"value" yaml:"value"`
 }
 
 // ParseMetrics parses YAML (or JSON) data into ResourceMetrics
@@ -136,8 +159,15 @@ func validateMetric(m *Metric, prefix string) error {
 		if len(m.Sum.DataPoints) == 0 {
 			return fmt.Errorf("%s: at least one data point is required for sum", prefix)
 		}
+	case "summary":
+		if m.Summary == nil {
+			return fmt.Errorf("%s: summary field is required when type is 'summary'", prefix)
+		}
+		if len(m.Summary.DataPoints) == 0 {
+			return fmt.Errorf("%s: at least one data point is required for summary", prefix)
+		}
 	default:
-		return fmt.Errorf("%s: unsupported metric type '%s', only 'gauge' and 'sum' are supported", prefix, m.Type)
+		return fmt.Errorf("%s: unsupported metric type '%s', only 'gauge', 'sum', and 'summary' are supported", prefix, m.Type)
 	}
 	return nil
 }

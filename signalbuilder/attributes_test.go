@@ -23,13 +23,13 @@ import (
 
 func TestFromRaw(t *testing.T) {
 	attrs := map[string]any{
-		"string_val":  "test_value",
-		"bool_val":    true,
-		"int_val":     42,
-		"float_val":   3.14,
-		"nested_val":  map[string]any{"key": "value"},
-		"array_val":   []any{"a", 1, true},
-		"bytes_val":   []byte("hello"),
+		"string_val": "test_value",
+		"bool_val":   true,
+		"int_val":    42,
+		"float_val":  3.14,
+		"nested_val": map[string]any{"key": "value"},
+		"array_val":  []any{"a", 1, true},
+		"bytes_val":  []byte("hello"),
 	}
 
 	result, err := fromRaw(attrs)

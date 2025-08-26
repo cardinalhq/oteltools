@@ -56,6 +56,23 @@ scopes:
               value: 100.0
               attributes:
                 label2: value2
+      - name: test_summary
+        description: A test summary metric
+        unit: "seconds"
+        type: summary
+        summary:
+          data_points:
+            - timestamp: 1609459200000000000
+              start_timestamp: 1609459100000000000
+              count: 50
+              sum: 250.5
+              quantiles:
+                - quantile: 0.5
+                  value: 4.5
+                - quantile: 0.95
+                  value: 9.2
+              attributes:
+                label3: value3
 `)
 
 	rm, err := ParseMetrics(yamlData)
@@ -74,7 +91,7 @@ scopes:
 	assert.Equal(t, "scope_value", scope.Attributes["scope.key"])
 
 	// Verify metrics
-	require.Len(t, scope.Metrics, 2)
+	require.Len(t, scope.Metrics, 3)
 
 	// Verify gauge metric
 	gauge := scope.Metrics[0]
@@ -84,7 +101,7 @@ scopes:
 	assert.Equal(t, "gauge", gauge.Type)
 	require.NotNil(t, gauge.Gauge)
 	require.Len(t, gauge.Gauge.DataPoints, 1)
-	
+
 	gaugeDP := gauge.Gauge.DataPoints[0]
 	assert.Equal(t, int64(1609459200000000000), gaugeDP.Timestamp)
 	assert.Equal(t, 42.5, gaugeDP.Value)
@@ -106,6 +123,28 @@ scopes:
 	assert.Equal(t, int64(1609459100000000000), sumDP.StartTimestamp)
 	assert.Equal(t, 100.0, sumDP.Value)
 	assert.Equal(t, "value2", sumDP.Attributes["label2"])
+
+	// Verify summary metric
+	summary := scope.Metrics[2]
+	assert.Equal(t, "test_summary", summary.Name)
+	assert.Equal(t, "A test summary metric", summary.Description)
+	assert.Equal(t, "seconds", summary.Unit)
+	assert.Equal(t, "summary", summary.Type)
+	require.NotNil(t, summary.Summary)
+	require.Len(t, summary.Summary.DataPoints, 1)
+
+	summaryDP := summary.Summary.DataPoints[0]
+	assert.Equal(t, int64(1609459200000000000), summaryDP.Timestamp)
+	assert.Equal(t, int64(1609459100000000000), summaryDP.StartTimestamp)
+	assert.Equal(t, uint64(50), summaryDP.Count)
+	assert.Equal(t, 250.5, summaryDP.Sum)
+	assert.Equal(t, "value3", summaryDP.Attributes["label3"])
+
+	require.Len(t, summaryDP.Quantiles, 2)
+	assert.Equal(t, 0.5, summaryDP.Quantiles[0].Quantile)
+	assert.Equal(t, 4.5, summaryDP.Quantiles[0].Value)
+	assert.Equal(t, 0.95, summaryDP.Quantiles[1].Quantile)
+	assert.Equal(t, 9.2, summaryDP.Quantiles[1].Value)
 }
 
 func TestParseMetricsJSON(t *testing.T) {
@@ -221,6 +260,22 @@ scopes:
 			errMsg:  "at least one metric is required",
 		},
 		{
+			name: "valid summary",
+			yaml: `
+resource: {}
+scopes:
+  - metrics:
+      - name: test
+        type: summary
+        summary:
+          data_points:
+            - timestamp: 1609459200000000000
+              count: 10
+              sum: 50.0
+`,
+			wantErr: false,
+		},
+		{
 			name: "unsupported type",
 			yaml: `
 resource: {}
@@ -284,6 +339,32 @@ scopes:
 			wantErr: true,
 			errMsg:  "at least one data point is required for sum",
 		},
+		{
+			name: "summary without summary field",
+			yaml: `
+resource: {}
+scopes:
+  - metrics:
+      - name: test
+        type: summary
+`,
+			wantErr: true,
+			errMsg:  "summary field is required when type is 'summary'",
+		},
+		{
+			name: "summary without data points",
+			yaml: `
+resource: {}
+scopes:
+  - metrics:
+      - name: test
+        type: summary
+        summary:
+          data_points: []
+`,
+			wantErr: true,
+			errMsg:  "at least one data point is required for summary",
+		},
 	}
 
 	for _, tt := range tests {
@@ -327,6 +408,23 @@ scopes:
             - timestamp: 1609459200000000000
               start_timestamp: 1609459100000000000
               value: 100.0
+      - name: test_summary
+        description: A test summary
+        unit: seconds
+        type: summary
+        summary:
+          data_points:
+            - timestamp: 1609459200000000000
+              start_timestamp: 1609459100000000000
+              count: 25
+              sum: 125.0
+              quantiles:
+                - quantile: 0.5
+                  value: 5.0
+                - quantile: 0.99
+                  value: 10.0
+              attributes:
+                region: us-east-1
 `)
 
 	builder := NewMetricsBuilder()
@@ -344,7 +442,7 @@ scopes:
 	assert.Equal(t, 1, rm.ScopeMetrics().Len())
 	sm := rm.ScopeMetrics().At(0)
 	assert.Equal(t, "test-scope", sm.Scope().Name())
-	assert.Equal(t, 2, sm.Metrics().Len())
+	assert.Equal(t, 3, sm.Metrics().Len())
 
 	// Verify gauge metric
 	gaugeMetric := sm.Metrics().At(0)
@@ -366,7 +464,7 @@ scopes:
 	assert.Equal(t, "A test sum", sumMetric.Description())
 	assert.Equal(t, "bytes", sumMetric.Unit())
 	assert.Equal(t, pmetric.MetricTypeSum, sumMetric.Type())
-	
+
 	sum := sumMetric.Sum()
 	assert.Equal(t, pmetric.AggregationTemporalityDelta, sum.AggregationTemporality())
 	assert.False(t, sum.IsMonotonic())
@@ -374,4 +472,31 @@ scopes:
 
 	sumDP := sum.DataPoints().At(0)
 	assert.Equal(t, 100.0, sumDP.DoubleValue())
+
+	// Verify summary metric
+	summaryMetric := sm.Metrics().At(2)
+	assert.Equal(t, "test_summary", summaryMetric.Name())
+	assert.Equal(t, "A test summary", summaryMetric.Description())
+	assert.Equal(t, "seconds", summaryMetric.Unit())
+	assert.Equal(t, pmetric.MetricTypeSummary, summaryMetric.Type())
+
+	summary := summaryMetric.Summary()
+	assert.Equal(t, 1, summary.DataPoints().Len())
+
+	summaryDP := summary.DataPoints().At(0)
+	assert.Equal(t, uint64(25), summaryDP.Count())
+	assert.Equal(t, 125.0, summaryDP.Sum())
+	assert.Equal(t, 2, summaryDP.QuantileValues().Len())
+
+	regionVal, exists := summaryDP.Attributes().Get("region")
+	assert.True(t, exists)
+	assert.Equal(t, "us-east-1", regionVal.Str())
+
+	q1 := summaryDP.QuantileValues().At(0)
+	assert.Equal(t, 0.5, q1.Quantile())
+	assert.Equal(t, 5.0, q1.Value())
+
+	q2 := summaryDP.QuantileValues().At(1)
+	assert.Equal(t, 0.99, q2.Quantile())
+	assert.Equal(t, 10.0, q2.Value())
 }
