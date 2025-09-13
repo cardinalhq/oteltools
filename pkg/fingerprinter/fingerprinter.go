@@ -125,7 +125,16 @@ func (fp *fingerprinterImpl) tokenizeJSONContent(prefix string, data map[string]
 		level = ""
 	}
 
-	body := prefix + " " + level + "" + message + " " + suffix + " "
+	sb := getStringBuilder()
+	defer putStringBuilder(sb)
+	sb.WriteString(prefix)
+	sb.WriteString(" ")
+	sb.WriteString(level)
+	sb.WriteString(message)
+	sb.WriteString(" ")
+	sb.WriteString(suffix)
+	sb.WriteString(" ")
+	body := sb.String()
 	s, nlevel, err := fp.Tokenize(body)
 	if err != nil {
 		return nil, "", err
@@ -228,34 +237,36 @@ func (tm *TokenSeq) Add(replacement string) {
 }
 
 func newTokenSeq() *TokenSeq {
-	return &TokenSeq{
-		Items:    make([]string, 0),
-		JSONKeys: make([]string, 0),
-	}
+	return getTokenSeq()
 }
 
 func (fp *fingerprinterImpl) Tokenize(input string) (*TokenSeq, string, error) {
-	tk := tokenizer.NewFingerprintTokenizer()
+	tk := getTokenizer()
+	defer putTokenizer(tk)
 
-	quotedStrings := []string{}
-	targetString := ""
+	quotedStrings := getStringSlice()
+	defer putStringSlice(quotedStrings)
+
+	sb := getStringBuilder()
+	defer putStringBuilder(sb)
 
 	substrings := stringutils.SplitQuotedStrings(input)
 	for _, substr := range substrings {
 		switch substr.(type) {
 		case stringutils.LiteralStringPart:
-			if targetString != "" {
-				targetString += " "
+			if sb.Len() > 0 {
+				sb.WriteString(" ")
 			}
-			targetString += substr.Value()
+			sb.WriteString(substr.Value())
 		case stringutils.QuotedStringPart:
 			quotedStrings = append(quotedStrings, substr.Value())
-			if targetString != "" {
-				targetString += " "
+			if sb.Len() > 0 {
+				sb.WriteString(" ")
 			}
-			targetString += "quotedstringplaceholder"
+			sb.WriteString("quotedstringplaceholder")
 		}
 	}
+	targetString := sb.String()
 
 	var err error
 	tokenMap, level, err := fp.tokenize(tk, targetString, quotedStrings)
