@@ -48,7 +48,7 @@ func (r *HTTPFileReader) ReadFile(ctx context.Context) (data []byte, err error) 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	return io.ReadAll(resp.Body)
 }
 

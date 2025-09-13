@@ -32,13 +32,13 @@ func TestFingerprinterWithKafkaBroker0(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	scanner := bufio.NewScanner(file)
 	fp := NewFingerprinter()
 	for scanner.Scan() {
 		input := scanner.Text()
 		t.Run(input, func(t *testing.T) {
-			_, _, err := fp.Tokenize(strings.ToLower(input))
+			_, _, err := fp.testTokenizeString(strings.ToLower(input))
 			assert.NoError(t, err)
 		})
 	}
@@ -336,9 +336,9 @@ func TestFingerprinter(t *testing.T) {
 	for _, tt := range tests {
 		fp := NewFingerprinter()
 		t.Run(tt.name, func(t *testing.T) {
-			tokenMap, level, js, err := fp.TokenizeInput(tt.input)
+			tokenMap, level, js, err := fp.testTokenizeInput(tt.input)
 			assert.NoError(t, err, "input: %s", tt.input)
-			assert.Equal(t, tt.want, strings.Join(tokenMap.Items, " "), "input: %s", tt.input)
+			assert.Equal(t, tt.want, strings.Join(tokenMap.items, " "), "input: %s", tt.input)
 			assert.Equal(t, tt.wantLevel, level, "input: %s", tt.input)
 			assert.Equal(t, tt.wantJSON, js, "input: %s", tt.input)
 		})
@@ -365,10 +365,10 @@ func TestFingerprinterWithLineLimit(t *testing.T) {
 	for _, tt := range tests {
 		fp := NewFingerprinter(WithMaxTokens(5))
 		t.Run(tt.name, func(t *testing.T) {
-			tokenMap, _, js, err := fp.TokenizeInput(tt.input)
+			tokenMap, _, js, err := fp.testTokenizeInput(tt.input)
 			assert.NoError(t, err)
 			assert.Nil(t, js)
-			assert.Equal(t, tt.want, strings.Join(tokenMap.Items, " "))
+			assert.Equal(t, tt.want, strings.Join(tokenMap.items, " "))
 		})
 	}
 }
@@ -705,11 +705,11 @@ func TestFingerprintIdenticality(t *testing.T) {
 		{
 			"ruby log 3",
 			[]string{
-				"[de5515ba-98a0-4c1d-be32-ae61152cb0b8]   [1m[36mTicket Create (1.8ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Et dignissimos debitis voluptatum.', 'Omnis dolor error. Deleniti sint hic. Labore omnis id.', 585378, 11, '2025-01-13 17:42:43.050272', '2025-01-13 17:42:43.050272')[0m",
-				"[5b3d31c9-7fc8-4b4b-a38f-b0bcf82434a6]   [1m[36mTicket Create (1.6ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Occaecati illum voluptas quibusdam.', 'Excepturi tenetur non. Ullam incidunt expedita. Explicabo earum reiciendis.', 584719, 11, '2025-01-13 07:03:52.694513', '2025-01-13 07:03:52.694513')[0m",
-				"[5d8d83e3-d52c-461e-8c7c-4b10eab2a159]   [1m[36mTicket Create (1.7ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Est sit itaque illum.', 'Aliquam assumenda consequatur. Porro doloribus perspiciatis. Illum cumque voluptate.', 584482, 11, '2025-01-13 03:04:32.161775', '2025-01-13 03:04:32.161775')[0m",
-				"[1a56410f-a24d-4a6b-aad9-dd4267069f20]   [1m[36mTicket Create (1.7ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Quis beatae enim iste.', 'Reprehenderit voluptas rem. Porro cupiditate amet. Atque recusandae eius.', 585360, 11, '2025-01-13 17:28:12.478078', '2025-01-13 17:28:12.478078')[0m",
-				"[1a41a6cb-28e9-4806-a40b-822a38fb4630]   [1m[36mTicket Create (1.6ms)[0m  [1m[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Dignissimos repellendus et quam.', 'Minima laboriosam aut. Quas sapiente ut. Facilis ipsa animi.', 585165, 11, '2025-01-13 14:07:36.160576', '2025-01-13 14:07:36.160576')[0m",
+				"[de5515ba-98a0-4c1d-be32-ae61152cb0b8]   \033[1m\033[36mTicket Create (1.8ms)\033[0m  \033[1m\033[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Et dignissimos debitis voluptatum.', 'Omnis dolor error. Deleniti sint hic. Labore omnis id.', 585378, 11, '2025-01-13 17:42:43.050272', '2025-01-13 17:42:43.050272')\033[0m",
+				"[5b3d31c9-7fc8-4b4b-a38f-b0bcf82434a6]   \033[1m\033[36mTicket Create (1.6ms)\033[0m  \033[1m\033[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Occaecati illum voluptas quibusdam.', 'Excepturi tenetur non. Ullam incidunt expedita. Explicabo earum reiciendis.', 584719, 11, '2025-01-13 07:03:52.694513', '2025-01-13 07:03:52.694513')\033[0m",
+				"[5d8d83e3-d52c-461e-8c7c-4b10eab2a159]   \033[1m\033[36mTicket Create (1.7ms)\033[0m  \033[1m\033[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Est sit itaque illum.', 'Aliquam assumenda consequatur. Porro doloribus perspiciatis. Illum cumque voluptate.', 584482, 11, '2025-01-13 03:04:32.161775', '2025-01-13 03:04:32.161775')\033[0m",
+				"[1a56410f-a24d-4a6b-aad9-dd4267069f20]   \033[1m\033[36mTicket Create (1.7ms)\033[0m  \033[1m\033[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Quis beatae enim iste.', 'Reprehenderit voluptas rem. Porro cupiditate amet. Atque recusandae eius.', 585360, 11, '2025-01-13 17:28:12.478078', '2025-01-13 17:28:12.478078')\033[0m",
+				"[1a41a6cb-28e9-4806-a40b-822a38fb4630]   \033[1m\033[36mTicket Create (1.6ms)\033[0m  \033[1m\033[32mINSERT INTO `tickets` (`title`, `description`, `external_id`, `account_id`, `created_at`, `updated_at`) VALUES ('Dignissimos repellendus et quam.', 'Minima laboriosam aut. Quas sapiente ut. Facilis ipsa animi.', 585165, 11, '2025-01-13 14:07:36.160576', '2025-01-13 14:07:36.160576')\033[0m",
 			},
 			[]string{
 				"<UUID>", "ticket", "create", "<Duration>", "insert", "into", "<Identifier>", "values", "<Identifier>", "<Number>", "<Number>", "<Identifier>",

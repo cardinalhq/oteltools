@@ -140,6 +140,6 @@ func writeHash(h Hasher, value any) {
 			writeHash(h, v.Elem().Interface()) // Dereference pointer
 		}
 	default:
-		_, _ = h.Write([]byte(fmt.Sprintf("unknown:%T", value)))
+		_, _ = fmt.Fprintf(h, "unknown:%T", value)
 	}
 }

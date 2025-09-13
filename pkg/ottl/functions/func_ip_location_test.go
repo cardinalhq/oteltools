@@ -28,7 +28,7 @@ import (
 func Test_IpLocation_ValidIP(t *testing.T) {
 	db, err := maxminddb.Open("../testdata/GeoIP2-Country-Test.mmdb")
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	exprFunc := iplocation(db, &ottl.StandardStringGetter[any]{
 		Getter: func(context.Context, any) (any, error) {

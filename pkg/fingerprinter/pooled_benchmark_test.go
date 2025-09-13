@@ -55,7 +55,7 @@ func BenchmarkTokenizationWithPools(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		input := testInputs[i%len(testInputs)]
-		_, _, _ = fp.Tokenize(input)
+		_, _, _ = fp.tokenizeString(input)
 	}
 }
 
@@ -65,7 +65,7 @@ func BenchmarkObjectPoolOverhead(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
 			ts := getTokenSeq()
-			ts.Add("test")
+			ts.add("test")
 			putTokenSeq(ts)
 		}
 	})

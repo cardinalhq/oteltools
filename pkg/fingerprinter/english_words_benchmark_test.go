@@ -134,7 +134,7 @@ func BenchmarkWordlistLookupMixed(b *testing.B) {
 		} else {
 			word = nonExistingWords[rng.Intn(len(nonExistingWords))]
 		}
-		_, _ = wordlist[strings.ToLower(word)]
+		_ = wordlist[strings.ToLower(word)]
 	}
 }
 
