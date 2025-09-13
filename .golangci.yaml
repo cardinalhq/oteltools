@@ -1,0 +1,15 @@
+version: 2
+
+run:
+  timeout: 5m
+  build-tags:
+    - lint
+
+linters-settings:
+  staticcheck:
+    checks: ["-ST1018"]
+
+issues:
+  exclude-files:
+    - ".*\\.pb\\.go$"
+    - ".*english_words_lint\\.go$"
