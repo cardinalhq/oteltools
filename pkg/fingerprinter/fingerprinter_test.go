@@ -443,12 +443,6 @@ func TestSplitWords(t *testing.T) {
 
 func TestIsWord(t *testing.T) {
 	fp := NewFingerprinter()
-	fp.wordlist = map[string]struct{}{
-		"hello": {},
-		"world": {},
-		"foo":   {},
-		"bar":   {},
-	}
 
 	tests := []struct {
 		name     string
@@ -462,7 +456,7 @@ func TestIsWord(t *testing.T) {
 		},
 		{
 			"non-existing word",
-			"baz",
+			"xyznonexistent",
 			false,
 		},
 		{
@@ -601,12 +595,6 @@ func TestGetStringKey(t *testing.T) {
 
 func BenchmarkIsWord(b *testing.B) {
 	fp := NewFingerprinter()
-	fp.wordlist = map[string]struct{}{
-		"hello": {},
-		"world": {},
-		"foo":   {},
-		"bar":   {},
-	}
 
 	for b.Loop() {
 		fp.IsWord("heLLo")

@@ -46,7 +46,6 @@ type Fingerprinter interface {
 
 type fingerprinterImpl struct {
 	maxTokens int
-	wordlist  map[string]struct{}
 }
 
 var _ Fingerprinter = (*fingerprinterImpl)(nil)
@@ -56,10 +55,6 @@ var _ Fingerprinter = (*fingerprinterImpl)(nil)
 func NewFingerprinter(opts ...Option) *fingerprinterImpl {
 	fp := fingerprinterImpl{
 		maxTokens: 15,
-		wordlist:  make(map[string]struct{}),
-	}
-	for _, word := range englishWords {
-		fp.wordlist[word] = struct{}{}
 	}
 
 	for _, opt := range opts {
@@ -204,7 +199,7 @@ func (fp *fingerprinterImpl) TokenizeInput(input string) (*TokenSeq, string, map
 }
 
 func (fp *fingerprinterImpl) IsWord(word string) bool {
-	if _, ok := fp.wordlist[strings.ToLower(word)]; ok {
+	if _, exists := englishWords[strings.ToLower(word)]; exists {
 		return true
 	}
 	// If the word is entirely uppercase or entirely lowercase, it needs to fully match.
