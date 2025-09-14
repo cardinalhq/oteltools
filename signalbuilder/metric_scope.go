@@ -27,13 +27,13 @@ type MetricDatapointBuilder interface {
 
 type MetricScopeBuilder struct {
 	scope   pmetric.ScopeMetrics
-	metrics map[uint64]any
+	metrics map[uint64]MetricDatapointBuilder
 }
 
 func NewMetricScopeBuilder(scope pmetric.ScopeMetrics) *MetricScopeBuilder {
 	return &MetricScopeBuilder{
 		scope:   scope,
-		metrics: make(map[uint64]any),
+		metrics: make(map[uint64]MetricDatapointBuilder),
 	}
 }
 
