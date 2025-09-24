@@ -1,0 +1,20 @@
+{
+  "allocs_per_op": 43,
+  "bytes_per_op": 34522,
+  "final_heap": 16458392,
+  "frees": 445454,
+  "gc_cycles": 22,
+  "heap_idle": 22634496,
+  "heap_in_use": 18423808,
+  "heap_increase": 18446744073703613488,
+  "heap_objects": 18446744073709540117,
+  "heap_released": 3031040,
+  "heap_sys": 41058304,
+  "initial_heap": 22396520,
+  "iterations": 10000,
+  "mallocs": 433955,
+  "pause_total_ns": 1796791,
+  "stack_in_use": 884736,
+  "stack_sys": 884736,
+  "total_alloc": 345226080
+}
