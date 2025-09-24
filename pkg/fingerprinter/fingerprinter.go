@@ -18,7 +18,6 @@ package fingerprinter
 // TODO:  add the map<string,any> as a return value for when we parse json-like content
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -53,7 +52,7 @@ var _ Fingerprinter = (*fingerprinterImpl)(nil)
 // ragelScanner wraps ragel scanner with a reusable reader
 type ragelScanner struct {
 	tk      *tokenizer.FingerprintTokenizer
-	reader  *bytes.Reader
+	reader  *strings.Reader
 	scanner *ragel.Scanner
 }
 
@@ -62,7 +61,7 @@ var (
 	ragelScannerPool = sync.Pool{
 		New: func() any {
 			tk := tokenizer.NewFingerprintTokenizer()
-			reader := bytes.NewReader([]byte{})
+			reader := strings.NewReader("")
 			return &ragelScanner{
 				tk:      tk,
 				reader:  reader,
@@ -336,8 +335,8 @@ func (fp *fingerprinterImpl) tokenizeWithTokenizer(tk *tokenizer.FingerprintToke
 	scanner := getRagelScanner()
 	defer putRagelScanner(scanner)
 
-	// Reset reader with new input
-	scanner.reader.Reset([]byte(input))
+	// Reset reader with new input - no allocation since strings.Reader.Reset takes string directly
+	scanner.reader.Reset(input)
 
 	// Reset the ragel scanner to use the new reader content
 	scanner.scanner.Reset()
