@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/cespare/xxhash/v2"
@@ -48,6 +49,36 @@ type fingerprinterImpl struct {
 
 var _ Fingerprinter = (*fingerprinterImpl)(nil)
 
+// ragelScanner wraps ragel scanner with a reusable reader
+type ragelScanner struct {
+	tk      *tokenizer.FingerprintTokenizer
+	reader  *strings.Reader
+	scanner *ragel.Scanner
+}
+
+var (
+	// Pool for ragel scanners with readers
+	ragelScannerPool = sync.Pool{
+		New: func() any {
+			tk := tokenizer.NewFingerprintTokenizer()
+			reader := strings.NewReader("")
+			return &ragelScanner{
+				tk:      tk,
+				reader:  reader,
+				scanner: ragel.New("fingerprint", reader, tk),
+			}
+		},
+	}
+
+	// Pool for map[string]any used in JSON parsing
+	jsonMapPool = sync.Pool{
+		New: func() any {
+			return make(map[string]any, 8)
+		},
+	}
+
+)
+
 // Use a pattern where options can be passed into the constructor as a series of functional options.
 
 func NewFingerprinter(opts ...Option) *fingerprinterImpl {
@@ -70,17 +101,17 @@ func WithMaxTokens(maxlen int) Option {
 }
 
 func findJSONContent(input string) (string, string, string) {
-	var message, jsonContent, extra string
-	if strings.Contains(input, "{") && strings.Contains(input, "}") {
-		start := strings.Index(input, "{")
-		end := strings.LastIndex(input, "}")
-		if start < end {
-			message = input[:start]
-			jsonContent = input[start : end+1]
-			extra = input[end+1:]
-		}
+	start := strings.IndexByte(input, '{')
+	if start == -1 {
+		return "", "", ""
 	}
-	return message, jsonContent, extra
+
+	end := strings.LastIndexByte(input, '}')
+	if end == -1 || end <= start {
+		return "", "", ""
+	}
+
+	return input[:start], input[start : end+1], input[end+1:]
 }
 
 func lookupKey(bodyMap map[string]any, key string) string {
@@ -180,7 +211,11 @@ func (fp *fingerprinterImpl) tokenizeInput(input string) (*tokenSeq, string, map
 
 	prefix, jsonContent, suffix := findJSONContent(input)
 	if jsonContent != "" {
-		var data map[string]any
+		// Get pooled map for JSON parsing
+		data := getJSONMap()
+		defer putJSONMap(data)
+
+		// Try to parse JSON
 		err := json.Unmarshal([]byte(jsonContent), &data)
 		if err != nil {
 			// Try to see if we can just replace `=>` with `:` and parse it then.
@@ -192,7 +227,12 @@ func (fp *fingerprinterImpl) tokenizeInput(input string) (*tokenSeq, string, map
 			if err != nil {
 				return newTokenSeq(), "", nil, err
 			}
-			return tokenized, level, data, nil
+			// Return a copy of data to avoid issues with pooled map
+			result := make(map[string]any, len(data))
+			for k, v := range data {
+				result[k] = v
+			}
+			return tokenized, level, result, nil
 		}
 	}
 
@@ -291,7 +331,19 @@ func (fp *fingerprinterImpl) tokenizeWithTokenizer(tk *tokenizer.FingerprintToke
 	tokenMap := newTokenSeq()
 	currentQuotedStringIndex := 0
 
-	s := ragel.New("test", strings.NewReader(input), tk)
+	// Get scanner from pool and reuse it
+	scanner := getRagelScanner()
+	defer putRagelScanner(scanner)
+
+	// Reset reader with new input - no allocation since strings.Reader.Reset takes string directly
+	scanner.reader.Reset(input)
+
+	// Reset the ragel scanner to use the new reader content
+	scanner.scanner.Reset()
+
+	// Use the pooled scanner
+	s := scanner.scanner
+
 	for {
 		// Check length prior to adding the next token since we use 'continue' liberally
 		if tokenMap.index >= fp.maxTokens {
@@ -378,3 +430,31 @@ func splitWords(input string) []string {
 
 	return result
 }
+
+// Pool helper functions
+
+func getRagelScanner() *ragelScanner {
+	return ragelScannerPool.Get().(*ragelScanner)
+}
+
+func putRagelScanner(s *ragelScanner) {
+	// Scanner can be reused - no size limits needed for reader
+	ragelScannerPool.Put(s)
+}
+
+func getJSONMap() map[string]any {
+	m := jsonMapPool.Get().(map[string]any)
+	// Clear the map
+	for k := range m {
+		delete(m, k)
+	}
+	return m
+}
+
+func putJSONMap(m map[string]any) {
+	if len(m) > 64 {
+		return
+	}
+	jsonMapPool.Put(m)
+}
+
