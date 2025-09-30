@@ -19,6 +19,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/cardinalhq/oteltools/pkg/fingerprinter/wordlist"
 )
 
 // Test words that should exist in the dictionary (common English words)
@@ -68,12 +70,6 @@ var nonExistingWords = []string{
 }
 
 func BenchmarkWordlistLookupExisting(b *testing.B) {
-	// Create the wordlist once
-	wordlist := make(map[string]struct{}, len(englishWords))
-	for word := range englishWords {
-		wordlist[word] = struct{}{}
-	}
-
 	// Create a random source
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -83,7 +79,7 @@ func BenchmarkWordlistLookupExisting(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// Pick a random existing word
 		word := existingWords[rng.Intn(len(existingWords))]
-		_, exists := wordlist[strings.ToLower(word)]
+		_, exists := wordlist.EnglishWords[strings.ToLower(word)]
 		if !exists {
 			b.Errorf("Expected word %s to exist in dictionary", word)
 		}
@@ -92,11 +88,6 @@ func BenchmarkWordlistLookupExisting(b *testing.B) {
 
 func BenchmarkWordlistLookupNonExisting(b *testing.B) {
 	// Create the wordlist once
-	wordlist := make(map[string]struct{}, len(englishWords))
-	for word := range englishWords {
-		wordlist[word] = struct{}{}
-	}
-
 	// Create a random source
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -106,7 +97,7 @@ func BenchmarkWordlistLookupNonExisting(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// Pick a random non-existing word
 		word := nonExistingWords[rng.Intn(len(nonExistingWords))]
-		_, exists := wordlist[strings.ToLower(word)]
+		_, exists := wordlist.EnglishWords[strings.ToLower(word)]
 		if exists {
 			b.Errorf("Expected word %s to NOT exist in dictionary", word)
 		}
@@ -115,11 +106,6 @@ func BenchmarkWordlistLookupNonExisting(b *testing.B) {
 
 func BenchmarkWordlistLookupMixed(b *testing.B) {
 	// Create the wordlist once
-	wordlist := make(map[string]struct{}, len(englishWords))
-	for word := range englishWords {
-		wordlist[word] = struct{}{}
-	}
-
 	// Create a random source
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -134,7 +120,7 @@ func BenchmarkWordlistLookupMixed(b *testing.B) {
 		} else {
 			word = nonExistingWords[rng.Intn(len(nonExistingWords))]
 		}
-		_ = wordlist[strings.ToLower(word)]
+		_ = wordlist.EnglishWords[strings.ToLower(word)]
 	}
 }
 

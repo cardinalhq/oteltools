@@ -30,6 +30,7 @@ import (
 
 	"github.com/cardinalhq/oteltools/maputils"
 	"github.com/cardinalhq/oteltools/pkg/fingerprinter/tokenizer"
+	"github.com/cardinalhq/oteltools/pkg/fingerprinter/wordlist"
 	"github.com/cardinalhq/oteltools/stringutils"
 )
 
@@ -76,7 +77,6 @@ var (
 			return make(map[string]any, 8)
 		},
 	}
-
 )
 
 // Use a pattern where options can be passed into the constructor as a series of functional options.
@@ -257,7 +257,7 @@ func (fp *fingerprinterImpl) testTokenizeInput(input string) (*tokenSeq, string,
 }
 
 func (fp *fingerprinterImpl) IsWord(word string) bool {
-	if _, exists := englishWords[strings.ToLower(word)]; exists {
+	if _, exists := wordlist.EnglishWords[strings.ToLower(word)]; exists {
 		return true
 	}
 	// If the word is entirely uppercase or entirely lowercase, it needs to fully match.
@@ -457,4 +457,3 @@ func putJSONMap(m map[string]any) {
 	}
 	jsonMapPool.Put(m)
 }
-
