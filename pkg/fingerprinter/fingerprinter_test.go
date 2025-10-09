@@ -290,7 +290,7 @@ func TestFingerprinter(t *testing.T) {
   },
   "msg": "Received license validation request for movieId=SLWHPA"
 }`,
-			"inforeceived license validation request for movieid <Identifier>",
+			"<Loglevel> received license validation request for movieid <Identifier>",
 			"info",
 			map[string]any{
 				"level":    "INFO",

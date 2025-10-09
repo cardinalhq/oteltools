@@ -169,6 +169,7 @@ func (fp *fingerprinterImpl) tokenizeJSONContent(prefix string, data map[string]
 	sb.WriteString(prefix)
 	sb.WriteString(" ")
 	sb.WriteString(level)
+	sb.WriteString(" ")
 	sb.WriteString(message)
 	sb.WriteString(" ")
 	sb.WriteString(suffix)
