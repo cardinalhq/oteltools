@@ -25,12 +25,12 @@ import (
 // Object pools to reduce GC pressure from frequent allocations
 
 var (
-	// Pool for tokenSeq objects
+	// Pool for TokenSeq objects
 	tokenSeqPool = sync.Pool{
 		New: func() interface{} {
-			return &tokenSeq{
-				items:    make([]string, 0, 16), // Pre-allocate some capacity
-				jsonKeys: make([]string, 0, 8),
+			return &TokenSeq{
+				Items:    make([]string, 0, 16), // Pre-allocate some capacity
+				JsonKeys: make([]string, 0, 8),
 			}
 		},
 	}
@@ -78,19 +78,19 @@ var (
 	}
 )
 
-// getTokenSeq gets a tokenSeq from the pool and resets it
-func getTokenSeq() *tokenSeq {
-	ts := tokenSeqPool.Get().(*tokenSeq)
-	ts.index = 0
-	ts.items = ts.items[:0]       // Reset slice length but keep capacity
-	ts.jsonKeys = ts.jsonKeys[:0] // Reset slice length but keep capacity
+// getTokenSeq gets a TokenSeq from the pool and resets it
+func getTokenSeq() *TokenSeq {
+	ts := tokenSeqPool.Get().(*TokenSeq)
+	ts.Index = 0
+	ts.Items = ts.Items[:0]       // Reset slice length but keep capacity
+	ts.JsonKeys = ts.JsonKeys[:0] // Reset slice length but keep capacity
 	return ts
 }
 
-// putTokenSeq returns a tokenSeq to the pool
-func putTokenSeq(ts *tokenSeq) {
+// putTokenSeq returns a TokenSeq to the pool
+func putTokenSeq(ts *TokenSeq) {
 	// Don't pool extremely large slices to avoid memory bloat
-	if cap(ts.items) > 256 || cap(ts.jsonKeys) > 64 {
+	if cap(ts.Items) > 256 || cap(ts.JsonKeys) > 64 {
 		return
 	}
 	tokenSeqPool.Put(ts)

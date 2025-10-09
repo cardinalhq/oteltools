@@ -36,7 +36,7 @@ func BenchmarkTrieClusterManager(b *testing.B) {
 	}
 
 	// Pre-tokenize inputs to isolate clustering performance
-	tokenizedInputs := make([]*tokenSeq, len(testInputs))
+	tokenizedInputs := make([]*TokenSeq, len(testInputs))
 	for i, input := range testInputs {
 		ts, _, _, err := fp.testTokenizeInput(input)
 		if err != nil {

@@ -75,14 +75,14 @@ func newLeafClusterer(threshold float64) *leafClusterer {
 
 // Add returns either an existing cluster fingerprint (if jaccard >= threshold)
 // or computes & returns a new one.
-func (lc *leafClusterer) add(ts *tokenSeq) int64 {
+func (lc *leafClusterer) add(ts *TokenSeq) int64 {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
 	// build incoming set
 	incoming := getStringSet()
 	defer putStringSet(incoming)
-	for _, tok := range ts.items {
+	for _, tok := range ts.Items {
 		incoming[tok] = struct{}{}
 	}
 
@@ -203,12 +203,12 @@ func jaccardSimilarity(set1, set2 map[string]struct{}) float64 {
 // If it consumes all tokens → exact leaf.Add.
 // On divergence, it Jaccard-scans every cluster under the current subtree,
 // picks the best above threshold, or else creates a new branch + leaf.
-func (m *TrieClusterManager) cluster(ts *tokenSeq) int64 {
+func (m *TrieClusterManager) cluster(ts *TokenSeq) int64 {
 	cur := m.root
 	i := 0
-	for ; i < len(ts.items); i++ {
+	for ; i < len(ts.Items); i++ {
 		cur.RLock()
-		nxt, ok := cur.children[ts.items[i]]
+		nxt, ok := cur.children[ts.Items[i]]
 		cur.RUnlock()
 		if !ok {
 			break
@@ -217,14 +217,14 @@ func (m *TrieClusterManager) cluster(ts *tokenSeq) int64 {
 	}
 
 	// exact
-	if i == len(ts.items) {
+	if i == len(ts.Items) {
 		return m.getOrCreateLeaf(cur).add(ts)
 	}
 
 	// divergence → scan under cur
 	incoming := getStringSet()
 	defer putStringSet(incoming)
-	for _, tok := range ts.items {
+	for _, tok := range ts.Items {
 		incoming[tok] = struct{}{}
 	}
 
@@ -252,25 +252,25 @@ func (m *TrieClusterManager) cluster(ts *tokenSeq) int64 {
 	}
 
 	// no match → carve out the remainder
-	for ; i < len(ts.items); i++ {
+	for ; i < len(ts.Items); i++ {
 		n := newSeqNode()
 		cur.Lock()
-		cur.children[ts.items[i]] = n
+		cur.children[ts.Items[i]] = n
 		cur.Unlock()
 		cur = n
 	}
 	return m.getOrCreateLeaf(cur).add(ts)
 }
 
-func fingerprintItemsAndJSONKeys(t *tokenSeq) int64 {
+func fingerprintItemsAndJSONKeys(t *TokenSeq) int64 {
 	h := xxhash.New()
-	for i, item := range t.items {
+	for i, item := range t.Items {
 		if i > 0 {
 			_, _ = h.Write([]byte(":"))
 		}
 		_, _ = h.WriteString(item)
 	}
-	for _, key := range t.jsonKeys {
+	for _, key := range t.JsonKeys {
 		_, _ = h.Write([]byte(":"))
 		_, _ = h.WriteString(key)
 	}

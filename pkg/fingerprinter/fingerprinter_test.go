@@ -338,7 +338,7 @@ func TestFingerprinter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tokenMap, level, js, err := fp.testTokenizeInput(tt.input)
 			assert.NoError(t, err, "input: %s", tt.input)
-			assert.Equal(t, tt.want, strings.Join(tokenMap.items, " "), "input: %s", tt.input)
+			assert.Equal(t, tt.want, strings.Join(tokenMap.Items, " "), "input: %s", tt.input)
 			assert.Equal(t, tt.wantLevel, level, "input: %s", tt.input)
 			assert.Equal(t, tt.wantJSON, js, "input: %s", tt.input)
 		})
@@ -368,7 +368,7 @@ func TestFingerprinterWithLineLimit(t *testing.T) {
 			tokenMap, _, js, err := fp.testTokenizeInput(tt.input)
 			assert.NoError(t, err)
 			assert.Nil(t, js)
-			assert.Equal(t, tt.want, strings.Join(tokenMap.items, " "))
+			assert.Equal(t, tt.want, strings.Join(tokenMap.Items, " "))
 		})
 	}
 }
