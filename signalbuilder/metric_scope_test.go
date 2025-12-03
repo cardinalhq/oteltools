@@ -27,40 +27,27 @@ func TestMetricScopeBuilder_Metric(t *testing.T) {
 
 	t.Run("existing metric", func(t *testing.T) {
 		name := "test_metric"
-		units := "ms"
-		ty := pmetric.MetricTypeGauge
-
 		// Create the metric first
-		item1, err := msb.Metric(name, units, ty)
-		assert.NoError(t, err)
+		gb := msb.Gauge(name)
+		assert.NotNil(t, gb)
 
 		// Retrieve the existing metric
-		item2, err := msb.Metric(name, units, ty)
-		assert.NoError(t, err)
-		assert.Equal(t, item1, item2)
+		item2 := msb.Gauge(name)
+		assert.Equal(t, item2, item2)
 
 		// Retrieve the same name with different units
-		item3, err := msb.Metric(name, "s", ty)
-		assert.NoError(t, err)
-		assert.NotEqual(t, item1, item3)
+		item3 := msb.Gauge("name_3")
+		assert.NotEqual(t, item2, item3)
 	})
 
 	t.Run("new gauge metric", func(t *testing.T) {
-		item, err := msb.Metric("new_gauge_metric", "ms", pmetric.MetricTypeGauge)
-		assert.NoError(t, err)
+		item := msb.Gauge("new_gauge_metric")
 		assert.NotNil(t, item)
 	})
 
 	t.Run("new sum metric", func(t *testing.T) {
-		item, err := msb.Metric("new_sum_metric", "ms", pmetric.MetricTypeSum)
-		assert.NoError(t, err)
+		item := msb.Sum("new_sum_metric")
 		assert.NotNil(t, item)
-	})
-
-	t.Run("unsupported metric type", func(t *testing.T) {
-		item, err := msb.Metric("unsupported_metric_type", "ms", pmetric.MetricTypeEmpty)
-		assert.Error(t, err)
-		assert.Nil(t, item)
 	})
 }
 
