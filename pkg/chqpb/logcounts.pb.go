@@ -36,24 +36,16 @@ const (
 )
 
 type ServiceLogCountProto struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ServiceName   string                 `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	NamespaceName string                 `protobuf:"bytes,2,opt,name=namespace_name,json=namespaceName,proto3" json:"namespace_name,omitempty"`
-	ClusterName   string                 `protobuf:"bytes,3,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
-	Tid           string                 `protobuf:"bytes,4,opt,name=tid,proto3" json:"tid,omitempty"`
-	Interval      int64                  `protobuf:"varint,5,opt,name=interval,proto3" json:"interval,omitempty"`
-	// Total number of log records in this interval
-	TotalCount int64 `protobuf:"varint,6,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
-	// Number of logs with severity >= WARN
-	ErrorCount int64 `protobuf:"varint,7,opt,name=error_count,json=errorCount,proto3" json:"error_count,omitempty"`
-	// Number of logs that were considered exceptions
-	ExceptionCount int64 `protobuf:"varint,8,opt,name=exception_count,json=exceptionCount,proto3" json:"exception_count,omitempty"`
-	// fingerprint -> example log (JSON string)
-	ExceptionMap map[int64]string `protobuf:"bytes,9,rep,name=exception_map,json=exceptionMap,proto3" json:"exception_map,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// fingerprint -> count of how many times it occurred
-	ExceptionCounts map[int64]int64 `protobuf:"bytes,10,rep,name=exception_counts,json=exceptionCounts,proto3" json:"exception_counts,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	ServiceName         string                 `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
+	NamespaceName       string                 `protobuf:"bytes,2,opt,name=namespace_name,json=namespaceName,proto3" json:"namespace_name,omitempty"`
+	ClusterName         string                 `protobuf:"bytes,3,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
+	Tid                 string                 `protobuf:"bytes,4,opt,name=tid,proto3" json:"tid,omitempty"`
+	Interval            int64                  `protobuf:"varint,5,opt,name=interval,proto3" json:"interval,omitempty"`
+	CountsByFingerprint map[int64]int64        `protobuf:"bytes,11,rep,name=countsByFingerprint,proto3" json:"countsByFingerprint,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	LevelByFingerprint  map[int64]int32        `protobuf:"bytes,12,rep,name=levelByFingerprint,proto3" json:"levelByFingerprint,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *ServiceLogCountProto) Reset() {
@@ -121,37 +113,16 @@ func (x *ServiceLogCountProto) GetInterval() int64 {
 	return 0
 }
 
-func (x *ServiceLogCountProto) GetTotalCount() int64 {
+func (x *ServiceLogCountProto) GetCountsByFingerprint() map[int64]int64 {
 	if x != nil {
-		return x.TotalCount
-	}
-	return 0
-}
-
-func (x *ServiceLogCountProto) GetErrorCount() int64 {
-	if x != nil {
-		return x.ErrorCount
-	}
-	return 0
-}
-
-func (x *ServiceLogCountProto) GetExceptionCount() int64 {
-	if x != nil {
-		return x.ExceptionCount
-	}
-	return 0
-}
-
-func (x *ServiceLogCountProto) GetExceptionMap() map[int64]string {
-	if x != nil {
-		return x.ExceptionMap
+		return x.CountsByFingerprint
 	}
 	return nil
 }
 
-func (x *ServiceLogCountProto) GetExceptionCounts() map[int64]int64 {
+func (x *ServiceLogCountProto) GetLevelByFingerprint() map[int64]int32 {
 	if x != nil {
-		return x.ExceptionCounts
+		return x.LevelByFingerprint
 	}
 	return nil
 }
@@ -213,27 +184,21 @@ var File_logcounts_proto protoreflect.FileDescriptor
 
 const file_logcounts_proto_rawDesc = "" +
 	"\n" +
-	"\x0flogcounts.proto\x12\x05chqpb\"\xd2\x04\n" +
+	"\x0flogcounts.proto\x12\x05chqpb\"\x8d\x04\n" +
 	"\x14ServiceLogCountProto\x12!\n" +
 	"\fservice_name\x18\x01 \x01(\tR\vserviceName\x12%\n" +
 	"\x0enamespace_name\x18\x02 \x01(\tR\rnamespaceName\x12!\n" +
 	"\fcluster_name\x18\x03 \x01(\tR\vclusterName\x12\x10\n" +
 	"\x03tid\x18\x04 \x01(\tR\x03tid\x12\x1a\n" +
-	"\binterval\x18\x05 \x01(\x03R\binterval\x12\x1f\n" +
-	"\vtotal_count\x18\x06 \x01(\x03R\n" +
-	"totalCount\x12\x1f\n" +
-	"\verror_count\x18\a \x01(\x03R\n" +
-	"errorCount\x12'\n" +
-	"\x0fexception_count\x18\b \x01(\x03R\x0eexceptionCount\x12R\n" +
-	"\rexception_map\x18\t \x03(\v2-.chqpb.ServiceLogCountProto.ExceptionMapEntryR\fexceptionMap\x12[\n" +
-	"\x10exception_counts\x18\n" +
-	" \x03(\v20.chqpb.ServiceLogCountProto.ExceptionCountsEntryR\x0fexceptionCounts\x1a?\n" +
-	"\x11ExceptionMapEntry\x12\x10\n" +
+	"\binterval\x18\x05 \x01(\x03R\binterval\x12f\n" +
+	"\x13countsByFingerprint\x18\v \x03(\v24.chqpb.ServiceLogCountProto.CountsByFingerprintEntryR\x13countsByFingerprint\x12c\n" +
+	"\x12levelByFingerprint\x18\f \x03(\v23.chqpb.ServiceLogCountProto.LevelByFingerprintEntryR\x12levelByFingerprint\x1aF\n" +
+	"\x18CountsByFingerprintEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x03R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
-	"\x14ExceptionCountsEntry\x12\x10\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\x1aE\n" +
+	"\x17LevelByFingerprintEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x03R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"o\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"o\n" +
 	"\x13ServiceLogCountList\x127\n" +
 	"\bsketches\x18\x01 \x03(\v2\x1b.chqpb.ServiceLogCountProtoR\bsketches\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
@@ -255,12 +220,12 @@ var file_logcounts_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_logcounts_proto_goTypes = []any{
 	(*ServiceLogCountProto)(nil), // 0: chqpb.ServiceLogCountProto
 	(*ServiceLogCountList)(nil),  // 1: chqpb.ServiceLogCountList
-	nil,                          // 2: chqpb.ServiceLogCountProto.ExceptionMapEntry
-	nil,                          // 3: chqpb.ServiceLogCountProto.ExceptionCountsEntry
+	nil,                          // 2: chqpb.ServiceLogCountProto.CountsByFingerprintEntry
+	nil,                          // 3: chqpb.ServiceLogCountProto.LevelByFingerprintEntry
 }
 var file_logcounts_proto_depIdxs = []int32{
-	2, // 0: chqpb.ServiceLogCountProto.exception_map:type_name -> chqpb.ServiceLogCountProto.ExceptionMapEntry
-	3, // 1: chqpb.ServiceLogCountProto.exception_counts:type_name -> chqpb.ServiceLogCountProto.ExceptionCountsEntry
+	2, // 0: chqpb.ServiceLogCountProto.countsByFingerprint:type_name -> chqpb.ServiceLogCountProto.CountsByFingerprintEntry
+	3, // 1: chqpb.ServiceLogCountProto.levelByFingerprint:type_name -> chqpb.ServiceLogCountProto.LevelByFingerprintEntry
 	0, // 2: chqpb.ServiceLogCountList.sketches:type_name -> chqpb.ServiceLogCountProto
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
