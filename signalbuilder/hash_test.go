@@ -17,76 +17,81 @@ package signalbuilder
 import (
 	"testing"
 
-	"github.com/cardinalhq/oteltools/hashutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
 func TestAttrkey(t *testing.T) {
-	tests := []struct {
-		name string
-		attr pcommon.Map
-		want uint64
-	}{
-		{
-			name: "empty map",
-			attr: pcommon.NewMap(),
-			want: 1,
-		},
-		{
-			name: "non-empty map",
-			attr: func() pcommon.Map {
-				m := pcommon.NewMap()
-				m.PutStr("key1", "value1")
-				m.PutInt("key2", 123)
-				return m
-			}(),
-			want: hashutils.HashAny(nil, map[string]any{
-				"key2": int64(123),
-				"key1": "value1",
-			}),
-		},
-	}
+	t.Run("empty map returns 1", func(t *testing.T) {
+		got := attrkey(pcommon.NewMap())
+		assert.Equal(t, uint64(1), got)
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := attrkey(tt.attr)
-			assert.Equal(t, tt.want, got)
-		})
-	}
+	t.Run("same map produces same hash", func(t *testing.T) {
+		m := pcommon.NewMap()
+		m.PutStr("key1", "value1")
+		m.PutInt("key2", 123)
+
+		hash1 := attrkey(m)
+		hash2 := attrkey(m)
+		assert.Equal(t, hash1, hash2)
+	})
+
+	t.Run("equivalent maps produce same hash", func(t *testing.T) {
+		m1 := pcommon.NewMap()
+		m1.PutStr("key1", "value1")
+		m1.PutInt("key2", 123)
+
+		m2 := pcommon.NewMap()
+		m2.PutInt("key2", 123)
+		m2.PutStr("key1", "value1")
+
+		assert.Equal(t, attrkey(m1), attrkey(m2))
+	})
+
+	t.Run("different maps produce different hashes", func(t *testing.T) {
+		m1 := pcommon.NewMap()
+		m1.PutStr("key1", "value1")
+
+		m2 := pcommon.NewMap()
+		m2.PutStr("key1", "value2")
+
+		require.NotEqual(t, attrkey(m1), attrkey(m2))
+	})
+
+	t.Run("non-empty map produces non-1 hash", func(t *testing.T) {
+		m := pcommon.NewMap()
+		m.PutStr("key1", "value1")
+		require.NotEqual(t, uint64(1), attrkey(m))
+	})
 }
 
 func TestMetrickey(t *testing.T) {
-	tests := []struct {
-		name  string
-		mname string
-		units string
-		ty    pmetric.MetricType
-		want  uint64
-	}{
-		{
-			name:  "empty metric",
-			mname: "",
-			units: "",
-			ty:    pmetric.MetricTypeEmpty,
-			want:  hashutils.HashStrings(nil, "", "", pmetric.MetricTypeEmpty.String()),
-		},
-		{
-			name:  "non-empty metric",
-			mname: "metric1",
-			units: "ms",
-			ty:    pmetric.MetricTypeGauge,
-			want:  hashutils.HashStrings(nil, "metric1", "ms", pmetric.MetricTypeGauge.String()),
-		},
-	}
+	t.Run("same inputs produce same hash", func(t *testing.T) {
+		hash1 := metrickey("metric1", "ms", pmetric.MetricTypeGauge)
+		hash2 := metrickey("metric1", "ms", pmetric.MetricTypeGauge)
+		assert.Equal(t, hash1, hash2)
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := metrickey(tt.mname, tt.units, tt.ty)
-			assert.Equal(t, tt.want, got)
-		})
-	}
+	t.Run("different names produce different hashes", func(t *testing.T) {
+		hash1 := metrickey("metric1", "ms", pmetric.MetricTypeGauge)
+		hash2 := metrickey("metric2", "ms", pmetric.MetricTypeGauge)
+		require.NotEqual(t, hash1, hash2)
+	})
+
+	t.Run("different units produce different hashes", func(t *testing.T) {
+		hash1 := metrickey("metric1", "ms", pmetric.MetricTypeGauge)
+		hash2 := metrickey("metric1", "s", pmetric.MetricTypeGauge)
+		require.NotEqual(t, hash1, hash2)
+	})
+
+	t.Run("different types produce different hashes", func(t *testing.T) {
+		hash1 := metrickey("metric1", "ms", pmetric.MetricTypeGauge)
+		hash2 := metrickey("metric1", "ms", pmetric.MetricTypeSum)
+		require.NotEqual(t, hash1, hash2)
+	})
 }
 
 func BenchmarkAttrkey(b *testing.B) {
