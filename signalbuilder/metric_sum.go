@@ -32,8 +32,6 @@ func (msb *MetricSumBuilder) SetUnit(unit string) {
 	msb.metric.SetUnit(unit)
 }
 
-var _ MetricDatapointBuilder = (*MetricSumBuilder)(nil)
-
 func NewMetricSumBuilder(metric pmetric.Metric) *MetricSumBuilder {
 	sum := metric.SetEmptySum()
 	sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)

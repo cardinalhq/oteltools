@@ -32,8 +32,6 @@ func (mgb *MetricGaugeBuilder) SetUnit(unit string) {
 	mgb.metric.SetUnit(unit)
 }
 
-var _ MetricDatapointBuilder = (*MetricGaugeBuilder)(nil)
-
 func NewMetricGaugeBuilder(metric pmetric.Metric) *MetricGaugeBuilder {
 	metric.SetEmptyGauge()
 	return &MetricGaugeBuilder{

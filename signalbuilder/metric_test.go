@@ -27,8 +27,7 @@ func TestBuild(t *testing.T) {
 	mb := NewMetricsBuilder()
 	r := mb.Resource(pcommon.NewMap())
 	s := r.Scope(pcommon.NewMap())
-	m, err := s.Metric("alice", "s", pmetric.MetricTypeGauge)
-	require.NoError(t, err)
+	m := s.Gauge("alice")
 	dp, ty, isNew := m.Datapoint(pcommon.NewMap(), 123)
 	require.Equal(t, pmetric.MetricTypeGauge, ty)
 	require.True(t, isNew)
@@ -45,8 +44,7 @@ func TestBuild(t *testing.T) {
 	attr2.PutStr("bob", "uncle")
 	r2 := mb.Resource(attr2)
 	s2 := r2.Scope(pcommon.NewMap())
-	m2, err := s2.Metric("alice", "s", pmetric.MetricTypeGauge)
-	require.NoError(t, err)
+	m2 := s2.Gauge("alice")
 	dp2, ty2, isNew2 := m2.Datapoint(pcommon.NewMap(), 123)
 	require.Equal(t, pmetric.MetricTypeGauge, ty2)
 	require.True(t, isNew2)
@@ -67,8 +65,7 @@ func TestBuild(t *testing.T) {
 	assert.Equal(t, r2, r2a)
 	s2a := r2a.Scope(pcommon.NewMap())
 	assert.Equal(t, s2, s2a)
-	m2a, err := s2a.Metric("alice", "s", pmetric.MetricTypeGauge)
-	require.NoError(t, err)
+	m2a := s2a.Gauge("alice")
 	assert.Equal(t, m2, m2a)
 	dp2a, ty2a, isNew2a := m2a.Datapoint(pcommon.NewMap(), 321)
 	require.Equal(t, pmetric.MetricTypeGauge, ty2a)
@@ -241,10 +238,7 @@ func BenchmarkBuilding(b *testing.B) {
 		mb := NewMetricsBuilder()
 		r := mb.Resource(pcommon.NewMap())
 		s := r.Scope(pcommon.NewMap())
-		m, err := s.Metric("alice", "s", pmetric.MetricTypeGauge)
-		if err != nil {
-			b.Fail()
-		}
+		m := s.Gauge("alice")
 		dp, ty, isNew := m.Datapoint(pcommon.NewMap(), 123)
 		if ty != pmetric.MetricTypeGauge || !isNew {
 			b.Fail()
@@ -256,10 +250,7 @@ func BenchmarkBuilding(b *testing.B) {
 		attr2.PutStr("bob", "uncle")
 		r2 := mb.Resource(attr2)
 		s2 := r2.Scope(pcommon.NewMap())
-		m2, err := s2.Metric("alice", "s", pmetric.MetricTypeGauge)
-		if err != nil {
-			b.Fail()
-		}
+		m2 := s2.Gauge("alice")
 		dp2, ty2, isNew2 := m2.Datapoint(pcommon.NewMap(), 123)
 		if ty2 != pmetric.MetricTypeGauge || !isNew2 {
 			b.Fail()
@@ -275,10 +266,7 @@ func BenchmarkBuilding(b *testing.B) {
 		if s2 != s2a {
 			b.Fail()
 		}
-		m2a, err := s2a.Metric("alice", "s", pmetric.MetricTypeGauge)
-		if err != nil {
-			b.Fail()
-		}
+		m2a := s2a.Gauge("alice")
 		dp2a, ty2a, isNew2a := m2a.Datapoint(pcommon.NewMap(), 321)
 		if ty2a != pmetric.MetricTypeGauge || !isNew2a {
 			b.Fail()
