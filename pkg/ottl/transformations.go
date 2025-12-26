@@ -48,8 +48,8 @@ type Versioned interface {
 type resourceTransform struct {
 	context    ContextID
 	version    int
-	conditions []*ottl.Condition[ottlresource.TransformContext]
-	statements []*ottl.Statement[ottlresource.TransformContext]
+	conditions []*ottl.Condition[*ottlresource.TransformContext]
+	statements []*ottl.Statement[*ottlresource.TransformContext]
 }
 
 func (r *resourceTransform) GetVersion() int {
@@ -59,8 +59,8 @@ func (r *resourceTransform) GetVersion() int {
 type scopeTransform struct {
 	context    ContextID
 	version    int
-	conditions []*ottl.Condition[ottlscope.TransformContext]
-	statements []*ottl.Statement[ottlscope.TransformContext]
+	conditions []*ottl.Condition[*ottlscope.TransformContext]
+	statements []*ottl.Statement[*ottlscope.TransformContext]
 }
 
 func (s *scopeTransform) GetVersion() int {
@@ -70,8 +70,8 @@ func (s *scopeTransform) GetVersion() int {
 type logTransform struct {
 	context    ContextID
 	version    int
-	conditions []*ottl.Condition[ottllog.TransformContext]
-	statements []*ottl.Statement[ottllog.TransformContext]
+	conditions []*ottl.Condition[*ottllog.TransformContext]
+	statements []*ottl.Statement[*ottllog.TransformContext]
 	//samplerConfig SamplingConfig
 	sampler Sampler
 }
@@ -83,8 +83,8 @@ func (s *logTransform) GetVersion() int {
 type spanTransform struct {
 	context    ContextID
 	version    int
-	conditions []*ottl.Condition[ottlspan.TransformContext]
-	statements []*ottl.Statement[ottlspan.TransformContext]
+	conditions []*ottl.Condition[*ottlspan.TransformContext]
+	statements []*ottl.Statement[*ottlspan.TransformContext]
 	//samplerConfig SamplingConfig
 	sampler Sampler
 }
@@ -96,8 +96,8 @@ func (s *spanTransform) GetVersion() int {
 type metricTransform struct {
 	context    ContextID
 	version    int
-	conditions []*ottl.Condition[ottlmetric.TransformContext]
-	statements []*ottl.Statement[ottlmetric.TransformContext]
+	conditions []*ottl.Condition[*ottlmetric.TransformContext]
+	statements []*ottl.Statement[*ottlmetric.TransformContext]
 }
 
 func (s *metricTransform) GetVersion() int {
@@ -107,8 +107,8 @@ func (s *metricTransform) GetVersion() int {
 type dataPointTransform struct {
 	context    ContextID
 	version    int
-	conditions []*ottl.Condition[ottldatapoint.TransformContext]
-	statements []*ottl.Statement[ottldatapoint.TransformContext]
+	conditions []*ottl.Condition[*ottldatapoint.TransformContext]
+	statements []*ottl.Statement[*ottldatapoint.TransformContext]
 }
 
 func (s *dataPointTransform) GetVersion() int {
@@ -239,12 +239,12 @@ func GetServiceName(resource pcommon.Resource) string {
 func ParseTransformations(logger *zap.Logger, statements []ContextStatement) (*transformations, error) {
 	var errors error
 
-	resourceParser, _ := ottlresource.NewParser(ToFactory[ottlresource.TransformContext](), component.TelemetrySettings{Logger: logger})
-	scopeParser, _ := ottlscope.NewParser(ToFactory[ottlscope.TransformContext](), component.TelemetrySettings{Logger: logger})
-	logParser, _ := ottllog.NewParser(ToFactory[ottllog.TransformContext](), component.TelemetrySettings{Logger: logger})
-	spanParser, _ := ottlspan.NewParser(ToFactory[ottlspan.TransformContext](), component.TelemetrySettings{Logger: logger})
-	metricParser, _ := ottlmetric.NewParser(ToFactory[ottlmetric.TransformContext](), component.TelemetrySettings{Logger: logger})
-	dataPointParser, _ := ottldatapoint.NewParser(ToFactory[ottldatapoint.TransformContext](), component.TelemetrySettings{Logger: logger})
+	resourceParser, _ := ottlresource.NewParser(ToFactory[*ottlresource.TransformContext](), component.TelemetrySettings{Logger: logger})
+	scopeParser, _ := ottlscope.NewParser(ToFactory[*ottlscope.TransformContext](), component.TelemetrySettings{Logger: logger})
+	logParser, _ := ottllog.NewParser(ToFactory[*ottllog.TransformContext](), component.TelemetrySettings{Logger: logger})
+	spanParser, _ := ottlspan.NewParser(ToFactory[*ottlspan.TransformContext](), component.TelemetrySettings{Logger: logger})
+	metricParser, _ := ottlmetric.NewParser(ToFactory[*ottlmetric.TransformContext](), component.TelemetrySettings{Logger: logger})
+	dataPointParser, _ := ottldatapoint.NewParser(ToFactory[*ottldatapoint.TransformContext](), component.TelemetrySettings{Logger: logger})
 
 	transformations := NewTransformations()
 
@@ -428,7 +428,7 @@ func (t *transformations) ExecuteResourceTransforms(logger *zap.Logger, incset a
 		attrset := attribute.NewSet(append(kvs, attribute.String(translate.RuleId, ruleID), attribute.Int(translate.Version, version))...)
 		allConditionsTrue := true
 		for _, condition := range resourceTransform.conditions {
-			conditionMet, err := condition.Eval(context.Background(), transformCtx)
+			conditionMet, err := condition.Eval(context.Background(), &transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(tele.ConditionsErrorCounter, 1, metric.WithAttributeSet(attrset))
 				logger.Error("Error executing resource conditions", zap.Error(err))
@@ -443,7 +443,7 @@ func (t *transformations) ExecuteResourceTransforms(logger *zap.Logger, incset a
 
 		startTime = time.Now()
 		for _, statement := range resourceTransform.statements {
-			_, _, err := statement.Execute(context.Background(), transformCtx)
+			_, _, err := statement.Execute(context.Background(), &transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(tele.StatementsErrorCounter, 1, metric.WithAttributeSet(attrset))
 				logger.Error("Error executing resource transformation", zap.Error(err))
@@ -462,7 +462,7 @@ func (t *transformations) ExecuteScopeTransforms(logger *zap.Logger, incset attr
 		attrset := attribute.NewSet(append(kvs, attribute.String(translate.RuleId, ruleID), attribute.Int(translate.Version, version))...)
 		allConditionsTrue := true
 		for _, condition := range scopeTransform.conditions {
-			conditionMet, err := condition.Eval(context.Background(), transformCtx)
+			conditionMet, err := condition.Eval(context.Background(), &transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(tele.ConditionsErrorCounter, 1, metric.WithAttributeSet(attrset))
 				logger.Error("Error executing scope conditions", zap.Error(err))
@@ -477,7 +477,7 @@ func (t *transformations) ExecuteScopeTransforms(logger *zap.Logger, incset attr
 
 		startTime = time.Now()
 		for _, statement := range scopeTransform.statements {
-			_, _, err := statement.Execute(context.Background(), transformCtx)
+			_, _, err := statement.Execute(context.Background(), &transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(tele.StatementsErrorCounter, 1, metric.WithAttributeSet(attrset))
 				logger.Error("Error executing scope transformation", zap.Error(err))
@@ -497,7 +497,7 @@ func (t *transformations) ExecuteLogTransforms(logger *zap.Logger, incset attrib
 		startTime := time.Now()
 		allConditionsTrue := true
 		for _, condition := range logTransform.conditions {
-			conditionMet, err := condition.Eval(context.Background(), transformCtx)
+			conditionMet, err := condition.Eval(context.Background(), &transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(tele.ConditionsErrorCounter, 1, metric.WithAttributeSet(attrset))
 				logger.Error("Error executing log conditions", zap.Error(err))
@@ -528,7 +528,7 @@ func (t *transformations) ExecuteLogTransforms(logger *zap.Logger, incset attrib
 
 		startTime = time.Now()
 		for _, statement := range logTransform.statements {
-			_, _, err := statement.Execute(context.Background(), transformCtx)
+			_, _, err := statement.Execute(context.Background(), &transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(tele.StatementsErrorCounter, 1, metric.WithAttributeSet(attrset))
 				logger.Error("Error executing log transformation", zap.Error(err))
@@ -559,7 +559,7 @@ func (t *transformations) ExecuteSpanTransforms(logger *zap.Logger, incset attri
 
 		allConditionsTrue := true
 		for _, condition := range spanTransform.conditions {
-			conditionMet, err := condition.Eval(context.Background(), transformCtx)
+			conditionMet, err := condition.Eval(context.Background(), &transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(tele.ConditionsErrorCounter, 1, metric.WithAttributeSet(attrset))
 				logger.Error("Error executing span conditions", zap.Error(err))
@@ -591,7 +591,7 @@ func (t *transformations) ExecuteSpanTransforms(logger *zap.Logger, incset attri
 
 		startTime = time.Now()
 		for _, statement := range spanTransform.statements {
-			_, _, err := statement.Execute(context.Background(), transformCtx)
+			_, _, err := statement.Execute(context.Background(), &transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(tele.StatementsErrorCounter, 1, metric.WithAttributeSet(attrset))
 				logger.Error("Error executing span transformation", zap.Error(err))
@@ -611,7 +611,7 @@ func (t *transformations) ExecuteMetricTransforms(logger *zap.Logger, incset att
 
 		allConditionsTrue := true
 		for _, condition := range metricTransform.conditions {
-			conditionMet, err := condition.Eval(context.Background(), transformCtx)
+			conditionMet, err := condition.Eval(context.Background(), &transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(tele.ConditionsErrorCounter, 1, metric.WithAttributeSet(attrset))
 				logger.Error("Error executing metric conditions", zap.Error(err))
@@ -625,7 +625,7 @@ func (t *transformations) ExecuteMetricTransforms(logger *zap.Logger, incset att
 		}
 		startTime = time.Now()
 		for _, statement := range metricTransform.statements {
-			_, _, err := statement.Execute(context.Background(), transformCtx)
+			_, _, err := statement.Execute(context.Background(), &transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(tele.StatementsErrorCounter, 1, metric.WithAttributeSet(attrset))
 				logger.Error("Error executing metric transformation", zap.Error(err))
@@ -645,7 +645,7 @@ func (t *transformations) ExecuteDatapointTransforms(logger *zap.Logger, incset 
 
 		allConditionsTrue := true
 		for _, condition := range dataPointTransform.conditions {
-			conditionMet, err := condition.Eval(context.Background(), transformCtx)
+			conditionMet, err := condition.Eval(context.Background(), &transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(tele.ConditionsErrorCounter, 1, metric.WithAttributeSet(attrset))
 				logger.Error("Error executing span conditions", zap.Error(err))
@@ -660,7 +660,7 @@ func (t *transformations) ExecuteDatapointTransforms(logger *zap.Logger, incset 
 
 		startTime = time.Now()
 		for _, statement := range dataPointTransform.statements {
-			_, _, err := statement.Execute(context.Background(), transformCtx)
+			_, _, err := statement.Execute(context.Background(), &transformCtx)
 			if err != nil {
 				telemetry.CounterAdd(tele.StatementsErrorCounter, 1, metric.WithAttributeSet(attrset))
 				logger.Error("Error executing datapoint transformation", zap.Error(err))

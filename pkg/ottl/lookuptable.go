@@ -36,9 +36,9 @@ type LookupKey struct {
 	ColumnName string `json:"column_name,omitempty" yaml:"column_name,omitempty"`
 	Expression string `json:"expression,omitempty" yaml:"expression,omitempty"`
 
-	parsedLogExpression    *ottl.Statement[ottllog.TransformContext]
-	parsedSpanExpression   *ottl.Statement[ottlspan.TransformContext]
-	parsedMetricExpression *ottl.Statement[ottldatapoint.TransformContext]
+	parsedLogExpression    *ottl.Statement[*ottllog.TransformContext]
+	parsedSpanExpression   *ottl.Statement[*ottlspan.TransformContext]
+	parsedMetricExpression *ottl.Statement[*ottldatapoint.TransformContext]
 }
 
 //TODO: Read the LookupTable from RDS on the `external_api` and only send the `TransposedLookupTable` down to the collector.
@@ -101,7 +101,7 @@ func (tlt transposedLookupTable) Lookup(targetTagName string, conditions []strin
 
 func (lc *LookupConfig) Init(logger *zap.Logger) {
 	if len(lc.LogRules) > 0 {
-		logParser, _ := ottllog.NewParser(ToFactory[ottllog.TransformContext](), component.TelemetrySettings{Logger: logger})
+		logParser, _ := ottllog.NewParser(ToFactory[*ottllog.TransformContext](), component.TelemetrySettings{Logger: logger})
 		conditionColumns := make([]string, 0)
 
 		for _, logRule := range lc.LogRules {
@@ -120,7 +120,7 @@ func (lc *LookupConfig) Init(logger *zap.Logger) {
 
 	// for spans
 	if len(lc.SpanRules) > 0 {
-		spanParser, _ := ottlspan.NewParser(ToFactory[ottlspan.TransformContext](), component.TelemetrySettings{Logger: logger})
+		spanParser, _ := ottlspan.NewParser(ToFactory[*ottlspan.TransformContext](), component.TelemetrySettings{Logger: logger})
 		conditionColumns := make([]string, 0)
 
 		for _, spanRule := range lc.SpanRules {
@@ -139,7 +139,7 @@ func (lc *LookupConfig) Init(logger *zap.Logger) {
 
 	// for metric data points
 	if len(lc.MetricRules) > 0 {
-		metricsParser, _ := ottldatapoint.NewParser(ToFactory[ottldatapoint.TransformContext](), component.TelemetrySettings{Logger: logger})
+		metricsParser, _ := ottldatapoint.NewParser(ToFactory[*ottldatapoint.TransformContext](), component.TelemetrySettings{Logger: logger})
 		conditionColumns := make([]string, 0)
 		for _, metricsRule := range lc.SpanRules {
 			for _, key := range metricsRule.Keys {
@@ -164,7 +164,7 @@ func (lc *LookupConfig) ExecuteLogsRules(ctx context.Context, tCtx ottllog.Trans
 		for _, lookupCondition := range lr.Keys {
 			expression := lookupCondition.parsedLogExpression
 			if expression != nil {
-				attrVal, _, err := expression.Execute(ctx, tCtx)
+				attrVal, _, err := expression.Execute(ctx, &tCtx)
 				if err != nil {
 					return
 				}
@@ -193,7 +193,7 @@ func (lc *LookupConfig) ExecuteSpansRules(ctx context.Context, tCtx ottlspan.Tra
 		for _, lookupCondition := range lr.Keys {
 			expression := lookupCondition.parsedSpanExpression
 			if expression != nil {
-				attrVal, _, err := expression.Execute(ctx, tCtx)
+				attrVal, _, err := expression.Execute(ctx, &tCtx)
 				if err != nil {
 					return
 				}
@@ -222,7 +222,7 @@ func (lc *LookupConfig) ExecuteMetricsRules(ctx context.Context, tCtx ottldatapo
 		for _, lookupCondition := range lr.Keys {
 			expression := lookupCondition.parsedMetricExpression
 			if expression != nil {
-				attrVal, _, err := expression.Execute(ctx, tCtx)
+				attrVal, _, err := expression.Execute(ctx, &tCtx)
 				if err != nil {
 					return
 				}

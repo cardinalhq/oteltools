@@ -51,7 +51,7 @@ func TestIPFunctions(t *testing.T) {
 	sl := rl.ScopeLogs().AppendEmpty()
 	lr := sl.LogRecords().AppendEmpty()
 
-	tc := ottllog.NewTransformContext(lr, sl.Scope(), rl.Resource(), sl, rl)
+	tc := *ottllog.NewTransformContextPtr(rl, sl, lr)
 	transformations.ExecuteLogTransforms(logger, attribute.NewSet(), &Telemetry{}, tc)
 	city, countryFound := lr.Attributes().Get("ip")
 	assert.True(t, countryFound)
@@ -92,7 +92,7 @@ func TestIsInFunc(t *testing.T) {
 			assert.NoError(t, err)
 			rm := pmetric.NewResourceMetrics()
 			rm.Resource().Attributes().PutStr("service.name", tt.serviceName) // Use the test case's service name
-			tc := ottlresource.NewTransformContext(rm.Resource(), rm)
+			tc := *ottlresource.NewTransformContextPtr(rm.Resource(), rm)
 			transformations.ExecuteResourceTransforms(logger, attribute.NewSet(), &Telemetry{}, tc)
 			isIn, isInFound := rm.Resource().Attributes().Get("isIn")
 			assert.True(t, isInFound)
@@ -125,7 +125,7 @@ func TestSimpleBoolean(t *testing.T) {
 		t.Fatalf("Error parsing transformations: %v", err)
 	}
 
-	transformations.ExecuteLogTransforms(logger, attribute.NewSet(), &Telemetry{}, ottllog.NewTransformContext(lr, sl.Scope(), rl.Resource(), sl, rl))
+	transformations.ExecuteLogTransforms(logger, attribute.NewSet(), &Telemetry{}, *ottllog.NewTransformContextPtr(rl, sl, lr))
 
 	attr, ok := lr.Attributes().Get("worked")
 	assert.True(t, ok)
@@ -154,7 +154,7 @@ func TestSeverity(t *testing.T) {
 	transformations, err := ParseTransformations(logger, statements)
 	assert.NoError(t, err)
 	assert.True(t, len(transformations.logTransforms) > 0)
-	transformations.ExecuteLogTransforms(logger, attribute.NewSet(), &Telemetry{}, ottllog.NewTransformContext(lr, sl.Scope(), rl.Resource(), sl, rl))
+	transformations.ExecuteLogTransforms(logger, attribute.NewSet(), &Telemetry{}, *ottllog.NewTransformContextPtr(rl, sl, lr))
 
 	// assert if foo exists and is set to INFO
 	foo, fooFound := lr.Attributes().Get("foo")
@@ -184,7 +184,7 @@ func TestAccessLogs_UsingGrok(t *testing.T) {
 	sl := rl.ScopeLogs().AppendEmpty()
 	lr := sl.LogRecords().AppendEmpty()
 	lr.Body().SetStr("10.1.1.140 - - [16/May/2022:15:01:52 -0700] \"GET /themes/ComBeta/images/bullet.png HTTP/1.1\" 404 304")
-	tc := ottllog.NewTransformContext(lr, sl.Scope(), rl.Resource(), sl, rl)
+	tc := *ottllog.NewTransformContextPtr(rl, sl, lr)
 	transformations1.ExecuteLogTransforms(logger, attribute.NewSet(), &Telemetry{}, tc)
 
 	fields, fieldsFound := lr.Attributes().Get("fields")
@@ -236,7 +236,7 @@ func TestVPCFlowLogTransformation_UsingGrok(t *testing.T) {
 	sl := rl.ScopeLogs().AppendEmpty()
 	lr := sl.LogRecords().AppendEmpty()
 	lr.Body().SetStr("2        123456789012    eni-abc12345    10.0.0.1         10.0.1.1         443      1024     6         10       8000     1625567329   1625567389   ACCEPT   OK")
-	tc := ottllog.NewTransformContext(lr, sl.Scope(), rl.Resource(), sl, rl)
+	tc := *ottllog.NewTransformContextPtr(rl, sl, lr)
 	transformations1.ExecuteLogTransforms(logger, attribute.NewSet(), &Telemetry{}, tc)
 
 	fields, fieldsFound := lr.Attributes().Get("fields")
@@ -298,7 +298,7 @@ func TestAccessLogs_UsingLookup(t *testing.T) {
 	lr := sl.LogRecords().AppendEmpty()
 	lr.Attributes().PutStr("method", "GET")
 
-	tc := ottllog.NewTransformContext(lr, sl.Scope(), rl.Resource(), sl, rl)
+	tc := *ottllog.NewTransformContextPtr(rl, sl, lr)
 	transformations.ExecuteLogTransforms(logger, attribute.NewSet(), &Telemetry{}, tc)
 
 	fields, fieldsFound := lr.Attributes().Get("fields")
@@ -331,7 +331,7 @@ func TestLogSeverityRule(t *testing.T) {
 	lr := sl.LogRecords().AppendEmpty()
 	lr.SetSeverityText("INFO")
 
-	transformations.ExecuteLogTransforms(logger, attribute.NewSet(), &Telemetry{}, ottllog.NewTransformContext(lr, sl.Scope(), rl.Resource(), sl, rl))
+	transformations.ExecuteLogTransforms(logger, attribute.NewSet(), &Telemetry{}, *ottllog.NewTransformContextPtr(rl, sl, lr))
 
 	foo, fooFound := lr.Attributes().Get("foo")
 	assert.True(t, fooFound)
@@ -376,7 +376,7 @@ func TestPIIRegexRules(t *testing.T) {
 		"This is a SSN: 200-10-1234\n")
 	lr.Attributes().PutStr("message", "This is a phone number: 925-555-1212")
 
-	tc := ottllog.NewTransformContext(lr, sl.Scope(), rl.Resource(), sl, rl)
+	tc := *ottllog.NewTransformContextPtr(rl, sl, lr)
 	transformations.ExecuteLogTransforms(logger, attribute.NewSet(), &Telemetry{}, tc)
 
 	// check if body has been updated with cc
@@ -432,7 +432,7 @@ func TestTeamAssociations(t *testing.T) {
 
 	rm1 := pmetric.NewResourceMetrics()
 	rm1.Resource().Attributes().PutStr("service.name", "service1")
-	tc := ottlresource.NewTransformContext(rm1.Resource(), rm1)
+	tc := *ottlresource.NewTransformContextPtr(rm1.Resource(), rm1)
 	transformations.ExecuteResourceTransforms(logger, attribute.NewSet(), &Telemetry{}, tc)
 
 	// check if rm1 attributes have been updated with team = "cardinal"
