@@ -160,8 +160,8 @@ func TestMatchAndAdd_AverageAfterDroppingDimension(t *testing.T) {
 	dp1.SetDoubleValue(2.0)
 
 	// Apply transformations to both data points
-	tc1 := ottldatapoint.NewTransformContext(dp1, metric, scopeMetrics.Metrics(), scopeMetrics.Scope(), rm.Resource(), scopeMetrics, rm)
-	tc2 := ottldatapoint.NewTransformContext(dp2, metric, scopeMetrics.Metrics(), scopeMetrics.Scope(), rm.Resource(), scopeMetrics, rm)
+	tc1 := *ottldatapoint.NewTransformContextPtr(rm, scopeMetrics, metric, dp1)
+	tc2 := *ottldatapoint.NewTransformContextPtr(rm, scopeMetrics, metric, dp2)
 	transformations.ExecuteDatapointTransforms(zap.NewNop(), attribute.NewSet(), &Telemetry{}, tc1)
 	transformations.ExecuteDatapointTransforms(zap.NewNop(), attribute.NewSet(), &Telemetry{}, tc2)
 
