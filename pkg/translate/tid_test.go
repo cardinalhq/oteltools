@@ -146,3 +146,54 @@ func Benchmark_calculateTID_10items(t *testing.B) {
 		})
 	}
 }
+
+func Benchmark_CalculateTID_realistic(b *testing.B) {
+	// Simulate realistic workload with resource, scope, and datapoint attributes
+	extra := map[string]string{"name": "http.server.request.duration"}
+
+	rattr := pcommon.NewMap()
+	rattr.PutStr("service.name", "my-service")
+	rattr.PutStr("service.namespace", "production")
+	rattr.PutStr("host.name", "node-abc123")
+	rattr.PutStr("k8s.namespace.name", "default")
+	rattr.PutStr("k8s.pod.name", "my-service-xyz789")
+
+	sattr := pcommon.NewMap()
+	sattr.PutStr("otel.scope.name", "github.com/my-org/my-service")
+	sattr.PutStr("otel.scope.version", "v1.2.3")
+
+	iattr := pcommon.NewMap()
+	iattr.PutStr("http.method", "GET")
+	iattr.PutStr("http.route", "/api/v1/users")
+	iattr.PutStr("http.status_code", "200")
+
+	b.ResetTimer()
+	for b.Loop() {
+		CalculateTID(extra, rattr, sattr, iattr, "metric", nil)
+	}
+}
+
+func Benchmark_CalculateTID_many_attrs(b *testing.B) {
+	// Simulate workload with many attributes
+	extra := map[string]string{"name": "process.runtime.jvm.memory.usage"}
+
+	rattr := pcommon.NewMap()
+	for i := range 20 {
+		rattr.PutStr("resource.attr"+string(rune('a'+i)), "value"+string(rune('a'+i)))
+	}
+
+	sattr := pcommon.NewMap()
+	for i := range 5 {
+		sattr.PutStr("scope.attr"+string(rune('a'+i)), "value"+string(rune('a'+i)))
+	}
+
+	iattr := pcommon.NewMap()
+	for i := range 10 {
+		iattr.PutStr("metric.attr"+string(rune('a'+i)), "value"+string(rune('a'+i)))
+	}
+
+	b.ResetTimer()
+	for b.Loop() {
+		CalculateTID(extra, rattr, sattr, iattr, "metric", nil)
+	}
+}
