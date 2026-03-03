@@ -110,7 +110,7 @@ func TestDynamicHeaderTransport_NilMap(t *testing.T) {
 	req, _ := http.NewRequest("GET", "http://example.com", nil)
 	_, err := transport.RoundTrip(req)
 	require.NoError(t, err)
-	assert.Equal(t, req, captured, "should pass original request when map is nil")
+	assert.Same(t, req, captured, "should pass original request when map is nil")
 }
 
 func TestDynamicHeaderTransport_EmptyKeyIgnored(t *testing.T) {
