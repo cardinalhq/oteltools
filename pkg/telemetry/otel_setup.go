@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net/http"
 	"os"
 
 	"go.opentelemetry.io/otel"
@@ -33,10 +34,16 @@ import (
 
 // setupOTelSDK bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
-func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, err error) {
+func SetupOTelSDK(ctx context.Context, opts ...Option) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
 
 	insecure := os.Getenv("OTEL_INSECURE") == "true"
+
+	cfg := &setupConfig{}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	httpClient := cfg.resolveHTTPClient()
 
 	// shutdown calls cleanup functions registered via shutdownFuncs.
 	// The errors from the calls are joined.
@@ -62,7 +69,7 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	otel.SetTextMapPropagator(prop)
 
 	// Set up trace provider.
-	tracerProvider, err := newTracerProvider(ctx, insecure)
+	tracerProvider, err := newTracerProvider(ctx, insecure, httpClient)
 	if err != nil {
 		handleErr(err)
 		return
@@ -71,7 +78,7 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	otel.SetTracerProvider(tracerProvider)
 
 	// Set up meter provider.
-	meterProvider, err := newMeterProvider(ctx, insecure)
+	meterProvider, err := newMeterProvider(ctx, insecure, httpClient)
 	if err != nil {
 		handleErr(err)
 		return
@@ -80,7 +87,7 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	otel.SetMeterProvider(meterProvider)
 
 	// Set up logger provider.
-	loggerProvider, err := newLoggerProvider(ctx, insecure)
+	loggerProvider, err := newLoggerProvider(ctx, insecure, httpClient)
 	if err != nil {
 		handleErr(err)
 		return
@@ -98,10 +105,13 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func newTracerProvider(ctx context.Context, insecure bool) (*trace.TracerProvider, error) {
+func newTracerProvider(ctx context.Context, insecure bool, httpClient *http.Client) (*trace.TracerProvider, error) {
 	opts := []otlptracehttp.Option{}
 	if insecure {
 		opts = append(opts, otlptracehttp.WithInsecure())
+	}
+	if httpClient != nil {
+		opts = append(opts, otlptracehttp.WithHTTPClient(httpClient))
 	}
 	traceExporter, err := otlptracehttp.New(ctx, opts...)
 	if err != nil {
@@ -114,10 +124,13 @@ func newTracerProvider(ctx context.Context, insecure bool) (*trace.TracerProvide
 	return tracerProvider, nil
 }
 
-func newMeterProvider(ctx context.Context, insecure bool) (*metric.MeterProvider, error) {
+func newMeterProvider(ctx context.Context, insecure bool, httpClient *http.Client) (*metric.MeterProvider, error) {
 	opts := []otlpmetrichttp.Option{}
 	if insecure {
 		opts = append(opts, otlpmetrichttp.WithInsecure())
+	}
+	if httpClient != nil {
+		opts = append(opts, otlpmetrichttp.WithHTTPClient(httpClient))
 	}
 	metricExporter, err := otlpmetrichttp.New(ctx, opts...)
 	if err != nil {
@@ -130,10 +143,13 @@ func newMeterProvider(ctx context.Context, insecure bool) (*metric.MeterProvider
 	return meterProvider, nil
 }
 
-func newLoggerProvider(ctx context.Context, insecure bool) (*otellog.LoggerProvider, error) {
+func newLoggerProvider(ctx context.Context, insecure bool, httpClient *http.Client) (*otellog.LoggerProvider, error) {
 	opts := []otlploghttp.Option{}
 	if insecure {
 		opts = append(opts, otlploghttp.WithInsecure())
+	}
+	if httpClient != nil {
+		opts = append(opts, otlploghttp.WithHTTPClient(httpClient))
 	}
 	logExporter, err := otlploghttp.New(ctx, opts...)
 	if err != nil {
