@@ -29,10 +29,11 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	otellog "go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-// setupOTelSDK bootstraps the OpenTelemetry pipeline.
+// SetupOTelSDK bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
 func SetupOTelSDK(ctx context.Context, opts ...Option) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
@@ -44,6 +45,29 @@ func SetupOTelSDK(ctx context.Context, opts ...Option) (shutdown func(context.Co
 		opt(cfg)
 	}
 	httpClient := cfg.resolveHTTPClient()
+
+	// Build the merged resource: start with SDK defaults (telemetry.sdk.*,
+	// host.*, process.runtime.*, OTEL_RESOURCE_ATTRIBUTES), then merge
+	// caller-provided attrs on top so they take precedence on conflict.
+	res := cfg.resource
+	if res != nil {
+		defaultRes, resErr := resource.New(ctx,
+			resource.WithFromEnv(),
+			resource.WithTelemetrySDK(),
+			resource.WithHost(),
+			resource.WithProcessRuntimeDescription(),
+		)
+		if resErr != nil {
+			slog.Warn("failed to build default OTel resource, using caller resource only", slog.Any("error", resErr))
+		} else {
+			merged, mergeErr := resource.Merge(defaultRes, res)
+			if mergeErr != nil {
+				slog.Warn("failed to merge OTel resources, using caller resource only", slog.Any("error", mergeErr))
+			} else {
+				res = merged
+			}
+		}
+	}
 
 	// shutdown calls cleanup functions registered via shutdownFuncs.
 	// The errors from the calls are joined.
@@ -69,7 +93,7 @@ func SetupOTelSDK(ctx context.Context, opts ...Option) (shutdown func(context.Co
 	otel.SetTextMapPropagator(prop)
 
 	// Set up trace provider.
-	tracerProvider, err := newTracerProvider(ctx, insecure, httpClient)
+	tracerProvider, err := newTracerProvider(ctx, insecure, httpClient, res)
 	if err != nil {
 		handleErr(err)
 		return
@@ -78,7 +102,7 @@ func SetupOTelSDK(ctx context.Context, opts ...Option) (shutdown func(context.Co
 	otel.SetTracerProvider(tracerProvider)
 
 	// Set up meter provider.
-	meterProvider, err := newMeterProvider(ctx, insecure, httpClient)
+	meterProvider, err := newMeterProvider(ctx, insecure, httpClient, res)
 	if err != nil {
 		handleErr(err)
 		return
@@ -87,7 +111,7 @@ func SetupOTelSDK(ctx context.Context, opts ...Option) (shutdown func(context.Co
 	otel.SetMeterProvider(meterProvider)
 
 	// Set up logger provider.
-	loggerProvider, err := newLoggerProvider(ctx, insecure, httpClient)
+	loggerProvider, err := newLoggerProvider(ctx, insecure, httpClient, res)
 	if err != nil {
 		handleErr(err)
 		return
@@ -105,7 +129,7 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func newTracerProvider(ctx context.Context, insecure bool, httpClient *http.Client) (*trace.TracerProvider, error) {
+func newTracerProvider(ctx context.Context, insecure bool, httpClient *http.Client, res *resource.Resource) (*trace.TracerProvider, error) {
 	opts := []otlptracehttp.Option{}
 	if insecure {
 		opts = append(opts, otlptracehttp.WithInsecure())
@@ -118,13 +142,14 @@ func newTracerProvider(ctx context.Context, insecure bool, httpClient *http.Clie
 		return nil, err
 	}
 
-	tracerProvider := trace.NewTracerProvider(
-		trace.WithBatcher(traceExporter),
-	)
-	return tracerProvider, nil
+	tpOpts := []trace.TracerProviderOption{trace.WithBatcher(traceExporter)}
+	if res != nil {
+		tpOpts = append(tpOpts, trace.WithResource(res))
+	}
+	return trace.NewTracerProvider(tpOpts...), nil
 }
 
-func newMeterProvider(ctx context.Context, insecure bool, httpClient *http.Client) (*metric.MeterProvider, error) {
+func newMeterProvider(ctx context.Context, insecure bool, httpClient *http.Client, res *resource.Resource) (*metric.MeterProvider, error) {
 	opts := []otlpmetrichttp.Option{}
 	if insecure {
 		opts = append(opts, otlpmetrichttp.WithInsecure())
@@ -137,13 +162,14 @@ func newMeterProvider(ctx context.Context, insecure bool, httpClient *http.Clien
 		return nil, err
 	}
 
-	meterProvider := metric.NewMeterProvider(
-		metric.WithReader(metric.NewPeriodicReader(metricExporter)),
-	)
-	return meterProvider, nil
+	mpOpts := []metric.Option{metric.WithReader(metric.NewPeriodicReader(metricExporter))}
+	if res != nil {
+		mpOpts = append(mpOpts, metric.WithResource(res))
+	}
+	return metric.NewMeterProvider(mpOpts...), nil
 }
 
-func newLoggerProvider(ctx context.Context, insecure bool, httpClient *http.Client) (*otellog.LoggerProvider, error) {
+func newLoggerProvider(ctx context.Context, insecure bool, httpClient *http.Client, res *resource.Resource) (*otellog.LoggerProvider, error) {
 	opts := []otlploghttp.Option{}
 	if insecure {
 		opts = append(opts, otlploghttp.WithInsecure())
@@ -156,8 +182,9 @@ func newLoggerProvider(ctx context.Context, insecure bool, httpClient *http.Clie
 		return nil, err
 	}
 
-	loggerProvider := otellog.NewLoggerProvider(
-		otellog.WithProcessor(otellog.NewBatchProcessor(logExporter)),
-	)
-	return loggerProvider, nil
+	lpOpts := []otellog.LoggerProviderOption{otellog.WithProcessor(otellog.NewBatchProcessor(logExporter))}
+	if res != nil {
+		lpOpts = append(lpOpts, otellog.WithResource(res))
+	}
+	return otellog.NewLoggerProvider(lpOpts...), nil
 }

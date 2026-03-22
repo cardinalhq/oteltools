@@ -22,6 +22,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/resource"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -236,4 +238,17 @@ func TestResolveHTTPClient_ZeroConfig(t *testing.T) {
 func TestResolveHTTPClient_NilReceiver(t *testing.T) {
 	var cfg *setupConfig
 	assert.Nil(t, cfg.resolveHTTPClient())
+}
+
+func TestWithResource_SetsResource(t *testing.T) {
+	res := resource.NewSchemaless(attribute.String("test.key", "test.value"))
+	cfg := &setupConfig{}
+	WithResource(res)(cfg)
+	assert.Same(t, res, cfg.resource)
+}
+
+func TestWithResource_NilIsNoop(t *testing.T) {
+	cfg := &setupConfig{}
+	WithResource(nil)(cfg)
+	assert.Nil(t, cfg.resource)
 }
