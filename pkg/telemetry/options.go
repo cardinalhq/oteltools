@@ -14,7 +14,11 @@
 
 package telemetry
 
-import "net/http"
+import (
+	"net/http"
+
+	"go.opentelemetry.io/otel/sdk/resource"
+)
 
 // Option configures SetupOTelSDK behavior.
 type Option func(*setupConfig)
@@ -22,6 +26,7 @@ type Option func(*setupConfig)
 type setupConfig struct {
 	httpClient     *http.Client
 	headerProvider func() map[string]string
+	resource       *resource.Resource
 }
 
 // WithHTTPClient sets a custom HTTP client for all OTLP exporters.
@@ -29,6 +34,14 @@ type setupConfig struct {
 func WithHTTPClient(client *http.Client) Option {
 	return func(c *setupConfig) {
 		c.httpClient = client
+	}
+}
+
+// WithResource sets an explicit OTel resource to attach to all providers.
+// When set, this resource is used instead of the SDK default.
+func WithResource(r *resource.Resource) Option {
+	return func(c *setupConfig) {
+		c.resource = r
 	}
 }
 
