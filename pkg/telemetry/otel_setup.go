@@ -88,7 +88,7 @@ func SetupOTelSDK(ctx context.Context, opts ...Option) (shutdown func(context.Co
 	otel.SetTextMapPropagator(prop)
 
 	// Set up trace provider.
-	tracerProvider, err := newTracerProvider(ctx, insecure, httpClient, cfg.resource)
+	tracerProvider, err := newTracerProvider(ctx, insecure, httpClient, res)
 	if err != nil {
 		handleErr(err)
 		return
@@ -97,7 +97,7 @@ func SetupOTelSDK(ctx context.Context, opts ...Option) (shutdown func(context.Co
 	otel.SetTracerProvider(tracerProvider)
 
 	// Set up meter provider.
-	meterProvider, err := newMeterProvider(ctx, insecure, httpClient, cfg.resource)
+	meterProvider, err := newMeterProvider(ctx, insecure, httpClient, res)
 	if err != nil {
 		handleErr(err)
 		return
@@ -106,7 +106,7 @@ func SetupOTelSDK(ctx context.Context, opts ...Option) (shutdown func(context.Co
 	otel.SetMeterProvider(meterProvider)
 
 	// Set up logger provider.
-	loggerProvider, err := newLoggerProvider(ctx, insecure, httpClient, cfg.resource)
+	loggerProvider, err := newLoggerProvider(ctx, insecure, httpClient, res)
 	if err != nil {
 		handleErr(err)
 		return
