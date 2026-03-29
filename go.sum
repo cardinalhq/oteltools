@@ -108,8 +108,9 @@ github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFI
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be/go.mod h1:ySMOLuWl6zY27l47sB3qLNK6tF2fkHG55UZxx8oIVo4=
 github.com/antchfx/xmlquery v1.5.0 h1:uAi+mO40ZWfyU6mlUBxRVvL6uBNZ6LMU4M3+mQIBV4c=
 github.com/antchfx/xmlquery v1.5.0/go.mod h1:lJfWRXzYMK1ss32zm1GQV3gMIW/HFey3xDZmkP1SuNc=
-github.com/antchfx/xpath v1.3.5 h1:PqbXLC3TkfeZyakF5eeh3NTWEbYl4VHNVeufANzDbKQ=
 github.com/antchfx/xpath v1.3.5/go.mod h1:i54GszH55fYfBmoZXapTHN8T8tkcHfRgLyVwwqzXNcs=
+github.com/antchfx/xpath v1.3.6 h1:s0y+ElRRtTQdfHP609qFu0+c6bglDv20pqOViQjjdPI=
+github.com/antchfx/xpath v1.3.6/go.mod h1:i54GszH55fYfBmoZXapTHN8T8tkcHfRgLyVwwqzXNcs=
 github.com/apache/datasketches-go v0.0.0-20251212084617-f7bc4b1db865 h1:C8vuEhEBC2udZqWnx40Li2JkDw0NRyqJDycjedrauLw=
 github.com/apache/datasketches-go v0.0.0-20251212084617-f7bc4b1db865/go.mod h1:tWCpdsIfpbCQH04ZV3mUb6RyIfovjjNwHn/dGT8wrTw=
 github.com/apache/skywalking-eyes v0.7.0 h1:VMBZ9bWKEw4QXfWhh9g4265Sz8GzD2LCxXfi/MSDTUg=
