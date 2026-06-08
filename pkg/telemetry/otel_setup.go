@@ -93,7 +93,7 @@ func SetupOTelSDK(ctx context.Context, opts ...Option) (shutdown func(context.Co
 	otel.SetTextMapPropagator(prop)
 
 	// Set up trace provider.
-	tracerProvider, err := newTracerProvider(ctx, insecure, httpClient, res)
+	tracerProvider, err := newTracerProvider(ctx, insecure, httpClient, res, cfg.secondary)
 	if err != nil {
 		handleErr(err)
 		return
@@ -102,7 +102,7 @@ func SetupOTelSDK(ctx context.Context, opts ...Option) (shutdown func(context.Co
 	otel.SetTracerProvider(tracerProvider)
 
 	// Set up meter provider.
-	meterProvider, err := newMeterProvider(ctx, insecure, httpClient, res)
+	meterProvider, err := newMeterProvider(ctx, insecure, httpClient, res, cfg.secondary)
 	if err != nil {
 		handleErr(err)
 		return
@@ -111,7 +111,7 @@ func SetupOTelSDK(ctx context.Context, opts ...Option) (shutdown func(context.Co
 	otel.SetMeterProvider(meterProvider)
 
 	// Set up logger provider.
-	loggerProvider, err := newLoggerProvider(ctx, insecure, httpClient, res)
+	loggerProvider, err := newLoggerProvider(ctx, insecure, httpClient, res, cfg.secondary)
 	if err != nil {
 		handleErr(err)
 		return
@@ -129,7 +129,7 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func newTracerProvider(ctx context.Context, insecure bool, httpClient *http.Client, res *resource.Resource) (*trace.TracerProvider, error) {
+func newTracerProvider(ctx context.Context, insecure bool, httpClient *http.Client, res *resource.Resource, secondary *secondaryExporter) (*trace.TracerProvider, error) {
 	opts := []otlptracehttp.Option{}
 	if insecure {
 		opts = append(opts, otlptracehttp.WithInsecure())
@@ -143,13 +143,24 @@ func newTracerProvider(ctx context.Context, insecure bool, httpClient *http.Clie
 	}
 
 	tpOpts := []trace.TracerProviderOption{trace.WithBatcher(traceExporter)}
+	if secondary != nil {
+		secOpts := []otlptracehttp.Option{otlptracehttp.WithEndpointURL(secondary.endpoint)}
+		if len(secondary.headers) > 0 {
+			secOpts = append(secOpts, otlptracehttp.WithHeaders(secondary.headers))
+		}
+		secExporter, err := otlptracehttp.New(ctx, secOpts...)
+		if err != nil {
+			return nil, err
+		}
+		tpOpts = append(tpOpts, trace.WithBatcher(secExporter))
+	}
 	if res != nil {
 		tpOpts = append(tpOpts, trace.WithResource(res))
 	}
 	return trace.NewTracerProvider(tpOpts...), nil
 }
 
-func newMeterProvider(ctx context.Context, insecure bool, httpClient *http.Client, res *resource.Resource) (*metric.MeterProvider, error) {
+func newMeterProvider(ctx context.Context, insecure bool, httpClient *http.Client, res *resource.Resource, secondary *secondaryExporter) (*metric.MeterProvider, error) {
 	opts := []otlpmetrichttp.Option{}
 	if insecure {
 		opts = append(opts, otlpmetrichttp.WithInsecure())
@@ -163,13 +174,24 @@ func newMeterProvider(ctx context.Context, insecure bool, httpClient *http.Clien
 	}
 
 	mpOpts := []metric.Option{metric.WithReader(metric.NewPeriodicReader(metricExporter))}
+	if secondary != nil {
+		secOpts := []otlpmetrichttp.Option{otlpmetrichttp.WithEndpointURL(secondary.endpoint)}
+		if len(secondary.headers) > 0 {
+			secOpts = append(secOpts, otlpmetrichttp.WithHeaders(secondary.headers))
+		}
+		secExporter, err := otlpmetrichttp.New(ctx, secOpts...)
+		if err != nil {
+			return nil, err
+		}
+		mpOpts = append(mpOpts, metric.WithReader(metric.NewPeriodicReader(secExporter)))
+	}
 	if res != nil {
 		mpOpts = append(mpOpts, metric.WithResource(res))
 	}
 	return metric.NewMeterProvider(mpOpts...), nil
 }
 
-func newLoggerProvider(ctx context.Context, insecure bool, httpClient *http.Client, res *resource.Resource) (*otellog.LoggerProvider, error) {
+func newLoggerProvider(ctx context.Context, insecure bool, httpClient *http.Client, res *resource.Resource, secondary *secondaryExporter) (*otellog.LoggerProvider, error) {
 	opts := []otlploghttp.Option{}
 	if insecure {
 		opts = append(opts, otlploghttp.WithInsecure())
@@ -183,6 +205,17 @@ func newLoggerProvider(ctx context.Context, insecure bool, httpClient *http.Clie
 	}
 
 	lpOpts := []otellog.LoggerProviderOption{otellog.WithProcessor(otellog.NewBatchProcessor(logExporter))}
+	if secondary != nil {
+		secOpts := []otlploghttp.Option{otlploghttp.WithEndpointURL(secondary.endpoint)}
+		if len(secondary.headers) > 0 {
+			secOpts = append(secOpts, otlploghttp.WithHeaders(secondary.headers))
+		}
+		secExporter, err := otlploghttp.New(ctx, secOpts...)
+		if err != nil {
+			return nil, err
+		}
+		lpOpts = append(lpOpts, otellog.WithProcessor(otellog.NewBatchProcessor(secExporter)))
+	}
 	if res != nil {
 		lpOpts = append(lpOpts, otellog.WithResource(res))
 	}
