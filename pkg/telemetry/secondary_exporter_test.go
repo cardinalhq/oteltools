@@ -18,6 +18,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -39,6 +40,76 @@ func otlpRecorder(t *testing.T) (*httptest.Server, *int64) {
 	}))
 	t.Cleanup(srv.Close)
 	return srv, &count
+}
+
+// headerRecorder is an httptest OTLP server that records the headers of every
+// inbound POST.
+type headerRecorder struct {
+	mu   sync.Mutex
+	seen []http.Header
+}
+
+func (r *headerRecorder) headers() []http.Header {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]http.Header(nil), r.seen...)
+}
+
+// otlpHeaderRecorder records the request headers for every inbound POST.
+func otlpHeaderRecorder(t *testing.T) (*httptest.Server, *headerRecorder) {
+	t.Helper()
+	rec := &headerRecorder{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		rec.mu.Lock()
+		rec.seen = append(rec.seen, req.Header.Clone())
+		rec.mu.Unlock()
+		w.Header().Set("Content-Type", "application/x-protobuf")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte{})
+	}))
+	t.Cleanup(srv.Close)
+	return srv, rec
+}
+
+// TestSecondaryExporter_HeaderIsolation pins the security-relevant property:
+// the primary's dynamic auth headers (here an Authorization bearer token
+// injected via the primary http.Client) must never reach the secondary
+// destination, and the secondary's own static headers must reach it.
+func TestSecondaryExporter_HeaderIsolation(t *testing.T) {
+	primary, primaryRec := otlpHeaderRecorder(t)
+	secondary, secondaryRec := otlpHeaderRecorder(t)
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", primary.URL)
+
+	// Primary client injects a license-style bearer token on every request it
+	// makes, exactly as resolveHTTPClient wires WithHeaderProvider.
+	primaryClient := &http.Client{
+		Transport: &dynamicHeaderTransport{
+			base:     http.DefaultTransport,
+			provider: func() map[string]string { return map[string]string{"Authorization": "Bearer PRIMARY"} },
+		},
+	}
+
+	ctx := context.Background()
+	tp, err := newTracerProvider(ctx, true, primaryClient, nil, &secondaryExporter{
+		endpoint: secondary.URL,
+		headers:  map[string]string{"X-Self": "yes"},
+	})
+	require.NoError(t, err)
+
+	_, span := tp.Tracer("test").Start(ctx, "span")
+	span.End()
+	require.NoError(t, tp.ForceFlush(ctx))
+	require.NoError(t, tp.Shutdown(ctx))
+
+	require.NotEmpty(t, primaryRec.headers(), "primary must receive traces")
+	for _, h := range primaryRec.headers() {
+		assert.Equal(t, "Bearer PRIMARY", h.Get("Authorization"), "primary must carry the injected bearer token")
+	}
+	require.NotEmpty(t, secondaryRec.headers(), "secondary must receive traces")
+	for _, h := range secondaryRec.headers() {
+		assert.Empty(t, h.Get("Authorization"), "secondary must NOT receive the primary's Authorization header")
+		assert.Equal(t, "yes", h.Get("X-Self"), "secondary must carry its own static header")
+	}
 }
 
 func TestWithSecondaryExporter_SetsConfig(t *testing.T) {
