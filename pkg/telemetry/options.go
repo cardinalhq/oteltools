@@ -27,6 +27,14 @@ type setupConfig struct {
 	httpClient     *http.Client
 	headerProvider func() map[string]string
 	resource       *resource.Resource
+	secondary      *secondaryExporter
+}
+
+// secondaryExporter describes an additional OTLP/HTTP destination that receives
+// the same telemetry as the primary exporter.
+type secondaryExporter struct {
+	endpoint string
+	headers  map[string]string
 }
 
 // WithHTTPClient sets a custom HTTP client for all OTLP exporters.
@@ -50,6 +58,20 @@ func WithResource(r *resource.Resource) Option {
 func WithHeaderProvider(provider func() map[string]string) Option {
 	return func(c *setupConfig) {
 		c.headerProvider = provider
+	}
+}
+
+// WithSecondaryExporter adds a second OTLP/HTTP destination that receives the
+// same traces, metrics, and logs as the primary exporter, with the same
+// resource. The endpoint must be a full URL (e.g. https://host:4318); its
+// scheme selects TLS. headers are static, set on every request to this
+// destination. An empty endpoint is a no-op.
+func WithSecondaryExporter(endpoint string, headers map[string]string) Option {
+	return func(c *setupConfig) {
+		if endpoint == "" {
+			return
+		}
+		c.secondary = &secondaryExporter{endpoint: endpoint, headers: headers}
 	}
 }
 
