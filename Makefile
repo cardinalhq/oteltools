@@ -21,9 +21,13 @@ generate:
 #
 # Run pre-commit checks
 #
+# Dev tools (license-eye, golangci-lint) live in tools/go.mod so their deps
+# stay out of the main module's require() blocks.
+TOOL := go tool -modfile=tools/go.mod
+
 check: test
-	go tool license-eye header check
-	go tool golangci-lint run
+	$(TOOL) license-eye header check
+	$(TOOL) golangci-lint run
 
 #
 # Test targets

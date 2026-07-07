@@ -21,11 +21,12 @@ make check
 ### Code Quality
 
 ```bash
+# Dev tools live in tools/go.mod (isolated from the main module's deps).
 # Check license headers
-go tool license-eye header check
+go tool -modfile=tools/go.mod license-eye header check
 
 # Run golangci-lint
-go tool golangci-lint run
+go tool -modfile=tools/go.mod golangci-lint run
 ```
 
 ### Single Test Commands
