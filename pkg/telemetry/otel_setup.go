@@ -19,6 +19,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 
 	"go.opentelemetry.io/otel"
@@ -207,6 +208,15 @@ func newLoggerProvider(ctx context.Context, insecure bool, httpClient *http.Clie
 	lpOpts := []otellog.LoggerProviderOption{otellog.WithProcessor(otellog.NewBatchProcessor(logExporter))}
 	if secondary != nil {
 		secOpts := []otlploghttp.Option{otlploghttp.WithEndpointURL(secondary.endpoint)}
+		// otlploghttp's WithEndpointURL uses the URL path verbatim; a path-less
+		// endpoint resolves to "/" (404 at an OTLP collector) rather than the
+		// standard "/v1/logs". The otlptracehttp/otlpmetrichttp exporters default
+		// an empty path to /v1/{signal}, but the log exporter does not — so the
+		// secondary log sink silently 404s while metrics/traces flow. Force the
+		// standard path when the operator-supplied endpoint carries none.
+		if u, perr := url.Parse(secondary.endpoint); perr == nil && (u.Path == "" || u.Path == "/") {
+			secOpts = append(secOpts, otlploghttp.WithURLPath("/v1/logs"))
+		}
 		if len(secondary.headers) > 0 {
 			secOpts = append(secOpts, otlploghttp.WithHeaders(secondary.headers))
 		}

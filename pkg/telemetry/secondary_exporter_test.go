@@ -197,3 +197,39 @@ func TestLoggerProvider_FansOutToSecondary(t *testing.T) {
 	assert.Positive(t, atomic.LoadInt64(primaryCount), "primary must receive logs")
 	assert.Positive(t, atomic.LoadInt64(secondaryCount), "secondary must receive logs")
 }
+
+// Regression: otlploghttp.WithEndpointURL uses the URL path verbatim, so a
+// path-less secondary endpoint (e.g. "http://collector:4318") resolves to "/"
+// and 404s at a real OTLP collector — unlike otlptracehttp/otlpmetrichttp,
+// which default an empty path to /v1/{signal}. newLoggerProvider must force
+// "/v1/logs" so the secondary log sink actually receives data.
+func TestLoggerProvider_SecondaryUsesV1LogsPath(t *testing.T) {
+	var mu sync.Mutex
+	var secPath string
+	primary, _ := otlpRecorder(t)
+	secondary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		mu.Lock()
+		secPath = req.URL.Path
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/x-protobuf")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte{})
+	}))
+	t.Cleanup(secondary.Close)
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", primary.URL)
+
+	ctx := context.Background()
+	// secondary.URL is scheme+host only (no path) — the exact case that 404s.
+	lp, err := newLoggerProvider(ctx, true, nil, nil, &secondaryExporter{endpoint: secondary.URL})
+	require.NoError(t, err)
+
+	var rec otellogapi.Record
+	rec.SetBody(otellogapi.StringValue("hello"))
+	lp.Logger("test").Emit(ctx, rec)
+	require.NoError(t, lp.ForceFlush(ctx))
+	require.NoError(t, lp.Shutdown(ctx))
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, "/v1/logs", secPath, "secondary log exporter must POST to /v1/logs, not the bare endpoint path")
+}
