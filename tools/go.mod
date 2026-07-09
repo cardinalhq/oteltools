@@ -1,6 +1,6 @@
 module github.com/cardinalhq/oteltools/internal/tools
 
-go 1.26.4
+go 1.26.5
 
 tool (
 	github.com/apache/skywalking-eyes/cmd/license-eye
