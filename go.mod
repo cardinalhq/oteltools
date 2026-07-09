@@ -1,6 +1,6 @@
 module github.com/cardinalhq/oteltools
 
-go 1.26
+go 1.26.5
 
 require (
 	github.com/DataDog/sketches-go v1.4.8
