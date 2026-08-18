@@ -192,6 +192,18 @@ func newMeterProvider(ctx context.Context, insecure bool, httpClient *http.Clien
 	return metric.NewMeterProvider(mpOpts...), nil
 }
 
+// logExportBufferSize is the number of batches a BatchProcessor may stage
+// ahead of the exporter. The SDK default of 1 means the poll goroutine stops
+// draining the record queue for the whole duration of an HTTP round trip, and
+// that queue is a ring buffer that silently overwrites its oldest records when
+// it fills (the SDK's "dropped log records" warning is logr V(1), which the
+// default global logger suppresses). 4 batches x the 512-record default batch
+// size covers the 2048-record default queue, so a single slow export can be
+// absorbed without overwriting anything. It does not raise sustained
+// throughput: exports are performed serially by one goroutine, so the ceiling
+// stays at one batch per round trip.
+const logExportBufferSize = 4
+
 func newLoggerProvider(ctx context.Context, insecure bool, httpClient *http.Client, res *resource.Resource, secondary *secondaryExporter) (*otellog.LoggerProvider, error) {
 	opts := []otlploghttp.Option{}
 	if insecure {
@@ -205,7 +217,10 @@ func newLoggerProvider(ctx context.Context, insecure bool, httpClient *http.Clie
 		return nil, err
 	}
 
-	lpOpts := []otellog.LoggerProviderOption{otellog.WithProcessor(otellog.NewBatchProcessor(logExporter))}
+	lpOpts := []otellog.LoggerProviderOption{
+		otellog.WithProcessor(otellog.NewBatchProcessor(logExporter,
+			otellog.WithExportBufferSize(logExportBufferSize))),
+	}
 	if secondary != nil {
 		secOpts := []otlploghttp.Option{otlploghttp.WithEndpointURL(secondary.endpoint)}
 		// otlploghttp's WithEndpointURL uses the URL path verbatim; a path-less
@@ -224,7 +239,8 @@ func newLoggerProvider(ctx context.Context, insecure bool, httpClient *http.Clie
 		if err != nil {
 			return nil, err
 		}
-		lpOpts = append(lpOpts, otellog.WithProcessor(otellog.NewBatchProcessor(secExporter)))
+		lpOpts = append(lpOpts, otellog.WithProcessor(otellog.NewBatchProcessor(secExporter,
+			otellog.WithExportBufferSize(logExportBufferSize))))
 	}
 	if res != nil {
 		lpOpts = append(lpOpts, otellog.WithResource(res))
